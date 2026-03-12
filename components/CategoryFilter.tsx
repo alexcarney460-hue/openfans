@@ -31,8 +31,8 @@ export function CategoryFilter({
             className={cn(
               "shrink-0 rounded-full px-5 py-2 text-sm font-medium transition-all",
               isActive
-                ? "gradient-bg text-white shadow-lg shadow-purple-500/20"
-                : "border border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white/80"
+                ? "bg-[#00AFF0] text-white"
+                : "border border-white/10 bg-transparent text-white/50 hover:border-white/20 hover:text-white/70"
             )}
           >
             {category}

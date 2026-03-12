@@ -10,19 +10,19 @@
     --card-foreground: 0 0% 95%;
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 95%;
-    --primary: 263 70% 66%;
+    --primary: 197 100% 47%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 95%;
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 60%;
-    --accent: 330 81% 60%;
+    --accent: 32 95% 55%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 14%;
     --input: 0 0% 14%;
-    --ring: 263 70% 66%;
+    --ring: 197 100% 47%;
     --radius: 0.75rem;
   }
 }
@@ -43,32 +43,24 @@
 }
 
 @layer utilities {
-  .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  .text-accent-blue {
+    color: #00AFF0;
   }
 
-  .gradient-bg {
-    background-image: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  .bg-accent-blue {
+    background-color: #00AFF0;
   }
 
-  .gradient-border {
-    position: relative;
+  .bg-accent-blue-hover:hover {
+    background-color: #009dd8;
   }
 
-  .gradient-border::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
-    mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    -webkit-mask-composite: xor;
-    pointer-events: none;
+  .text-accent-warm {
+    color: #F5A623;
+  }
+
+  .bg-accent-warm {
+    background-color: #F5A623;
   }
 
   .scrollbar-hide {
@@ -78,28 +70,5 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
-  }
-
-  .mesh-gradient {
-    background-image: radial-gradient(
-        at 27% 37%,
-        rgba(139, 92, 246, 0.15) 0px,
-        transparent 50%
-      ),
-      radial-gradient(
-        at 97% 21%,
-        rgba(236, 72, 153, 0.12) 0px,
-        transparent 50%
-      ),
-      radial-gradient(
-        at 52% 99%,
-        rgba(139, 92, 246, 0.08) 0px,
-        transparent 50%
-      ),
-      radial-gradient(
-        at 10% 29%,
-        rgba(236, 72, 153, 0.06) 0px,
-        transparent 50%
-      );
   }
 }

@@ -22,7 +22,7 @@ export function PostCard({
   return (
     <article
       className={cn(
-        "rounded-xl border border-white/5 bg-[#111111] transition-colors hover:border-white/10",
+        "rounded-xl border border-white/[0.06] bg-[#111111] transition-colors hover:border-white/10",
         className,
       )}
     >
@@ -33,8 +33,10 @@ export function PostCard({
           className="flex-shrink-0"
           aria-label={`View ${post.creatorDisplayName}'s profile`}
         >
-          <div className="h-10 w-10 overflow-hidden rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-[2px]">
-            <div className="h-full w-full rounded-full bg-[#1a1a1a]" />
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#1e1e1e]">
+            <span className="text-sm font-semibold text-white">
+              {post.creatorDisplayName.charAt(0)}
+            </span>
           </div>
         </Link>
         <div className="min-w-0 flex-1">
@@ -49,7 +51,7 @@ export function PostCard({
           <p className="text-xs text-white/40">{timeAgo(post.createdAt)}</p>
         </div>
         {post.isPremium && (
-          <span className="flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400">
+          <span className="flex items-center gap-1 rounded-full bg-[#00AFF0]/10 px-2.5 py-1 text-xs font-medium text-[#00AFF0]">
             <Lock className="h-3 w-3" />
             Premium
           </span>
@@ -74,23 +76,19 @@ export function PostCard({
           <Link href={`/${post.creatorUsername}/post/${post.id}`}>
             <div
               className={cn(
-                "flex aspect-video items-center justify-center bg-white/5",
-                isLocked && "blur-lg",
+                "flex aspect-video items-center justify-center bg-[#1a1a1a]",
+                isLocked && "blur-xl",
               )}
             >
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-900/20 to-pink-900/20">
-                <span className="text-sm text-white/20">
-                  {post.mediaType === "video" ? "Video" : "Image"}
-                </span>
-              </div>
+              <span className="text-sm text-white/15">
+                {post.mediaType === "video" ? "Video" : "Image"}
+              </span>
             </div>
           </Link>
           {isLocked && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-black/60 backdrop-blur-sm">
-              <div className="rounded-full bg-white/10 p-3">
-                <Lock className="h-6 w-6 text-white" />
-              </div>
-              <p className="text-sm font-medium text-white">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <Lock className="h-6 w-6 text-white/70" />
+              <p className="text-sm font-medium text-white/80">
                 Subscribe to unlock
               </p>
             </div>
@@ -99,9 +97,9 @@ export function PostCard({
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-6 border-t border-white/5 px-4 py-3">
+      <div className="flex items-center gap-6 border-t border-white/[0.06] px-4 py-3">
         <button
-          className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-pink-500"
+          className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-red-400"
           aria-label={`Like this post. ${formatNumber(post.stats.likes)} likes`}
         >
           <Heart className="h-4 w-4" />
@@ -109,7 +107,7 @@ export function PostCard({
         </button>
         <Link
           href={`/${post.creatorUsername}/post/${post.id}`}
-          className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-purple-400"
+          className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-[#00AFF0]"
           aria-label={`View comments. ${formatNumber(post.stats.comments)} comments`}
         >
           <MessageCircle className="h-4 w-4" />

@@ -59,7 +59,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b border-white/5 bg-[#0a0a0a]/80 px-4 backdrop-blur-xl">
+      <nav className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b border-white/[0.06] bg-[#0a0a0a]/80 px-4 backdrop-blur-xl">
         <Link
           href="/"
           className="flex items-center gap-2 text-white/60 transition-colors hover:text-white"
@@ -73,7 +73,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
               {creator.displayName}
             </h1>
             {creator.isVerified && (
-              <BadgeCheck className="h-4 w-4 flex-shrink-0 text-purple-400" />
+              <BadgeCheck className="h-4 w-4 flex-shrink-0 fill-[#00AFF0] text-white" />
             )}
           </div>
           <p className="text-xs text-white/40">
@@ -84,17 +84,16 @@ export default function CreatorProfilePage({ params }: PageProps) {
 
       {/* Banner */}
       <div className="relative h-48 w-full sm:h-64 md:h-72 lg:h-80">
-        <div className="h-full w-full bg-gradient-to-br from-purple-900/60 via-purple-800/30 to-pink-900/60" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/30 to-transparent" />
+        <div className="h-full w-full bg-gradient-to-br from-[#0f1923] via-[#151a2e] to-[#1a1a2e]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
       </div>
 
       {/* Profile Section */}
       <div className="relative mx-auto max-w-2xl px-4">
         {/* Avatar */}
         <div className="-mt-16 mb-4 flex items-end justify-between sm:-mt-20">
-          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-[#0a0a0a] bg-gradient-to-br from-purple-500 to-pink-500 p-[3px] sm:h-32 sm:w-32">
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-[#1a1a1a] text-3xl font-bold text-white sm:text-4xl">
+          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-[#0a0a0a] sm:h-32 sm:w-32">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-[#1e1e1e] text-3xl font-bold text-white sm:text-4xl">
               {creator.displayName.charAt(0)}
             </div>
           </div>
@@ -113,7 +112,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
               {creator.displayName}
             </h2>
             {creator.isVerified && (
-              <BadgeCheck className="h-5 w-5 text-purple-400" />
+              <BadgeCheck className="h-5 w-5 fill-[#00AFF0] text-white" />
             )}
           </div>
           <p className="mb-3 text-sm text-white/40">@{creator.username}</p>
@@ -125,21 +124,21 @@ export default function CreatorProfilePage({ params }: PageProps) {
         {/* Stats Row */}
         <div className="mb-4 flex items-center gap-6">
           <div className="flex items-center gap-1.5 text-sm">
-            <FileText className="h-4 w-4 text-white/30" />
+            <FileText className="h-4 w-4 text-white/25" />
             <span className="font-semibold text-white">
               {formatNumber(creator.stats.posts)}
             </span>
             <span className="text-white/40">posts</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
-            <Users className="h-4 w-4 text-white/30" />
+            <Users className="h-4 w-4 text-white/25" />
             <span className="font-semibold text-white">
               {formatNumber(creator.stats.subscribers)}
             </span>
             <span className="text-white/40">subscribers</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
-            <Heart className="h-4 w-4 text-white/30" />
+            <Heart className="h-4 w-4 text-white/25" />
             <span className="font-semibold text-white">
               {formatNumber(creator.stats.likes)}
             </span>
@@ -152,7 +151,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
           {creator.categories.map((category) => (
             <span
               key={category}
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/60"
+              className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs font-medium text-white/50"
             >
               {category}
             </span>
@@ -160,7 +159,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
         </div>
 
         {/* Divider */}
-        <div className="mb-6 border-t border-white/5" />
+        <div className="mb-6 border-t border-white/[0.06]" />
 
         {/* Content Feed */}
         <section aria-label="Posts feed">
