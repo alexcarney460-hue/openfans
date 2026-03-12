@@ -1,32 +1,58 @@
+import Link from "next/link"
+import Image from "next/image"
+import ForgotPasswordForm from "@/components/ForgotPasswordForm"
 
-import Link from 'next/link'
-import Image from 'next/image'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import ForgotPasswordForm from '@/components/ForgotPasswordForm'
 export default function ForgotPassword() {
-    return (
-        <div className="flex items-center justify-center bg-muted min-h-screen" >
-            <Card className="w-[350px] mx-auto">
-                <CardHeader className="space-y-1">
-                    <div className="flex justify-center py-4">
-                        <Image src="/logo.png" alt="logo" width={50} height={50} />
-                    </div>
+  return (
+    <div className="mesh-gradient flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[420px]">
+        <div className="gradient-border rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-purple-500/5">
+          {/* Logo */}
+          <div className="mb-6 flex justify-center">
+            <Link href="/">
+              <Image
+                src="/logo.png"
+                alt="OpenFans"
+                width={48}
+                height={48}
+                className="transition-transform hover:scale-105"
+              />
+            </Link>
+          </div>
 
-                    <CardTitle className="text-2xl font-bold">Forgot Your Password?</CardTitle>
-                    <CardDescription>Enter your email address</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                    <ForgotPasswordForm />
-                </CardContent>
-                <CardFooter className="flex-col text-center">
-                    <Link className="w-full text-sm text-muted-foreground " href="/login">
-                        Back to login
-                    </Link>
-                    <Link className="w-full text-sm text-muted-foreground" href="/signup">
-                        Don&apos;t have an account? Signup
-                    </Link>
-                </CardFooter>
-            </Card>
+          {/* Header */}
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-bold text-white">
+              Forgot your password?
+            </h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              Enter your email and we&apos;ll send you a reset link
+            </p>
+          </div>
+
+          {/* Form */}
+          <ForgotPasswordForm />
+
+          {/* Footer Links */}
+          <div className="mt-6 space-y-2 text-center">
+            <Link
+              href="/login"
+              className="block text-sm text-zinc-500 transition-colors hover:text-[#8b5cf6]"
+            >
+              Back to login
+            </Link>
+            <p className="text-sm text-zinc-500">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/signup"
+                className="font-medium text-[#8b5cf6] transition-colors hover:text-[#a78bfa]"
+              >
+                Sign up
+              </Link>
+            </p>
+          </div>
         </div>
-    )
+      </div>
+    </div>
+  )
 }

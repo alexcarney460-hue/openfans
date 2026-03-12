@@ -1,12 +1,29 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+});
 
 export const metadata: Metadata = {
-  title: "SAAS Starter Kit",
-  description: "SAAS Starter Kit with Stripe, Supabase, Postgres",
+  title: "OpenFans -- Own Your Content, Own Your Money",
+  description:
+    "The crypto-native creator platform. Accept subscriptions in USDC/SOL. No payment processors. No gatekeepers.",
+  openGraph: {
+    title: "OpenFans -- Own Your Content, Own Your Money",
+    description:
+      "The crypto-native creator platform. Accept subscriptions in USDC/SOL. No payment processors. No gatekeepers.",
+    siteName: "OpenFans",
+    type: "website",
+    url: "https://openfans.online",
+  },
 };
 
 export default function RootLayout({
@@ -15,10 +32,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      {/* Required for pricing table */}
-      <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="dark">
+      <body
+        className={`${inter.variable} ${jakarta.variable} font-sans antialiased`}
+      >
+        {children}
+      </body>
     </html>
   );
 }

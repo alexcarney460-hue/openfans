@@ -1,226 +1,237 @@
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import Link from "next/link"
-import { Star, Check, Coins, UserCheck, Database } from "lucide-react"
-import Stripe from 'stripe'
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import {
+  Wallet,
+  Percent,
+  ShieldCheck,
+  Zap,
+  MessageCircle,
+  Film,
+} from "lucide-react";
 
-// Types
-interface StripeProduct {
-  id: string;
-  name: string;
-  description: string | null;
-  features: string[];
-  price: Stripe.Price;
-}
+// -------------------------------------------------------------------
+// Feature card data
+// -------------------------------------------------------------------
+const FEATURES = [
+  {
+    icon: Wallet,
+    title: "Crypto Payments",
+    description:
+      "Accept USDC & SOL. Instant settlement. No chargebacks.",
+  },
+  {
+    icon: Percent,
+    title: "5% Platform Fee",
+    description:
+      "OnlyFans takes 20%. We take 5%. You keep more.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Uncensorable",
+    description:
+      "No payment processor can shut you down. Your content, your rules.",
+  },
+  {
+    icon: Zap,
+    title: "Instant Payouts",
+    description:
+      "No 7-day holds. Withdraw to your wallet anytime.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Built-in Messaging",
+    description:
+      "DM your fans directly. Offer paid messages.",
+  },
+  {
+    icon: Film,
+    title: "Multi-Format Content",
+    description:
+      "Photos, videos, live streams, text posts. All gated by subscription tier.",
+  },
+] as const;
 
-// This makes the page dynamic instead of static
-export const revalidate = 3600 // Revalidate every hour
+// -------------------------------------------------------------------
+// How-it-works steps
+// -------------------------------------------------------------------
+const STEPS = [
+  {
+    number: "01",
+    title: "Create your profile",
+    description:
+      "Sign up, connect your Solana wallet, and set up your creator page in minutes.",
+  },
+  {
+    number: "02",
+    title: "Set your subscription tiers",
+    description:
+      "Define tiers priced in USDC. Offer free previews, standard access, and VIP perks.",
+  },
+  {
+    number: "03",
+    title: "Start earning",
+    description:
+      "Fans pay with crypto or card. You receive funds directly -- no waiting, no middlemen.",
+  },
+] as const;
 
-async function getStripeProducts(): Promise<StripeProduct[]> {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2024-06-20'
-  });
-
-  const products = await stripe.products.list({
-    active: true,
-    expand: ['data.default_price']
-  });
-
-  return products.data.map(product => ({
-    id: product.id,
-    name: product.name,
-    description: product.description,
-    features: product.metadata?.features ? JSON.parse(product.metadata.features) : [],
-    price: product.default_price as Stripe.Price
-  }));
-}
-
-export default async function LandingPage() {
-  const products = await getStripeProducts();
-
+// -------------------------------------------------------------------
+// Page Component
+// -------------------------------------------------------------------
+export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-[100dvh]">
-      <header className="px-4 lg:px-6 h-16 flex items-center  bg-white border-b fixed border-b-slate-200 w-full">
-        <Link className="flex items-center justify-center" href="#">
-          <Image src="/logo.png" alt="logo" width={50} height={50} />
-          <span className="sr-only">Acme Inc</span>
-        </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <a className="text-sm font-medium hover:underline underline-offset-4" href="#features">
-            Features
-          </a>
-          <a className="text-sm font-medium hover:underline underline-offset-4" href="#testimonials">
-            Testimonials
-          </a>
-          <a className="text-sm font-medium hover:underline underline-offset-4" href="#pricing">
-            Pricing
-          </a>
-        </nav>
-        <Button className="mx-2 md:mx-4 lg:mx-6 xl:mx-10" >
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/login">
-            Get Started
-          </Link>
-        </Button>
-      </header>
+    <div className="flex min-h-dvh flex-col">
+      <SiteHeader />
+
       <main className="flex-1">
-        <section className="w-full py-20 lg:py-32 xl:py-40">
-          <div className="container px-4 md:px-6 flex flex-col md:flex-row ">
-            <div className="flex flex-col space-y-4 md:w-1/2 w-full ">
-              <div className="space-y-2">
-                <h1 className="text-2xl  tracking-tighter sm:text-3xl md:text-4xl lg:text-5xl/none">
-                  Saas Template with Supabase, Stripe, Databases
-                </h1>
-                <p className=" text-muted-foreground md:text-xl">
-                  NextJS Boilerplate with everything required to build your next SAAS Product
-                </p>
-              </div>
-              <div className="space-x-4">
-                <Button>Get Started</Button>
-                <Button variant="outline">Learn More</Button>
-              </div>
-            </div>
-            <div className="w-full md:w-1/2  flex justify-center">
-              <Image src="/hero.png" alt="Hero" width={500} height={500} priority />
-            </div>
-          </div>
-        </section>
-        <section className="w-full py-10 md:py-20 lg:py-32 bg-muted" id="features">
-          <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-center mb-4">Our Features</h2>
-            <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3">
-              <div className="flex flex-col items-center space-y-2 border-muted-foreground/10 p-4 rounded-lg">
-                <div className="p-2 bg-primary/10 rounded-full">
-                  <Coins className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Payments</h3>
-                <p className="text-muted-foreground text-center">Seamlesly integrate Stripe Billing to capture subscription payments - Webhooks and all</p>
-              </div>
-              <div className="flex flex-col items-center space-y-2 border-muted-foreground/10 p-4 rounded-lg">
-                <div className="p-2 bg-primary/10 rounded-full">
-                  <UserCheck className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Auth</h3>
-                <p className="text-muted-foreground text-center">Utilize our preexisting Superbase integration to auth your users and secure your app </p>
-              </div>
-              <div className="flex flex-col items-center space-y-2 border-muted-foreground/10 p-4 rounded-lg">
-                <div className="p-2 bg-primary/10 rounded-full">
-                  <Database className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold">Database</h3>
-                <p className="text-muted-foreground text-center">Hook into any PostgresDB instance</p>
-              </div>
+        {/* ==================== HERO ==================== */}
+        <section className="mesh-gradient relative overflow-hidden pt-32 pb-20 lg:pt-44 lg:pb-32">
+          {/* Decorative gradient orb */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(ellipse, #8b5cf6 0%, #ec4899 50%, transparent 70%)",
+            }}
+          />
+
+          <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+            <h1 className="font-[var(--font-jakarta)] text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+              <span className="gradient-text">Own Your Content.</span>
+              <br />
+              <span className="text-white">Own Your Money.</span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/60 sm:text-xl">
+              The first creator platform with crypto-native payments. No banks.
+              No gatekeepers. Just you and your fans.
+            </p>
+
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  className="gradient-bg h-12 border-0 px-8 text-base font-semibold text-white shadow-lg shadow-purple-500/20 transition-all hover:opacity-90 hover:shadow-purple-500/30"
+                >
+                  Start Creating
+                </Button>
+              </Link>
+              <Link href="#features">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 border-white/15 bg-transparent px-8 text-base font-semibold text-white hover:bg-white/5"
+                >
+                  Browse Creators
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
-        <section className="w-full py-10 md:py-20 lg:py-32" id="testimonials">
-          <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-center mb-4">What Our Customers Say</h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-8">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-primary text-primary" />
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground mb-2">&quot;This product has revolutionized our workflow. Highly recommended!&quot;</p>
-                  <p className="font-semibold">- Sarah J., CEO</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-primary text-primary" />
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground mb-2">&quot;Wow everything is already integrated! Less time configuring, more time building!.&quot;</p>
-                  <p className="font-semibold">- Mark T., CTO</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-1 mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-primary text-primary" />
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground mb-2">&quot;We&aposve seen a 200% increase in productivity since implementing this solution.&quot;</p>
-                  <p className="font-semibold">- Emily R., Operations Manager</p>
-                </CardContent>
-              </Card>
+
+        {/* ==================== FEATURES ==================== */}
+        <section id="features" className="border-t border-white/5 py-20 lg:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-[var(--font-jakarta)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Everything creators need
+              </h2>
+              <p className="mt-4 text-lg text-white/50">
+                Built from the ground up for the creator economy -- powered by
+                blockchain, designed for humans.
+              </p>
             </div>
-          </div>
-        </section>
-        <section className="w-full py-10 md:py-20 lg:py-32 bg-muted" id="pricing">
-          <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-center mb-4">Pricing Plans</h2>
-            <p className="text-muted-foreground text-center mb-8 md:text-xl">Choose the perfect plan for your needs</p>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((product) => (
-                <Card key={product.id}>
-                  <CardHeader>
-                    <CardTitle>{product.name}</CardTitle>
-                    <CardDescription>{product.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-3xl font-bold">
-                      {product.price.unit_amount 
-                        ? `$${(product.price.unit_amount / 100).toFixed(2)}/${product.price.recurring?.interval}`
-                        : 'Custom'}
+
+            <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={feature.title}
+                    className="group relative rounded-2xl border border-white/5 bg-white/[0.02] p-6 transition-colors hover:border-white/10 hover:bg-white/[0.04]"
+                  >
+                    <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg gradient-bg text-white">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white">
+                      {feature.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-white/50">
+                      {feature.description}
                     </p>
-                    <ul className="mt-4 space-y-2">
-                      {product.features?.map((feature, index) => (
-                        <li key={index} className="flex items-center">
-                          <Check className="mr-2 h-4 w-4 text-primary" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Link 
-                      className="text-sm font-medium hover:underline underline-offset-4 w-full" 
-                      href={`/signup?plan=${product.id}`}
-                    >
-                      <Button className="w-full">Get Started</Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== HOW IT WORKS ==================== */}
+        <section
+          id="how-it-works"
+          className="border-t border-white/5 bg-white/[0.01] py-20 lg:py-28"
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-[var(--font-jakarta)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                How it works
+              </h2>
+              <p className="mt-4 text-lg text-white/50">
+                Go from zero to earning in three simple steps.
+              </p>
+            </div>
+
+            <div className="mt-16 grid gap-8 md:grid-cols-3">
+              {STEPS.map((step) => (
+                <div key={step.number} className="relative text-center md:text-left">
+                  <span className="gradient-text text-5xl font-extrabold opacity-30">
+                    {step.number}
+                  </span>
+                  <h3 className="mt-2 text-xl font-semibold text-white">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/50">
+                    {step.description}
+                  </p>
+                </div>
               ))}
             </div>
           </div>
         </section>
-        <section className="w-full py-10 md:py-20 lg:py-32 ">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Start Your Journey Today</h2>
-                <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                  Join thousands of satisfied customers and take your business to the next level.
-                </p>
-              </div>
-              <div className="w-full max-w-sm space-y-2">
-                <Link className="btn" href="#">
-                  <Button className=" p-7" >Get Started</Button>
-                </Link>
-              </div>
+
+        {/* ==================== FOR CREATORS ==================== */}
+        <section
+          id="creators"
+          className="border-t border-white/5 py-20 lg:py-28"
+        >
+          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+            <h2 className="font-[var(--font-jakarta)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              Built for every kind of creator
+            </h2>
+            <p className="mt-6 text-lg leading-relaxed text-white/50">
+              Whether you are a fitness coach, adult entertainer, trading
+              analyst, or podcaster -- OpenFans gives you the freedom to
+              monetize without middlemen. Set your own terms, keep 95% of your
+              revenue, and get paid instantly to your wallet.
+            </p>
+            <div className="mt-10">
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  className="gradient-bg h-12 border-0 px-8 text-base font-semibold text-white shadow-lg shadow-purple-500/20 transition-all hover:opacity-90 hover:shadow-purple-500/30"
+                >
+                  Start Creating Today
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">© 2024 Acme Inc. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-xs hover:underline underline-offset-4" href="#">
-            Terms of Service
-          </Link>
-          <Link className="text-xs hover:underline underline-offset-4" href="#">
-            Privacy
-          </Link>
-        </nav>
-      </footer>
+
+      <SiteFooter />
     </div>
-  )
+  );
 }

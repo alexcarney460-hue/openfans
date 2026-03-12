@@ -2,7 +2,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from "next/navigation"
 import { revalidatePath } from 'next/cache'
-import { createStripeCustomer } from '@/utils/stripe/api'
 import { db } from '@/utils/db/db'
 import { usersTable } from '@/utils/db/schema'
 import { eq } from 'drizzle-orm'
@@ -51,12 +50,13 @@ export async function signup(currentState: { message: string }, formData: FormDa
     const data = {
         email: formData.get('email') as string,
         password: formData.get('password') as string,
-        name: formData.get('name') as string,
+        username: formData.get('username') as string || formData.get('name') as string || '',
+        role: formData.get('role') as string || 'subscriber',
     }
 
     // Check if user exists in our database first
     const existingDBUser = await db.select().from(usersTable).where(eq(usersTable.email, data.email))
-    
+
     if (existingDBUser.length > 0) {
         return { message: "An account with this email already exists. Please login instead." }
     }
@@ -68,7 +68,7 @@ export async function signup(currentState: { message: string }, formData: FormDa
             emailRedirectTo: `${PUBLIC_URL}/auth/callback`,
             data: {
                 email_confirm: process.env.NODE_ENV !== 'production',
-                full_name: data.name
+                full_name: data.username,
             }
         }
     })
@@ -85,24 +85,22 @@ export async function signup(currentState: { message: string }, formData: FormDa
     }
 
     try {
-        // create Stripe Customer Record using signup response data
-        const stripeID = await createStripeCustomer(signUpData.user.id, signUpData.user.email!, data.name)
-        
         // Create record in DB
-        await db.insert(usersTable).values({ 
+        await db.insert(usersTable).values({
             id: signUpData.user.id,
-            name: data.name, 
-            email: signUpData.user.email!, 
-            stripe_id: stripeID, 
-            plan: 'none' 
+            email: signUpData.user.email!,
+            username: data.username,
+            display_name: data.username,
+            role: data.role === 'creator' ? 'creator' : 'subscriber',
         })
     } catch (err) {
         console.error("Error in signup:", err instanceof Error ? err.message : "Unknown error")
         return { message: "Failed to setup user account" }
     }
 
+    const redirectPath = data.role === 'creator' ? '/onboarding' : '/dashboard'
     revalidatePath("/", "layout")
-    redirect("/subscribe")
+    redirect(redirectPath)
 }
 
 
@@ -160,4 +158,19 @@ export async function signInWithGithub() {
         redirect(data.url) // use the redirect API for your server framework
     }
 
+}
+
+
+export async function signInWithTwitter() {
+    const supabase = createClient()
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'twitter',
+        options: {
+            redirectTo: `${PUBLIC_URL}/auth/callback`,
+        },
+    })
+
+    if (data.url) {
+        redirect(data.url)
+    }
 }

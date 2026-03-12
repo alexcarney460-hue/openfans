@@ -1,43 +1,196 @@
-import DashboardHeader from "@/components/DashboardHeader";
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { createClient } from '@/utils/supabase/server'
-import { redirect } from "next/navigation"
-import { db } from '@/utils/db/db'
-import { usersTable } from '@/utils/db/schema'
-import { eq } from "drizzle-orm";
+"use client";
 
-const inter = Inter({ subsets: ["latin"] });
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  FileText,
+  PenSquare,
+  MessageSquare,
+  Users,
+  DollarSign,
+  Settings,
+  Bell,
+  Menu,
+  X,
+  ChevronLeft,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-    title: "SAAS Starter Kit",
-    description: "SAAS Starter Kit with Stripe, Supabase, Postgres",
-};
+const NAV_ITEMS = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/dashboard/posts", label: "My Posts", icon: FileText },
+  { href: "/dashboard/posts/new", label: "New Post", icon: PenSquare },
+  { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
+  { href: "/dashboard/subscribers", label: "Subscribers", icon: Users },
+  { href: "/dashboard/earnings", label: "Earnings", icon: DollarSign },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+] as const;
 
-export default async function DashboardLayout({
-    children,
+export default function DashboardLayout({
+  children,
 }: Readonly<{
-    children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-    // Check if user has plan selected. If not redirect to subscibe
-    const supabase = createClient()
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(href);
+  };
 
-    // check user plan in db
-    const checkUserInDB = await db.select().from(usersTable).where(eq(usersTable.email, user!.email!))
-    if (checkUserInDB[0].plan === "none") {
-        console.log("User has no plan selected")
-        return redirect('/subscribe')
-    }
+  return (
+    <div className="flex min-h-screen bg-[#0a0a0a]">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/[0.06] bg-[#0f0f0f] transition-all duration-200",
+          collapsed ? "w-[68px]" : "w-64",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:translate-x-0"
+        )}
+      >
+        {/* Sidebar header */}
+        <div className="flex h-16 items-center justify-between border-b border-white/[0.06] px-4">
+          {!collapsed && (
+            <Link href="/" className="flex items-center gap-2">
+              <span className="gradient-text text-xl font-bold tracking-tight">
+                OpenFans
+              </span>
+            </Link>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden text-muted-foreground hover:text-foreground lg:flex"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <ChevronLeft
+              className={cn(
+                "h-4 w-4 transition-transform",
+                collapsed && "rotate-180"
+              )}
+            />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-    return (
-        <html lang="en">
-            <DashboardHeader />
-            {children}
-        </html>
-    );
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Dashboard navigation">
+          {NAV_ITEMS.map((item) => {
+            const active = isActive(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-gradient-to-r from-purple-500/15 to-pink-500/15 text-white"
+                    : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0",
+                    active && "text-purple-400"
+                  )}
+                />
+                {!collapsed && <span>{item.label}</span>}
+                {active && !collapsed && (
+                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-purple-400" />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar footer */}
+        {!collapsed && (
+          <div className="border-t border-white/[0.06] p-4">
+            <div className="rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 p-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                Creator Plan
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-foreground">
+                Pro
+              </p>
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* Main content area */}
+      <div
+        className={cn(
+          "flex flex-1 flex-col transition-all duration-200",
+          collapsed ? "lg:pl-[68px]" : "lg:pl-64"
+        )}
+      >
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/[0.06] bg-[#0a0a0a]/80 px-4 backdrop-blur-md lg:px-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-3">
+            {/* Notifications */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-muted-foreground hover:text-foreground"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-pink-500" />
+            </Button>
+
+            {/* User avatar */}
+            <button
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-sm font-bold text-white"
+              aria-label="User menu"
+            >
+              C
+            </button>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-4 lg:p-6">{children}</main>
+      </div>
+    </div>
+  );
 }
