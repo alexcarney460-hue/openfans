@@ -77,6 +77,7 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<RecentTransaction[]>([]);
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [username, setUsername] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,7 +103,7 @@ export default function DashboardPage() {
           setUsername(meRes.value.data.username ?? null);
         }
       } catch {
-        // Silently handle errors
+        setError("Failed to load dashboard data. Please try again.");
       }
       setLoading(false);
     };
@@ -111,6 +112,17 @@ export default function DashboardPage() {
   }, []);
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="mt-1 text-sm text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const totalEarnings = summary?.total_earnings_usdc ?? 0;
   const thisMonthEarnings = summary?.this_month_earnings_usdc ?? 0;

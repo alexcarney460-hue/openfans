@@ -4,6 +4,7 @@ import { tipsTable, usersTable, postsTable, creatorProfilesTable } from "@/utils
 import { eq } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
+import { createNotification } from "@/utils/notifications";
 
 /**
  * POST /api/tips
@@ -157,6 +158,23 @@ export async function POST(request: NextRequest) {
         message: message ? String(message).slice(0, 500) : null,
       })
       .returning();
+
+    // Notify the creator about the tip
+    const tipperInfo = await db
+      .select({ display_name: usersTable.display_name })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .limit(1);
+    const tipperName = tipperInfo[0]?.display_name ?? "Someone";
+    const tipDollars = (amount_usdc / 100).toFixed(2);
+
+    createNotification(
+      creator_id,
+      "new_tip",
+      "You received a tip!",
+      `${tipperName} tipped you $${tipDollars} USDC.`,
+      String(newTip[0].id),
+    );
 
     return NextResponse.json({ data: newTip[0] }, { status: 201 });
   } catch (error) {

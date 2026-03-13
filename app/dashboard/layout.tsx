@@ -49,6 +49,7 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<{
     username: string;
     display_name: string;
@@ -71,6 +72,22 @@ export default function DashboardLayout({
     }
     loadUser();
   }, []);
+
+  // Fetch unread notification count on mount and when path changes
+  useEffect(() => {
+    async function loadUnreadCount() {
+      try {
+        const res = await fetch("/api/notifications?unread_only=true");
+        if (res.ok) {
+          const json = await res.json();
+          setUnreadNotifCount(Array.isArray(json.data) ? json.data.length : 0);
+        }
+      } catch (err) {
+        console.error("Failed to load notification count:", err);
+      }
+    }
+    loadUnreadCount();
+  }, [pathname]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -224,7 +241,11 @@ export default function DashboardLayout({
                 aria-label="Notifications"
               >
                 <Bell className="h-5 w-5" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#00AFF0]" />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#00AFF0] text-[10px] font-bold text-white">
+                    {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                  </span>
+                )}
               </Button>
             </Link>
 

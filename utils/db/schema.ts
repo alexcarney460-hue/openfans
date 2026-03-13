@@ -326,3 +326,48 @@ export const affiliateCommissionsTable = pgTable('affiliate_commissions', {
 
 export type InsertAffiliateCommission = typeof affiliateCommissionsTable.$inferInsert;
 export type SelectAffiliateCommission = typeof affiliateCommissionsTable.$inferSelect;
+
+// ─── Notifications ─────────────────────────────────────────────────────────
+
+export const notificationsTable = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  user_id: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  type: text('type', {
+    enum: [
+      'new_subscriber',
+      'new_tip',
+      'new_message',
+      'subscription_expiring',
+      'payout_completed',
+    ],
+  }).notNull(),
+  title: text('title').notNull(),
+  body: text('body'),
+  is_read: boolean('is_read').notNull().default(false),
+  reference_id: text('reference_id'),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type InsertNotification = typeof notificationsTable.$inferInsert;
+export type SelectNotification = typeof notificationsTable.$inferSelect;
+
+// ─── Contact Messages ─────────────────────────────────────────────────────────
+
+export const contactMessagesTable = pgTable('contact_messages', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  subject: text('subject'),
+  message: text('message').notNull(),
+  is_read: boolean('is_read').notNull().default(false),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type InsertContactMessage = typeof contactMessagesTable.$inferInsert;
+export type SelectContactMessage = typeof contactMessagesTable.$inferSelect;

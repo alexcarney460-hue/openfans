@@ -71,13 +71,17 @@ export default function AffiliatePage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"referrals" | "commissions">("referrals");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [affiliate, setAffiliate] = useState<AffiliateData | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [commissions, setCommissions] = useState<Commission[]>([]);
 
   useEffect(() => {
     fetch("/api/affiliate")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then((json) => {
         if (json.data) {
           setAffiliate(json.data.affiliate);
@@ -86,10 +90,24 @@ export default function AffiliatePage() {
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError("Failed to load affiliate data. Please try again.");
+        setLoading(false);
+      });
   }, []);
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Affiliate Program</h1>
+          <p className="mt-1 text-sm text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);

@@ -8,6 +8,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
+import { createNotification } from "@/utils/notifications";
 
 const VALID_TIERS = ["basic", "premium", "vip"] as const;
 type SubscriptionTier = (typeof VALID_TIERS)[number];
@@ -200,6 +201,22 @@ export async function POST(request: NextRequest) {
         expires_at: expiresAt,
       })
       .returning();
+
+    // Notify the creator about the new subscriber
+    const subscriberInfo = await db
+      .select({ display_name: usersTable.display_name })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .limit(1);
+    const subscriberName = subscriberInfo[0]?.display_name ?? "Someone";
+
+    createNotification(
+      creator_id,
+      "new_subscriber",
+      "New subscriber!",
+      `${subscriberName} just subscribed to your content.`,
+      String(newSub[0].id),
+    );
 
     return NextResponse.json({ data: newSub[0] }, { status: 201 });
   } catch (error) {

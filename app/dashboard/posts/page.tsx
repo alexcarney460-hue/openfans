@@ -112,11 +112,12 @@ export default function PostsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Posts</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Loading...</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Posts</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage and organize your content.</p>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
         </div>
       </div>
     );

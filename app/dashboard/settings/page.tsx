@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2 } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2 } from "lucide-react";
 
 interface ToggleSwitchProps {
   enabled: boolean;
@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [showActivity, setShowActivity] = useState(true);
   const [allowMessages, setAllowMessages] = useState(false);
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
@@ -90,6 +92,56 @@ export default function SettingsPage() {
     }
     fetchUser();
   }, []);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarUploading(true);
+    setSaveMessage(null);
+
+    try {
+      // Upload to storage
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("bucket", "avatars");
+
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const json = await uploadRes.json().catch(() => ({ error: "Upload failed" }));
+        setSaveMessage(json.error ?? "Failed to upload avatar.");
+        return;
+      }
+
+      const uploadJson = await uploadRes.json();
+      const newAvatarUrl = uploadJson.data.url;
+
+      // Update profile with new avatar URL
+      const patchRes = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar_url: newAvatarUrl }),
+      });
+
+      if (patchRes.ok) {
+        setAvatarUrl(newAvatarUrl);
+        setSaveMessage("Avatar updated successfully.");
+      } else {
+        const json = await patchRes.json().catch(() => ({ error: "Unknown error" }));
+        setSaveMessage(json.error ?? "Failed to update avatar.");
+      }
+    } catch {
+      setSaveMessage("Failed to upload avatar.");
+    } finally {
+      setAvatarUploading(false);
+      // Reset input so same file can be re-selected
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -171,15 +223,28 @@ export default function SettingsPage() {
               )}
               <button
                 type="button"
-                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                 aria-label="Upload avatar"
               >
-                <Camera className="h-4 w-4" />
+                {avatarUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
               </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">Profile Photo</p>
-              <p className="text-xs text-muted-foreground">JPG, PNG, or GIF. Max 5MB.</p>
+              <p className="text-xs text-muted-foreground">JPG, PNG, GIF, or WebP. Max 5MB.</p>
             </div>
           </div>
 

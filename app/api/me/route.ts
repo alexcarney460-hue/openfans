@@ -88,6 +88,14 @@ export async function PATCH(request: NextRequest) {
       updates.bio = body.bio.trim();
     }
 
+    if (typeof body.avatar_url === "string") {
+      updates.avatar_url = body.avatar_url.trim() || null;
+    }
+
+    if (typeof body.banner_url === "string") {
+      updates.banner_url = body.banner_url.trim() || null;
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update", code: "NO_UPDATES" },

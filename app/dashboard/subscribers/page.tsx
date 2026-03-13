@@ -70,17 +70,24 @@ export default function SubscribersPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/subscribers")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then((json) => {
         if (json.data) {
           setSubscribers(json.data);
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError("Failed to load subscribers. Please try again.");
+        setLoading(false);
+      });
   }, []);
 
   const filteredSubscribers = useMemo(() => {
@@ -103,6 +110,17 @@ export default function SubscribersPage() {
   }, [subscribers]);
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Subscribers</h1>
+          <p className="mt-1 text-sm text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

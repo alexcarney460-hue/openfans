@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Loader2 } from "lucide-react"
 import WalletConnectButton from "@/components/WalletConnectButton"
 
 const CATEGORIES = [
@@ -25,8 +26,10 @@ interface ProfileData {
   bio: string
   avatar: File | null
   avatarPreview: string
+  avatarUrl: string
   banner: File | null
   bannerPreview: string
+  bannerUrl: string
 }
 
 interface SubscriptionData {
@@ -43,8 +46,35 @@ interface WalletData {
 
 const TOTAL_STEPS = 4
 
+async function uploadFileToStorage(
+  file: File,
+  bucket: string
+): Promise<string> {
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("bucket", bucket)
+
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({ error: "Upload failed" }))
+    throw new Error(json.error ?? "Upload failed")
+  }
+
+  const json = await res.json()
+  return json.data.url
+}
+
 export default function OnboardingPage() {
+  const router = useRouter()
   const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [bannerUploading, setBannerUploading] = useState(false)
 
   // Step 1: Profile
   const [profile, setProfile] = useState<ProfileData>({
@@ -53,8 +83,10 @@ export default function OnboardingPage() {
     bio: "",
     avatar: null,
     avatarPreview: "",
+    avatarUrl: "",
     banner: null,
     bannerPreview: "",
+    bannerUrl: "",
   })
 
   // Step 2: Subscription
@@ -161,19 +193,40 @@ export default function OnboardingPage() {
     setStep((prev) => Math.max(prev - 1, 1))
   }
 
-  function handleFileSelect(
+  async function handleFileSelect(
     e: React.ChangeEvent<HTMLInputElement>,
     type: "avatar" | "banner"
   ) {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
+    const previewUrl = URL.createObjectURL(file)
+
     if (type === "avatar") {
       updateProfile("avatar", file)
-      updateProfile("avatarPreview", url)
+      updateProfile("avatarPreview", previewUrl)
+      setAvatarUploading(true)
+      try {
+        const uploadedUrl = await uploadFileToStorage(file, "avatars")
+        setProfile((prev) => ({ ...prev, avatarUrl: uploadedUrl }))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed"
+        setProfileErrors((prev) => ({ ...prev, avatar: msg }))
+      } finally {
+        setAvatarUploading(false)
+      }
     } else {
       updateProfile("banner", file)
-      updateProfile("bannerPreview", url)
+      updateProfile("bannerPreview", previewUrl)
+      setBannerUploading(true)
+      try {
+        const uploadedUrl = await uploadFileToStorage(file, "banners")
+        setProfile((prev) => ({ ...prev, bannerUrl: uploadedUrl }))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed"
+        setProfileErrors((prev) => ({ ...prev, banner: msg }))
+      } finally {
+        setBannerUploading(false)
+      }
     }
   }
 
@@ -192,6 +245,63 @@ export default function OnboardingPage() {
   const handleWalletDisconnect = useCallback(() => {
     setWallet({ connected: false, address: "" })
   }, [])
+
+  /**
+   * Submits all onboarding data to the backend and redirects to dashboard.
+   */
+  async function handleFinish() {
+    setIsSubmitting(true)
+    setSubmitError("")
+
+    try {
+      // 1. Update user profile (display_name, username, bio, avatar_url, banner_url) via PATCH /api/me
+      const profilePayload: Record<string, string> = {
+        display_name: profile.displayName.trim(),
+        username: profile.username.trim(),
+        bio: profile.bio.trim(),
+      }
+      if (profile.avatarUrl) {
+        profilePayload.avatar_url = profile.avatarUrl
+      }
+      if (profile.bannerUrl) {
+        profilePayload.banner_url = profile.bannerUrl
+      }
+
+      const profileRes = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profilePayload),
+      })
+
+      if (!profileRes.ok) {
+        const err = await profileRes.json().catch(() => ({ error: "Failed to save profile" }))
+        throw new Error(err.error || "Failed to save profile")
+      }
+
+      // 2. Create/update creator profile via POST /api/creator-profile
+      const creatorRes = await fetch("/api/creator-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription_price: Number(subscription.monthlyPrice),
+          categories: subscription.categories,
+          payout_wallet: wallet.connected ? wallet.address : "",
+        }),
+      })
+
+      if (!creatorRes.ok) {
+        const err = await creatorRes.json().catch(() => ({ error: "Failed to save creator profile" }))
+        throw new Error(err.error || "Failed to save creator profile")
+      }
+
+      // 3. Redirect to dashboard
+      router.push("/dashboard")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong"
+      setSubmitError(message)
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="bg-gray-50 flex min-h-screen items-center justify-center px-4 py-12">
@@ -253,14 +363,21 @@ export default function OnboardingPage() {
                 </Label>
                 <label
                   htmlFor="banner-upload"
-                  className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400"
+                  className="relative flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400"
                 >
                   {profile.bannerPreview ? (
-                    <img
-                      src={profile.bannerPreview}
-                      alt="Banner preview"
-                      className="h-full w-full object-cover"
-                    />
+                    <>
+                      <img
+                        src={profile.bannerPreview}
+                        alt="Banner preview"
+                        className="h-full w-full object-cover"
+                      />
+                      {bannerUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <Loader2 className="h-6 w-6 animate-spin text-white" />
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center">
                       <svg
@@ -297,14 +414,21 @@ export default function OnboardingPage() {
                 <div className="flex items-center gap-4">
                   <label
                     htmlFor="avatar-upload"
-                    className="flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400"
+                    className="relative flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400"
                   >
                     {profile.avatarPreview ? (
-                      <img
-                        src={profile.avatarPreview}
-                        alt="Avatar preview"
-                        className="h-full w-full object-cover"
-                      />
+                      <>
+                        <img
+                          src={profile.avatarPreview}
+                          alt="Avatar preview"
+                          className="h-full w-full object-cover"
+                        />
+                        {avatarUploading && (
+                          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                            <Loader2 className="h-5 w-5 animate-spin text-white" />
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <svg
                         className="h-8 w-8 text-gray-400"
@@ -710,20 +834,29 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
+              {/* Submit Error */}
+              {submitError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  <p className="text-sm text-red-600">{submitError}</p>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3">
-                <Link
-                  href="/dashboard"
-                  className="bg-[#00AFF0] hover:bg-[#009dd8] flex-1 rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                <button
+                  type="button"
+                  onClick={handleFinish}
+                  disabled={isSubmitting}
+                  className="bg-[#00AFF0] hover:bg-[#009dd8] flex-1 rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Go to Dashboard
-                </Link>
-                <Link
+                  {isSubmitting ? "Saving..." : "Go to Dashboard"}
+                </button>
+                <a
                   href={`/${profile.username}`}
                   className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-center text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
                 >
                   View My Profile
-                </Link>
+                </a>
               </div>
             </div>
           )}
@@ -743,11 +876,17 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={handleNext}
-                className={`bg-[#00AFF0] hover:bg-[#009dd8] rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 ${
+                disabled={avatarUploading || bannerUploading}
+                className={`bg-[#00AFF0] hover:bg-[#009dd8] rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 ${
                   step > 1 ? "flex-1" : "w-full"
                 }`}
               >
-                {step === 3 && !wallet.connected ? "Skip for now" : "Continue"}
+                {(avatarUploading || bannerUploading) ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading...
+                  </span>
+                ) : step === 3 && !wallet.connected ? "Skip for now" : "Continue"}
               </button>
             </div>
           )}

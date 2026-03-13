@@ -99,18 +99,26 @@ export default function WalletPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchWallet = useCallback(() => {
     setLoading(true);
+    setError(null);
     fetch("/api/wallet")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then((json) => {
         if (json.data) {
           setWalletData(json.data);
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError("Failed to load wallet data. Please try again.");
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -118,6 +126,17 @@ export default function WalletPage() {
   }, [fetchWallet]);
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Wallet</h1>
+          <p className="mt-1 text-sm text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const balance = walletData?.wallet.balance_usdc ?? 0;
   const minimum = walletData?.wallet.minimum_balance_usdc ?? 0;

@@ -68,10 +68,14 @@ export default function EarningsPage() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<EarningsSummary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/earnings")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then((json) => {
         if (json.data) {
           setSummary(json.data);
@@ -81,10 +85,24 @@ export default function EarningsPage() {
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError("Failed to load earnings data. Please try again.");
+        setLoading(false);
+      });
   }, []);
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Earnings</h1>
+          <p className="mt-1 text-sm text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   const totalEarnings = summary?.total_earnings_usdc ?? 0;
   const pendingPayout = summary?.pending_payout_usdc ?? 0;

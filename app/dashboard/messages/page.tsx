@@ -64,13 +64,17 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>(CURRENT_USER);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversation list
   useEffect(() => {
     fetch("/api/messages")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
       .then((json) => {
         if (json.data && Array.isArray(json.data)) {
           const apiConvs = json.data as ApiConversation[];
@@ -95,7 +99,10 @@ export default function MessagesPage() {
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError("Failed to load messages. Please try again.");
+        setLoading(false);
+      });
   }, []);
 
   const activeConversation = useMemo(
@@ -193,6 +200,16 @@ export default function MessagesPage() {
   );
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <main className="flex h-[calc(100vh-57px)] items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex h-[calc(100vh-57px)] overflow-hidden bg-gray-50">

@@ -10,8 +10,10 @@ import {
   Heart,
   ArrowLeft,
   Lock,
+  DollarSign,
 } from "lucide-react";
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
+import { TipModal } from "@/components/TipModal";
 
 function formatNumber(num: number): string {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
@@ -74,6 +76,7 @@ export default function CreatorProfilePage() {
   const [creator, setCreator] = useState<ApiCreatorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
 
   useEffect(() => {
     async function fetchCreator() {
@@ -100,8 +103,9 @@ export default function CreatorProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-400">Loading profile...</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+        <p className="mt-4 text-sm text-gray-400">Loading profile...</p>
       </div>
     );
   }
@@ -168,7 +172,14 @@ export default function CreatorProfilePage() {
               </div>
             )}
           </div>
-          <div className="pb-1">
+          <div className="flex items-center gap-2 pb-1">
+            <button
+              onClick={() => setShowTipModal(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-[#10b981] px-4 py-2 text-sm font-semibold text-[#10b981] transition-colors hover:bg-[#10b981]/10"
+            >
+              <DollarSign className="h-4 w-4" />
+              Tip
+            </button>
             <CreatorSubscribeSection
               creatorId={creator.id}
               creatorName={creator.display_name}
@@ -289,6 +300,17 @@ export default function CreatorProfilePage() {
           </div>
         </section>
       </div>
+
+      {/* Tip Modal */}
+      {creator.id && (
+        <TipModal
+          isOpen={showTipModal}
+          onClose={() => setShowTipModal(false)}
+          creatorName={creator.display_name}
+          creatorUsername={creator.username}
+          creatorId={creator.id}
+        />
+      )}
     </div>
   );
 }

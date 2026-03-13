@@ -3,6 +3,7 @@ import { db } from "@/utils/db/db";
 import { messagesTable, usersTable } from "@/utils/db/schema";
 import { eq, or, and, desc, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
+import { createNotification } from "@/utils/notifications";
 
 /**
  * GET /api/messages
@@ -197,6 +198,22 @@ export async function POST(request: NextRequest) {
         price_usdc: validatedPrice,
       })
       .returning();
+
+    // Notify the receiver about the new message
+    const senderInfo = await db
+      .select({ display_name: usersTable.display_name })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .limit(1);
+    const senderName = senderInfo[0]?.display_name ?? "Someone";
+
+    createNotification(
+      receiver_id,
+      "new_message",
+      "New message",
+      `${senderName} sent you a message.`,
+      String(newMessage[0].id),
+    );
 
     return NextResponse.json({ data: newMessage[0] }, { status: 201 });
   } catch (error) {

@@ -49,6 +49,7 @@ export default function ExplorePage() {
   const [activeCategory, setActiveCategory] = useState<CreatorCategory>("All");
   const [creators, setCreators] = useState<ReturnType<typeof mapApiCreator>[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCreators = useCallback(async () => {
     setLoading(true);
@@ -63,13 +64,16 @@ export default function ExplorePage() {
       params.set("limit", "40");
       const res = await fetch(`/api/creators?${params.toString()}`);
       if (!res.ok) {
+        setError("Failed to load creators. Please try again.");
         setCreators([]);
         return;
       }
+      setError(null);
       const json = await res.json();
       const mapped = (json.data ?? []).map(mapApiCreator);
       setCreators(mapped);
     } catch {
+      setError("Failed to load creators. Please try again.");
       setCreators([]);
     } finally {
       setLoading(false);
@@ -106,11 +110,23 @@ export default function ExplorePage() {
           </div>
         </div>
 
+        {/* Error state */}
+        {error && !loading && (
+          <section className="py-12">
+            <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          </section>
+        )}
+
         {/* Loading state */}
         {loading ? (
           <section className="py-24">
             <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-              <p className="text-lg text-gray-400">Loading creators...</p>
+              <div className="flex items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+              </div>
+              <p className="mt-4 text-sm text-gray-400">Loading creators...</p>
             </div>
           </section>
         ) : creators.length > 0 ? (

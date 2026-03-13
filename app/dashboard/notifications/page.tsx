@@ -7,32 +7,51 @@ import {
   MessageSquare,
   UserPlus,
   Wallet,
+  Clock,
   Check,
 } from "lucide-react";
 
 interface Notification {
-  readonly id: string;
-  readonly type: "subscription" | "tip" | "message" | "payout";
-  readonly text: string;
-  readonly timestamp: string;
-  readonly read: boolean;
-  readonly avatar: string;
-  readonly userName: string;
+  readonly id: number;
+  readonly type: "new_subscriber" | "new_tip" | "new_message" | "subscription_expiring" | "payout_completed";
+  readonly title: string;
+  readonly body: string | null;
+  readonly is_read: boolean;
+  readonly reference_id: string | null;
+  readonly created_at: string;
 }
 
 const ICON_MAP = {
-  subscription: UserPlus,
-  tip: DollarSign,
-  message: MessageSquare,
-  payout: Wallet,
+  new_subscriber: UserPlus,
+  new_tip: DollarSign,
+  new_message: MessageSquare,
+  subscription_expiring: Clock,
+  payout_completed: Wallet,
 } as const;
 
 const ICON_COLOR_MAP = {
-  subscription: "text-[#00AFF0] bg-[#00AFF0]/10",
-  tip: "text-[#10b981] bg-[#10b981]/10",
-  message: "text-[#00AFF0] bg-[#00AFF0]/10",
-  payout: "text-[#f59e0b] bg-[#f59e0b]/10",
+  new_subscriber: "text-[#00AFF0] bg-[#00AFF0]/10",
+  new_tip: "text-[#10b981] bg-[#10b981]/10",
+  new_message: "text-[#00AFF0] bg-[#00AFF0]/10",
+  subscription_expiring: "text-[#f59e0b] bg-[#f59e0b]/10",
+  payout_completed: "text-[#10b981] bg-[#10b981]/10",
 } as const;
+
+function timeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 function LoadingSpinner() {
   return (
@@ -46,25 +65,65 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<readonly Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const json = await res.json();
+        setNotifications(json.data ?? []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    // No notifications API/table exists yet - show empty state
-    setNotifications([]);
-    setLoading(false);
-  }, []);
+    fetchNotifications();
+  }, [fetchNotifications]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  const handleMarkAllRead = useCallback(() => {
+  const handleMarkAllRead = useCallback(async () => {
+    // Optimistic update
     setNotifications((prev) =>
-      prev.map((n) => (n.read ? n : { ...n, read: true }))
+      prev.map((n) => (n.is_read ? n : { ...n, is_read: true })),
     );
-  }, []);
 
-  const handleMarkRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id && !n.read ? { ...n, read: true } : n))
-    );
-  }, []);
+    try {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mark_all_read: true }),
+      });
+    } catch (err) {
+      console.error("Failed to mark all as read:", err);
+      // Re-fetch on failure to restore correct state
+      fetchNotifications();
+    }
+  }, [fetchNotifications]);
+
+  const handleMarkRead = useCallback(
+    async (id: number) => {
+      // Optimistic update
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id && !n.is_read ? { ...n, is_read: true } : n)),
+      );
+
+      try {
+        await fetch("/api/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+      } catch (err) {
+        console.error("Failed to mark as read:", err);
+        fetchNotifications();
+      }
+    },
+    [fetchNotifications],
+  );
 
   if (loading) return <LoadingSpinner />;
 
@@ -108,52 +167,38 @@ export default function NotificationsPage() {
                   className={`
                     flex w-full items-start gap-3.5 rounded-xl px-4 py-3.5 text-left transition-colors
                     ${
-                      notification.read
+                      notification.is_read
                         ? "hover:bg-gray-50"
                         : "bg-[#00AFF0]/[0.04] hover:bg-[#00AFF0]/[0.07]"
                     }
                   `}
                 >
-                  {/* Icon or Avatar */}
-                  {notification.type === "payout" ? (
-                    <div
-                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${iconColors}`}
-                    >
-                      <IconComponent className="h-5 w-5" />
-                    </div>
-                  ) : (
-                    <div className="relative flex-shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={notification.avatar}
-                        alt={notification.userName}
-                        className="h-10 w-10 rounded-full bg-gray-100"
-                      />
-                      <div
-                        className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-50 ${iconColors}`}
-                      >
-                        <IconComponent className="h-2.5 w-2.5" />
-                      </div>
-                    </div>
-                  )}
+                  {/* Icon */}
+                  <div
+                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${iconColors}`}
+                  >
+                    <IconComponent className="h-5 w-5" />
+                  </div>
 
                   {/* Content */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-600">
-                      <span
-                        className={`font-medium ${notification.read ? "text-gray-600" : "text-gray-900"}`}
-                      >
-                        {notification.userName}
-                      </span>{" "}
-                      {notification.text}
+                    <p
+                      className={`text-sm ${notification.is_read ? "text-gray-600" : "font-medium text-gray-900"}`}
+                    >
+                      {notification.title}
                     </p>
+                    {notification.body && (
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {notification.body}
+                      </p>
+                    )}
                     <p className="mt-0.5 text-xs text-gray-400">
-                      {notification.timestamp}
+                      {timeAgo(notification.created_at)}
                     </p>
                   </div>
 
                   {/* Unread indicator */}
-                  {!notification.read && (
+                  {!notification.is_read && (
                     <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#00AFF0]" />
                   )}
                 </button>
