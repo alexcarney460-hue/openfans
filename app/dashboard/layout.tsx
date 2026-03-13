@@ -26,28 +26,31 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
+import { useLanguage } from "@/utils/i18n/context";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import type { TranslationKey } from "@/utils/i18n/translations";
 
 type NavItem = {
   href: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: typeof LayoutDashboard;
   creatorOnly?: boolean;
   fanOnly?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/explore", label: "Explore Creators", icon: Compass, fanOnly: true },
-  { href: "/dashboard/subscriptions", label: "My Subscriptions", icon: Heart, fanOnly: true },
-  { href: "/dashboard/posts", label: "My Posts", icon: FileText, creatorOnly: true },
-  { href: "/dashboard/posts/new", label: "New Post", icon: PenSquare, creatorOnly: true },
-  { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
-  { href: "/dashboard/subscribers", label: "Subscribers", icon: Users, creatorOnly: true },
-  { href: "/dashboard/earnings", label: "Earnings", icon: DollarSign, creatorOnly: true },
-  { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
-  { href: "/dashboard/affiliate", label: "Affiliates", icon: Gift, creatorOnly: true },
-  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", labelKey: "dash.home", icon: LayoutDashboard },
+  { href: "/explore", labelKey: "dash.explore", icon: Compass, fanOnly: true },
+  { href: "/dashboard/subscriptions", labelKey: "dash.subscriptions", icon: Heart, fanOnly: true },
+  { href: "/dashboard/posts", labelKey: "dash.posts", icon: FileText, creatorOnly: true },
+  { href: "/dashboard/posts/new", labelKey: "dash.newPost", icon: PenSquare, creatorOnly: true },
+  { href: "/dashboard/messages", labelKey: "dash.messages", icon: MessageSquare },
+  { href: "/dashboard/subscribers", labelKey: "dash.subscribers", icon: Users, creatorOnly: true },
+  { href: "/dashboard/earnings", labelKey: "dash.earnings", icon: DollarSign, creatorOnly: true },
+  { href: "/dashboard/wallet", labelKey: "dash.wallet", icon: Wallet },
+  { href: "/dashboard/affiliate", labelKey: "dash.affiliates", icon: Gift, creatorOnly: true },
+  { href: "/dashboard/notifications", labelKey: "dash.notifications", icon: Bell },
+  { href: "/dashboard/settings", labelKey: "dash.settings", icon: Settings },
 ];
 
 export default function DashboardLayout({
@@ -57,6 +60,7 @@ export default function DashboardLayout({
 }>) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -119,6 +123,12 @@ export default function DashboardLayout({
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
+  };
+
+  const getRoleLabel = (role: string | undefined): string => {
+    if (role === "admin") return t("dash.admin");
+    if (role === "creator") return t("dash.creator");
+    return t("dash.fan");
   };
 
   return (
@@ -202,7 +212,7 @@ export default function DashboardLayout({
                     active && "text-[#00AFF0]"
                   )}
                 />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span>{t(item.labelKey)}</span>}
                 {active && !collapsed && (
                   <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#00AFF0]" />
                 )}
@@ -216,10 +226,10 @@ export default function DashboardLayout({
           <div className="border-t border-gray-200 p-4">
             <div className="rounded-lg bg-[#00AFF0]/10 p-3">
               <p className="text-xs font-medium text-muted-foreground">
-                Account Type
+                {t("dash.accountType")}
               </p>
               <p className="mt-0.5 text-sm font-semibold text-foreground capitalize">
-                {currentUser?.role === "admin" ? "Admin" : currentUser?.role === "creator" ? "Creator" : "Fan"}
+                {getRoleLabel(currentUser?.role)}
               </p>
             </div>
           </div>
@@ -248,13 +258,16 @@ export default function DashboardLayout({
           <div className="flex-1" />
 
           <div className="flex items-center gap-3">
+            {/* Language selector */}
+            <LanguageSelector compact />
+
             {/* Notifications */}
             <Link href="/dashboard/notifications">
               <Button
                 variant="ghost"
                 size="icon"
                 className="relative text-muted-foreground hover:text-foreground"
-                aria-label="Notifications"
+                aria-label={t("dash.notifications")}
               >
                 <Bell className="h-5 w-5" />
                 {unreadNotifCount > 0 && (
@@ -303,7 +316,7 @@ export default function DashboardLayout({
                     }}
                   >
                     <User className="h-4 w-4" />
-                    My Profile
+                    {t("dash.myProfile")}
                   </button>
                   <button
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
@@ -314,7 +327,7 @@ export default function DashboardLayout({
                     }}
                   >
                     <Settings className="h-4 w-4" />
-                    Settings
+                    {t("dash.settings")}
                   </button>
                   <div className="my-1 border-t border-gray-200" />
                   <button
@@ -326,7 +339,7 @@ export default function DashboardLayout({
                     }}
                   >
                     <LogOut className="h-4 w-4" />
-                    Sign Out
+                    {t("dash.signOut")}
                   </button>
                 </div>
               )}

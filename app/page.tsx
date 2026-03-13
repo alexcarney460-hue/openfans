@@ -1,28 +1,38 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HomepageCreators } from "@/components/HomepageCreators";
 import { DollarSign, Zap, Shield } from "lucide-react";
+import { useLanguage } from "@/utils/i18n/context";
+import type { TranslationKey } from "@/utils/i18n/translations";
 
 // -------------------------------------------------------------------
-// Value props -- short, punchy, no jargon
+// Value props — icon + translation keys
 // -------------------------------------------------------------------
-const VALUE_PROPS = [
+type ValueProp = {
+  readonly icon: typeof DollarSign;
+  readonly titleKey: TranslationKey;
+  readonly descKey: TranslationKey;
+};
+
+const VALUE_PROPS: readonly ValueProp[] = [
   {
     icon: DollarSign,
-    title: "Keep up to 95%",
-    description: "Just 5% platform fee on tips and subscriptions. The lowest in the industry.",
+    titleKey: "value.keep95.title",
+    descKey: "value.keep95.desc",
   },
   {
     icon: Zap,
-    title: "Get paid instantly",
-    description: "No 7-day holds. Withdraw whenever you want.",
+    titleKey: "value.instant.title",
+    descKey: "value.instant.desc",
   },
   {
     icon: Shield,
-    title: "No restrictions",
-    description: "Your content, your rules. We don't police creators.",
+    titleKey: "value.noRestrictions.title",
+    descKey: "value.noRestrictions.desc",
   },
 ] as const;
 
@@ -48,6 +58,8 @@ const AVATAR_GRADIENTS = [
 // Page Component
 // -------------------------------------------------------------------
 export default function LandingPage() {
+  const { t } = useLanguage();
+
   return (
     <div className="flex min-h-dvh flex-col bg-white">
       <SiteHeader />
@@ -68,13 +80,12 @@ export default function LandingPage() {
           <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
               <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl">
-                The creator platform{" "}
-                <span className="text-accent-blue">that pays more.</span>
+                {t("hero.title.line1")}{" "}
+                <span className="text-accent-blue">{t("hero.title.accent")}</span>
               </h1>
 
               <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-500 sm:text-xl">
-                Share exclusive content, build real community, and keep more of
-                what you earn. Fans subscribe. You get paid. Simple.
+                {t("hero.subtitle")}
               </p>
 
               <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -83,7 +94,7 @@ export default function LandingPage() {
                     size="lg"
                     className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
                   >
-                    Start Earning Today
+                    {t("hero.cta.earn")}
                   </Button>
                 </Link>
                 <Link href="/explore">
@@ -91,7 +102,7 @@ export default function LandingPage() {
                     size="lg"
                     className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
                   >
-                    Browse Creators
+                    {t("hero.cta.browse")}
                   </Button>
                 </Link>
               </div>
@@ -114,16 +125,15 @@ export default function LandingPage() {
         <section className="border-y border-gray-200 bg-gray-50 py-6">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 text-sm text-gray-400">
             <span>
-              <strong className="text-gray-600">10,000+</strong> creators
+              <strong className="text-gray-600">10,000+</strong> {t("social.creators")}
             </span>
             <span className="hidden text-gray-300 sm:inline">|</span>
             <span>
-              <strong className="text-gray-600">$2.4M+</strong> earned this
-              month
+              <strong className="text-gray-600">$2.4M+</strong> {t("social.earned")}
             </span>
             <span className="hidden text-gray-300 sm:inline">|</span>
             <span>
-              <strong className="text-gray-600">500K+</strong> subscribers
+              <strong className="text-gray-600">500K+</strong> {t("social.subscribers")}
             </span>
           </div>
         </section>
@@ -136,17 +146,17 @@ export default function LandingPage() {
                 const Icon = prop.icon;
                 return (
                   <div
-                    key={prop.title}
+                    key={prop.titleKey}
                     className="rounded-xl border border-gray-200 bg-white p-6 text-center transition-colors hover:border-gray-300 hover:bg-gray-50"
                   >
                     <div className="mx-auto mb-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#00AFF0]/10 text-[#00AFF0]">
                       <Icon className="h-5 w-5" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">
-                      {prop.title}
+                      {t(prop.titleKey)}
                     </h3>
                     <p className="mt-1.5 text-sm leading-relaxed text-gray-500">
-                      {prop.description}
+                      {t(prop.descKey)}
                     </p>
                   </div>
                 );
@@ -160,10 +170,10 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="mb-10 text-center">
               <h2 className="font-display text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                Discover creators you will love
+                {t("showcase.title")}
               </h2>
               <p className="mt-3 text-base text-gray-500">
-                Fitness coaches, artists, chefs, analysts, and more.
+                {t("showcase.subtitle")}
               </p>
             </div>
 
@@ -174,7 +184,7 @@ export default function LandingPage() {
                 <Button
                   className="border-0 bg-[#00AFF0] text-white shadow-sm transition-all hover:bg-[#009ad6]"
                 >
-                  See all creators
+                  {t("showcase.seeAll")}
                 </Button>
               </Link>
             </div>
@@ -185,11 +195,10 @@ export default function LandingPage() {
         <section className="border-t border-gray-200 py-20 lg:py-28">
           <div className="mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8">
             <h2 className="font-display text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Ready to earn on your terms?
+              {t("cta.title")}
             </h2>
             <p className="mt-4 text-base leading-relaxed text-gray-500">
-              Join thousands of creators who chose a platform that respects
-              their work and their wallet.
+              {t("cta.subtitle")}
             </p>
             <div className="mt-8">
               <Link href="/signup">
@@ -197,7 +206,7 @@ export default function LandingPage() {
                   size="lg"
                   className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
                 >
-                  Start Earning Today
+                  {t("cta.button")}
                 </Button>
               </Link>
             </div>

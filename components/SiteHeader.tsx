@@ -4,16 +4,20 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useLanguage } from "@/utils/i18n/context";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import type { TranslationKey } from "@/utils/i18n/translations";
 
-const NAV_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/explore", label: "Explore" },
-  { href: "/pricing", label: "Pricing" },
+const NAV_LINKS: readonly { href: string; labelKey: TranslationKey }[] = [
+  { href: "/", labelKey: "nav.home" },
+  { href: "/explore", labelKey: "nav.explore" },
+  { href: "/pricing", labelKey: "nav.pricing" },
 ] as const;
 
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     async function checkAuth() {
@@ -40,23 +44,24 @@ export function SiteHeader() {
         <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
           {NAV_LINKS.map((link) => (
             <Link
-              key={link.label}
+              key={link.labelKey}
               href={link.href}
               className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
             >
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           ))}
         </nav>
 
         {/* Desktop Actions */}
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="hidden items-center gap-3 md:flex">
+          <LanguageSelector />
           {isLoggedIn ? (
             <Link
               href="/dashboard"
               className="rounded-full bg-[#00AFF0] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Dashboard
+              {t("nav.dashboard")}
             </Link>
           ) : (
             <>
@@ -64,13 +69,13 @@ export function SiteHeader() {
                 href="/login"
                 className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
               >
-                Log In
+                {t("nav.login")}
               </Link>
               <Link
                 href="/signup"
                 className="rounded-full bg-[#00AFF0] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               >
-                Sign Up
+                {t("nav.signup")}
               </Link>
             </>
           )}
@@ -94,14 +99,20 @@ export function SiteHeader() {
           <nav className="flex flex-col gap-1 px-4 py-3" aria-label="Mobile navigation">
             {NAV_LINKS.map((link) => (
               <Link
-                key={link.label}
+                key={link.labelKey}
                 href={link.href}
                 className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 onClick={() => setMobileOpen(false)}
               >
-                {link.label}
+                {t(link.labelKey)}
               </Link>
             ))}
+
+            {/* Language selector in mobile menu */}
+            <div className="px-3 py-2">
+              <LanguageSelector compact={false} />
+            </div>
+
             <hr className="my-2 border-gray-200" />
             {isLoggedIn ? (
               <Link
@@ -109,7 +120,7 @@ export function SiteHeader() {
                 className="mt-1 block rounded-full bg-[#00AFF0] px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 onClick={() => setMobileOpen(false)}
               >
-                Dashboard
+                {t("nav.dashboard")}
               </Link>
             ) : (
               <>
@@ -118,14 +129,14 @@ export function SiteHeader() {
                   className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
                   onClick={() => setMobileOpen(false)}
                 >
-                  Log In
+                  {t("nav.login")}
                 </Link>
                 <Link
                   href="/signup"
                   className="mt-1 block rounded-full bg-[#00AFF0] px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
                   onClick={() => setMobileOpen(false)}
                 >
-                  Sign Up
+                  {t("nav.signup")}
                 </Link>
               </>
             )}

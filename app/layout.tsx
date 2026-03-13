@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import SolanaProvider from "@/components/SolanaProvider";
+import { LanguageProvider } from "@/utils/i18n/context";
 import "./globals.css";
 
 const inter = Inter({
@@ -48,7 +49,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jakarta.variable} font-sans antialiased`}
       >
-        <SolanaProvider>{children}</SolanaProvider>
+        <LanguageProvider>
+          <SolanaProvider>{children}</SolanaProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
