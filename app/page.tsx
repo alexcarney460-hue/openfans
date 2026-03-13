@@ -11,8 +11,8 @@ import { DollarSign, Zap, Shield } from "lucide-react";
 const VALUE_PROPS = [
   {
     icon: DollarSign,
-    title: "Keep 95%",
-    description: "The lowest fees in the industry. Your earnings stay yours.",
+    title: "Keep up to 95%",
+    description: "Just 5% platform fee on tips and subscriptions. The lowest in the industry.",
   },
   {
     icon: Zap,

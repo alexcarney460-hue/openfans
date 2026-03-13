@@ -252,9 +252,9 @@ export type InsertWalletTransaction = typeof walletTransactionsTable.$inferInser
 export type SelectWalletTransaction = typeof walletTransactionsTable.$inferSelect;
 
 // ─── Affiliates ─────────────────────────────────────────────────────────────
-// Referral program: each user gets a unique referral code. When a new user
-// signs up via a referral link, the referrer earns commission on the
-// referred user's subscription payments.
+// Creator-to-creator referral program: creators refer other creators to join.
+// When a referred creator earns revenue, the referrer earns 1% commission.
+// (Platform fee is 5%, so max affiliate commission is 1%.)
 
 export const affiliatesTable = pgTable('affiliates', {
   id: serial('id').primaryKey(),
@@ -263,7 +263,7 @@ export const affiliatesTable = pgTable('affiliates', {
     .unique()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   referral_code: text('referral_code').notNull().unique(),
-  commission_rate: integer('commission_rate').notNull().default(10), // percentage (e.g. 10 = 10%)
+  commission_rate: integer('commission_rate').notNull().default(1), // percentage (1 = 1%)
   total_referrals: integer('total_referrals').notNull().default(0),
   total_earnings_usdc: integer('total_earnings_usdc').notNull().default(0), // cents
   pending_earnings_usdc: integer('pending_earnings_usdc').notNull().default(0), // cents

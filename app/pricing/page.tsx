@@ -24,7 +24,7 @@ interface PlatformComparison {
 const COMPARISONS: readonly PlatformComparison[] = [
   {
     feature: "Platform Fee",
-    openfans: "5%",
+    openfans: "5-10%",
     onlyfans: "20%",
     patreon: "5-12%",
     fansly: "20%",
@@ -108,9 +108,9 @@ function CellValue({ value }: { readonly value: string | boolean }) {
 const BENEFITS = [
   {
     icon: Wallet,
-    title: "Keep 95% of Your Earnings",
+    title: "Keep Up to 95% of Your Earnings",
     description:
-      "Our 5% fee is the lowest in the industry. No hidden charges, no payment processor markups. What you earn is what you keep.",
+      "Just 5% on tips and subscriptions (10% for adult creators). No hidden charges, no payment processor markups. What you earn is what you keep.",
   },
   {
     icon: Zap,
@@ -153,8 +153,8 @@ export default function PricingPage() {
               </h1>
               <p className="mt-4 max-w-2xl text-lg text-gray-500">
                 While other platforms take 20% of your hard-earned income,
-                OpenFans charges just 5%. No payment processors. No bank
-                holdups. Get paid instantly in crypto.
+                OpenFans charges just 5% on tips and subscriptions. Adult creators pay 10%.
+                No payment processors. No bank holdups. Get paid instantly in crypto.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/signup">
@@ -220,6 +220,9 @@ export default function PricingPage() {
 
             <p className="mt-6 text-center text-sm text-gray-400">
               That is an extra $18,000 in your pocket every year.
+            </p>
+            <p className="mt-2 text-center text-xs text-gray-400">
+              Standard creators: 5% fee. Adult content creators: 10% fee. Both still far less than competitors.
             </p>
           </div>
         </section>
