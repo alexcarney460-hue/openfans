@@ -33,9 +33,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-1" aria-label="OpenFans home">
-          <span className="text-xl font-bold tracking-tight text-gray-900">
-            <span className="text-[#00AFF0]">Open</span>Fans
-          </span>
+          <img src="/logo.png" alt="OpenFans" className="h-8" />
         </Link>
 
         {/* Desktop Nav */}

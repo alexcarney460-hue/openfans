@@ -10,10 +10,8 @@ export default function Login() {
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
-            <Link href="/">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00AFF0] transition-transform hover:scale-105">
-                <span className="text-lg font-bold text-white">OF</span>
-              </div>
+            <Link href="/" className="transition-transform hover:scale-105">
+              <img src="/logo.png" alt="OpenFans" className="h-10" />
             </Link>
           </div>
 
