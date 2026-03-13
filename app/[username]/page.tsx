@@ -15,6 +15,7 @@ import {
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 import { TipModal } from "@/components/TipModal";
 import { PPVUnlockModal } from "@/components/PPVUnlockModal";
+import { EXPLORE_CREATORS } from "@/app/explore/mock-data";
 
 function formatNumber(num: number): string {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
@@ -75,6 +76,64 @@ interface ApiPost {
   readonly has_purchased?: boolean;
 }
 
+// Generate placeholder posts for mock creators
+const MOCK_POST_TEMPLATES: readonly { title: string; body: string; tier: string; is_free: boolean }[] = [
+  { title: "Welcome to my page!", body: "Hey everyone! So excited to finally be here on OpenFans. Get ready for exclusive content you won't find anywhere else. Subscribe to unlock everything!", tier: "free", is_free: true },
+  { title: "New content dropping tonight", body: "Been working on something special for you all. Premium subscribers get early access. Stay tuned!", tier: "basic", is_free: false },
+  { title: "Behind the scenes", body: "Here's a sneak peek at what goes into creating content. The process is just as fun as the result. What do you want to see next?", tier: "free", is_free: true },
+  { title: "Exclusive drop", body: "This one's for my loyal subscribers only. Thank you for supporting independent creators. You make this possible.", tier: "premium", is_free: false },
+  { title: "Q&A time!", body: "Drop your questions below! I'll be answering everything this weekend. Nothing off limits for premium members.", tier: "free", is_free: true },
+  { title: "Collab announcement", body: "Big news coming soon! Been working with some amazing creators on something you're going to love. More details this week.", tier: "free", is_free: true },
+  { title: "Premium content update", body: "Just uploaded 5 new exclusive pieces. If you've been on the fence about subscribing, now's the time.", tier: "basic", is_free: false },
+  { title: "Thank you 1K!", body: "We just hit 1,000 subscribers! To celebrate, I'm dropping a free post for everyone. You all are the best.", tier: "free", is_free: true },
+] as const;
+
+function generateMockPosts(username: string, displayName: string, avatarUrl: string, count: number): ApiPost[] {
+  const now = Date.now();
+  return MOCK_POST_TEMPLATES.slice(0, count).map((tmpl, i) => ({
+    id: i + 1,
+    creator_id: username,
+    title: tmpl.title,
+    body: tmpl.body,
+    media_urls: [],
+    media_type: "text",
+    is_free: tmpl.is_free,
+    tier: tmpl.tier,
+    likes_count: Math.floor(Math.random() * 500) + 50,
+    comments_count: Math.floor(Math.random() * 80) + 5,
+    created_at: new Date(now - (i * 2 + 1) * 24 * 60 * 60 * 1000).toISOString(),
+    is_locked: !tmpl.is_free,
+    is_ppv: false,
+    ppv_price_usdc: null,
+    has_purchased: false,
+  }));
+}
+
+function findMockCreator(username: string): { creator: ApiCreatorData; posts: ApiPost[] } | null {
+  const mock = EXPLORE_CREATORS.find((c) => c.username === username);
+  if (!mock) return null;
+  const creator: ApiCreatorData = {
+    id: mock.id,
+    username: mock.username,
+    display_name: mock.displayName,
+    bio: mock.bio,
+    avatar_url: mock.avatarUrl,
+    banner_url: mock.bannerUrl,
+    is_verified: mock.isVerified,
+    created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    profile_id: 0,
+    subscription_price_usdc: Math.round(mock.subscriptionPrice * 100),
+    total_subscribers: mock.stats.subscribers,
+    categories: [...mock.categories],
+    is_featured: mock.isFeatured,
+    subscriber_count: mock.stats.subscribers,
+    post_count: mock.stats.posts,
+    recent_posts: [],
+  };
+  const posts = generateMockPosts(mock.username, mock.displayName, mock.avatarUrl, 8);
+  return { creator, posts };
+}
+
 export default function CreatorProfilePage() {
   const params = useParams<{ username: string }>();
   const [creator, setCreator] = useState<ApiCreatorData | null>(null);
@@ -88,27 +147,37 @@ export default function CreatorProfilePage() {
     async function fetchCreator() {
       try {
         const res = await fetch(`/api/creators/${params.username}`);
-        if (res.status === 404) {
-          setNotFound(true);
-          return;
-        }
-        if (!res.ok) {
-          setNotFound(true);
-          return;
-        }
-        const json = await res.json();
-        setCreator(json.data);
+        if (res.ok) {
+          const json = await res.json();
+          setCreator(json.data);
 
-        // Fetch full post feed with PPV access info
-        const postsRes = await fetch(
-          `/api/posts?creator_id=${json.data.id}&limit=50`,
-        );
-        if (postsRes.ok) {
-          const postsJson = await postsRes.json();
-          setPosts(postsJson.data ?? []);
+          const postsRes = await fetch(
+            `/api/posts?creator_id=${json.data.id}&limit=50`,
+          );
+          if (postsRes.ok) {
+            const postsJson = await postsRes.json();
+            setPosts(postsJson.data ?? []);
+          }
+          return;
+        }
+
+        // API returned 404 or error — try mock data
+        const mockData = findMockCreator(params.username);
+        if (mockData) {
+          setCreator(mockData.creator);
+          setPosts(mockData.posts);
+        } else {
+          setNotFound(true);
         }
       } catch {
-        setNotFound(true);
+        // Network error — try mock data as fallback
+        const mockData = findMockCreator(params.username);
+        if (mockData) {
+          setCreator(mockData.creator);
+          setPosts(mockData.posts);
+        } else {
+          setNotFound(true);
+        }
       } finally {
         setLoading(false);
       }
@@ -177,7 +246,15 @@ export default function CreatorProfilePage() {
 
       {/* Banner */}
       <div className="relative h-48 w-full sm:h-64 md:h-72 lg:h-80">
-        <div className="h-full w-full bg-gradient-to-br from-[#0f1923] via-[#151a2e] to-[#1a1a2e]" />
+        {creator.banner_url ? (
+          <img
+            src={creator.banner_url}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-[#0f1923] via-[#151a2e] to-[#1a1a2e]" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-transparent" />
       </div>
 

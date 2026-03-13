@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { SearchBar } from "@/components/SearchBar";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { CreatorCard } from "@/components/CreatorCard";
-import { CATEGORIES, type CreatorCategory } from "./mock-data";
+import { CATEGORIES, EXPLORE_CREATORS, type CreatorCategory } from "./mock-data";
 
 interface ApiCreator {
   readonly id: string;
@@ -25,7 +25,24 @@ interface ApiCreator {
   readonly is_featured: boolean;
 }
 
-function mapApiCreator(c: ApiCreator) {
+type MappedCreator = {
+  readonly username: string;
+  readonly displayName: string;
+  readonly bio: string;
+  readonly avatarUrl: string;
+  readonly bannerUrl: string;
+  readonly isVerified: boolean;
+  readonly categories: readonly string[];
+  readonly subscriptionPrice: number;
+  readonly stats: {
+    readonly posts: number;
+    readonly subscribers: number;
+    readonly likes: number;
+  };
+  readonly posts: readonly never[];
+};
+
+function mapApiCreator(c: ApiCreator): MappedCreator {
   return {
     username: c.username,
     displayName: c.display_name,
@@ -44,10 +61,46 @@ function mapApiCreator(c: ApiCreator) {
   };
 }
 
+function getFilteredMockCreators(
+  category: CreatorCategory,
+  search: string,
+): MappedCreator[] {
+  let filtered = [...EXPLORE_CREATORS];
+
+  if (category !== "All") {
+    filtered = filtered.filter((c) =>
+      c.categories.some((cat) => cat.toLowerCase() === category.toLowerCase()),
+    );
+  }
+
+  if (search.trim()) {
+    const q = search.trim().toLowerCase();
+    filtered = filtered.filter(
+      (c) =>
+        c.displayName.toLowerCase().includes(q) ||
+        c.username.toLowerCase().includes(q) ||
+        c.bio.toLowerCase().includes(q),
+    );
+  }
+
+  return filtered.map((c) => ({
+    username: c.username,
+    displayName: c.displayName,
+    bio: c.bio,
+    avatarUrl: c.avatarUrl,
+    bannerUrl: c.bannerUrl,
+    isVerified: c.isVerified,
+    categories: c.categories as readonly string[],
+    subscriptionPrice: c.subscriptionPrice,
+    stats: c.stats,
+    posts: [] as never[],
+  }));
+}
+
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<CreatorCategory>("All");
-  const [creators, setCreators] = useState<ReturnType<typeof mapApiCreator>[]>([]);
+  const [creators, setCreators] = useState<MappedCreator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,17 +117,24 @@ export default function ExplorePage() {
       params.set("limit", "40");
       const res = await fetch(`/api/creators?${params.toString()}`);
       if (!res.ok) {
-        setError("Failed to load creators. Please try again.");
-        setCreators([]);
+        // API failed -- fall back to mock data
+        setError(null);
+        setCreators(getFilteredMockCreators(activeCategory, searchQuery));
         return;
       }
       setError(null);
       const json = await res.json();
-      const mapped = (json.data ?? []).map(mapApiCreator);
-      setCreators(mapped);
+      const mapped: MappedCreator[] = (json.data ?? []).map(mapApiCreator);
+      // If database has no creators, show mock data instead of empty state
+      if (mapped.length === 0) {
+        setCreators(getFilteredMockCreators(activeCategory, searchQuery));
+      } else {
+        setCreators(mapped);
+      }
     } catch {
-      setError("Failed to load creators. Please try again.");
-      setCreators([]);
+      // Network error -- fall back to mock data
+      setError(null);
+      setCreators(getFilteredMockCreators(activeCategory, searchQuery));
     } finally {
       setLoading(false);
     }
@@ -94,8 +154,8 @@ export default function ExplorePage() {
       <main className="flex-1 pt-14">
         {/* Search and filters */}
         <div className="border-b border-gray-200 bg-gray-50">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            <div className="flex flex-col items-center gap-4">
+          <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+            <div className="flex flex-col items-center gap-3 sm:gap-4">
               <div className="w-full max-w-xl">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} />
               </div>
@@ -130,9 +190,9 @@ export default function ExplorePage() {
             </div>
           </section>
         ) : creators.length > 0 ? (
-          <section className="py-8">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="py-4 sm:py-8">
+            <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-3">
                 {creators.map((creator) => (
                   <CreatorCard key={creator.username} creator={creator} />
                 ))}

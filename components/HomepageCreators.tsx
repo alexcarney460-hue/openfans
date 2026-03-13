@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CreatorCard } from "@/components/CreatorCard";
+import { EXPLORE_CREATORS } from "@/app/explore/mock-data";
 
 interface ApiCreator {
   readonly id: string;
@@ -36,6 +37,21 @@ function mapApiCreator(c: ApiCreator) {
   };
 }
 
+const HOMEPAGE_FALLBACK = EXPLORE_CREATORS.filter((c) => c.isFeatured)
+  .slice(0, 8)
+  .map((c) => ({
+    username: c.username,
+    displayName: c.displayName,
+    bio: c.bio,
+    avatarUrl: c.avatarUrl,
+    bannerUrl: c.bannerUrl,
+    isVerified: c.isVerified,
+    categories: [...c.categories] as string[],
+    subscriptionPrice: c.subscriptionPrice,
+    stats: { posts: c.stats.posts, subscribers: c.stats.subscribers, likes: c.stats.likes },
+    posts: [] as never[],
+  }));
+
 export function HomepageCreators() {
   const [creators, setCreators] = useState<ReturnType<typeof mapApiCreator>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,12 +59,16 @@ export function HomepageCreators() {
   useEffect(() => {
     async function fetchCreators() {
       try {
-        const res = await fetch("/api/creators?limit=4");
-        if (!res.ok) return;
+        const res = await fetch("/api/creators?limit=8");
+        if (!res.ok) {
+          setCreators(HOMEPAGE_FALLBACK);
+          return;
+        }
         const json = await res.json();
-        setCreators((json.data ?? []).map(mapApiCreator));
+        const mapped: ReturnType<typeof mapApiCreator>[] = (json.data ?? []).map(mapApiCreator);
+        setCreators(mapped.length > 0 ? mapped : HOMEPAGE_FALLBACK);
       } catch {
-        // silently fail on homepage
+        setCreators(HOMEPAGE_FALLBACK);
       } finally {
         setLoading(false);
       }
@@ -58,7 +78,7 @@ export function HomepageCreators() {
 
   if (loading) {
     return (
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
@@ -69,16 +89,8 @@ export function HomepageCreators() {
     );
   }
 
-  if (creators.length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-gray-400">
-        No creators to show yet.
-      </p>
-    );
-  }
-
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
       {creators.map((creator) => (
         <CreatorCard key={creator.username} creator={creator} />
       ))}

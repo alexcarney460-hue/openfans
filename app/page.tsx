@@ -66,7 +66,7 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* ==================== HERO ==================== */}
-        <section className="relative overflow-hidden pt-32 pb-20 lg:pt-44 lg:pb-28">
+        <section className="relative overflow-hidden pt-24 pb-14 sm:pt-32 sm:pb-20 lg:pt-44 lg:pb-28">
           {/* Subtle top glow */}
           <div
             aria-hidden="true"
@@ -79,28 +79,28 @@ export default function LandingPage() {
 
           <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
-              <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl">
+              <h1 className="font-display text-3xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl">
                 {t("hero.title.line1")}{" "}
                 <span className="text-accent-blue">{t("hero.title.accent")}</span>
               </h1>
 
-              <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-500 sm:text-xl">
+              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-gray-500 sm:mt-6 sm:text-xl">
                 {t("hero.subtitle")}
               </p>
 
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link href="/signup">
+              <div className="mt-8 flex items-center justify-center gap-3 sm:mt-10 sm:gap-4">
+                <Link href="/signup" className="flex-1 sm:flex-none">
                   <Button
                     size="lg"
-                    className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
+                    className="h-11 w-full border-0 bg-[#00AFF0] px-6 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30 sm:h-12 sm:w-auto sm:px-8 sm:text-base"
                   >
                     {t("hero.cta.earn")}
                   </Button>
                 </Link>
-                <Link href="/explore">
+                <Link href="/explore" className="flex-1 sm:flex-none">
                   <Button
                     size="lg"
-                    className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
+                    className="h-11 w-full border-0 bg-[#00AFF0] px-6 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30 sm:h-12 sm:w-auto sm:px-8 sm:text-base"
                   >
                     {t("hero.cta.browse")}
                   </Button>
@@ -109,11 +109,11 @@ export default function LandingPage() {
             </div>
 
             {/* Creator avatar mosaic */}
-            <div className="mx-auto mt-14 flex max-w-md flex-wrap items-center justify-center gap-3">
+            <div className="mx-auto mt-10 flex max-w-md flex-wrap items-center justify-center gap-2 sm:mt-14 sm:gap-3">
               {AVATAR_GRADIENTS.map((gradient, i) => (
                 <div
                   key={i}
-                  className={`h-11 w-11 rounded-full bg-gradient-to-br ${gradient} opacity-80 transition-opacity hover:opacity-100`}
+                  className={`h-9 w-9 rounded-full bg-gradient-to-br sm:h-11 sm:w-11 ${gradient} opacity-80 transition-opacity hover:opacity-100`}
                   aria-hidden="true"
                 />
               ))}
@@ -122,42 +122,44 @@ export default function LandingPage() {
         </section>
 
         {/* ==================== SOCIAL PROOF ==================== */}
-        <section className="border-y border-gray-200 bg-gray-50 py-6">
-          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 text-sm text-gray-400">
-            <span>
+        <section className="border-y border-gray-200 bg-gray-50 py-4 sm:py-6">
+          <div className="mx-auto flex max-w-4xl items-center justify-center gap-x-6 gap-y-1 px-4 text-xs sm:gap-x-10 sm:text-sm text-gray-400">
+            <span className="text-center">
               <strong className="text-gray-600">10,000+</strong> {t("social.creators")}
             </span>
-            <span className="hidden text-gray-300 sm:inline">|</span>
-            <span>
+            <span className="text-gray-300">|</span>
+            <span className="text-center">
               <strong className="text-gray-600">$2.4M+</strong> {t("social.earned")}
             </span>
-            <span className="hidden text-gray-300 sm:inline">|</span>
-            <span>
+            <span className="text-gray-300">|</span>
+            <span className="text-center">
               <strong className="text-gray-600">500K+</strong> {t("social.subscribers")}
             </span>
           </div>
         </section>
 
         {/* ==================== VALUE PROPS ==================== */}
-        <section className="py-20 lg:py-28">
+        <section className="py-14 sm:py-20 lg:py-28">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-6 sm:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3 sm:gap-6">
               {VALUE_PROPS.map((prop) => {
                 const Icon = prop.icon;
                 return (
                   <div
                     key={prop.titleKey}
-                    className="rounded-xl border border-gray-200 bg-white p-6 text-center transition-colors hover:border-gray-300 hover:bg-gray-50"
+                    className="flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:block sm:p-6 sm:text-center transition-colors hover:border-gray-300 hover:bg-gray-50"
                   >
-                    <div className="mx-auto mb-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#00AFF0]/10 text-[#00AFF0]">
+                    <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#00AFF0]/10 text-[#00AFF0] sm:mx-auto sm:mb-4 sm:h-11 sm:w-11">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">
-                      {t(prop.titleKey)}
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-gray-500">
-                      {t(prop.descKey)}
-                    </p>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold text-gray-900 sm:text-lg">
+                        {t(prop.titleKey)}
+                      </h3>
+                      <p className="mt-1 text-sm leading-relaxed text-gray-500 sm:mt-1.5">
+                        {t(prop.descKey)}
+                      </p>
+                    </div>
                   </div>
                 );
               })}
@@ -166,20 +168,20 @@ export default function LandingPage() {
         </section>
 
         {/* ==================== CREATOR SHOWCASE ==================== */}
-        <section className="border-t border-gray-200 py-20 lg:py-28">
+        <section className="border-t border-gray-200 py-14 sm:py-20 lg:py-28">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 text-center">
-              <h2 className="font-display text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <div className="mb-6 text-center sm:mb-10">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl md:text-4xl">
                 {t("showcase.title")}
               </h2>
-              <p className="mt-3 text-base text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 sm:mt-3 sm:text-base">
                 {t("showcase.subtitle")}
               </p>
             </div>
 
             <HomepageCreators />
 
-            <div className="mt-10 text-center">
+            <div className="mt-8 text-center sm:mt-10">
               <Link href="/explore">
                 <Button
                   className="border-0 bg-[#00AFF0] text-white shadow-sm transition-all hover:bg-[#009ad6]"
@@ -192,19 +194,19 @@ export default function LandingPage() {
         </section>
 
         {/* ==================== BOTTOM CTA ==================== */}
-        <section className="border-t border-gray-200 py-20 lg:py-28">
+        <section className="border-t border-gray-200 py-14 sm:py-20 lg:py-28">
           <div className="mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8">
-            <h2 className="font-display text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl md:text-4xl">
               {t("cta.title")}
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-gray-500">
+            <p className="mt-3 text-sm leading-relaxed text-gray-500 sm:mt-4 sm:text-base">
               {t("cta.subtitle")}
             </p>
-            <div className="mt-8">
+            <div className="mt-6 sm:mt-8">
               <Link href="/signup">
                 <Button
                   size="lg"
-                  className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
+                  className="h-11 border-0 bg-[#00AFF0] px-6 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30 sm:h-12 sm:px-8 sm:text-base"
                 >
                   {t("cta.button")}
                 </Button>
