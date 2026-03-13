@@ -23,13 +23,13 @@ const PLATFORM_FEE_PERCENT = 5;
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { postId: string } },
+  { params }: { params: { id: string } },
 ) {
   try {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
-    const postId = parseInt(params.postId, 10);
+    const postId = parseInt(params.id, 10);
     if (isNaN(postId)) {
       return NextResponse.json(
         { error: "Invalid post ID", code: "INVALID_POST_ID" },
