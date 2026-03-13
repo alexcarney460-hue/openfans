@@ -32,8 +32,14 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+
+    try {
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) {
+        console.error('OAuth code exchange error:', error.message)
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -76,8 +82,11 @@ export async function GET(request: Request) {
       } else {
         return NextResponse.redirect(`${origin}${next}`)
       }
+    } catch (err) {
+      console.error('OAuth callback error:', err instanceof Error ? err.message : err)
+      return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  return NextResponse.redirect(`${origin}/login?error=no_code`)
 }
