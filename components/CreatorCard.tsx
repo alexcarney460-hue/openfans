@@ -78,11 +78,13 @@ export function CreatorCard({ creator, className }: CreatorCardProps) {
 
         {/* Subscribe */}
         <div className="mt-2 border-t border-gray-200 pt-2 sm:mt-3 sm:pt-3">
-          <SubscribeButton
-            price={creator.subscriptionPrice}
-            size="sm"
-            className="w-full"
-          />
+          <Link href={`/${creator.username}`} className="block">
+            <SubscribeButton
+              price={creator.subscriptionPrice}
+              size="sm"
+              className="w-full pointer-events-none"
+            />
+          </Link>
         </div>
       </div>
     </div>
