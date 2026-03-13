@@ -11,7 +11,7 @@ export default function Login() {
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/" className="transition-transform hover:scale-105">
-              <img src="/logo.png" alt="OpenFans" className="h-10" />
+              <img src="/logo.png" alt="OpenFans" className="h-24" />
             </Link>
           </div>
 

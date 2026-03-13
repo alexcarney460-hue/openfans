@@ -132,7 +132,7 @@ export default function DashboardLayout({
         <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2">
-              <img src="/logo.png" alt="OpenFans" className="h-7" />
+              <img src="/logo.png" alt="OpenFans" className="h-14" />
             </Link>
           )}
           <Button

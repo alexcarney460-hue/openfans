@@ -33,7 +33,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-1" aria-label="OpenFans home">
-          <img src="/logo.png" alt="OpenFans" className="h-8" />
+          <img src="/logo.png" alt="OpenFans" className="h-20" />
         </Link>
 
         {/* Desktop Nav */}

@@ -309,7 +309,7 @@ export default function OnboardingPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
-            <img src="/logo.png" alt="OpenFans" className="h-10" />
+            <img src="/logo.png" alt="OpenFans" className="h-24" />
           </div>
 
           {/* Progress Bar */}

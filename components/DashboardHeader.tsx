@@ -22,7 +22,7 @@ export default async function DashboardHeader() {
             <div className="container flex h-14 max-w-screen-2xl items-center">
                 <div className="mr-4 hidden md:flex">
                     <Link className="mr-2 flex items-center space-x-2" href="">
-                        <Image src="/logo.png" alt="logo" width={25} height={25} />
+                        <Image src="/logo.png" alt="logo" width={120} height={120} />
                     </Link>
                     <Suspense fallback={<Badge variant="outline" className="mr-2"><Skeleton className="w-[50px] h-[20px] rounded-full" /></Badge>}>
                         <Badge variant="outline" className="mr-2">{stripePlan}</Badge>

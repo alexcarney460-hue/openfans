@@ -12,8 +12,8 @@ export default function ResetPasswordSuccess() {
               <Image
                 src="/logo.png"
                 alt="OpenFans"
-                width={48}
-                height={48}
+                width={200}
+                height={200}
                 className="transition-transform hover:scale-105"
               />
             </Link>

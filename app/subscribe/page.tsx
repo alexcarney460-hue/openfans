@@ -12,7 +12,7 @@ export default async function Subscribe() {
     return (
         <div className="flex flex-col min-h-screen bg-secondary">
             <header className="px-4 lg:px-6 h-16 flex items-center  bg-white border-b fixed border-b-slate-200 w-full">
-                <Image src="/logo.png" alt="logo" width={50} height={50} />
+                <Image src="/logo.png" alt="logo" width={200} height={200} />
                 <span className="sr-only">Acme Inc</span>
             </header>
             <div className="w-full py-20 lg:py-32 xl:py-40">
