@@ -85,6 +85,11 @@
 .wallet-adapter-modal-overlay {
   background-color: rgba(0, 0, 0, 0.4) !important;
   backdrop-filter: blur(4px) !important;
+  z-index: 200 !important;
+}
+
+.wallet-adapter-modal-container {
+  z-index: 201 !important;
 }
 
 .wallet-adapter-modal-title {

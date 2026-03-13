@@ -15,14 +15,13 @@ import {
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 
-// Devnet USDC (Circle's devnet faucet mint). Switch to mainnet mint for production:
-// Mainnet USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+// Mainnet USDC mint
 const USDC_MINT_ADDRESS =
-  process.env.NEXT_PUBLIC_USDC_MINT || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+  process.env.NEXT_PUBLIC_USDC_MINT || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
-// Platform vault — replace with your real Solana wallet address for production.
+// Platform vault
 const PLATFORM_WALLET_ADDRESS =
-  process.env.NEXT_PUBLIC_PLATFORM_WALLET || "11111111111111111111111111111111";
+  process.env.NEXT_PUBLIC_PLATFORM_WALLET || "4e8YpUSns8RoVrPfVayhX4BWQSqecmjFUh1jxx77niQt";
 
 type TxState =
   | { status: "idle" }

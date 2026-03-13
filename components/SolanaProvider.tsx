@@ -13,10 +13,9 @@ import {
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
-// Use devnet for testing. Switch to a paid RPC (Helius/QuickNode) for mainnet.
 const SOLANA_RPC_ENDPOINT =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-  "https://api.devnet.solana.com";
+  "https://mainnet.helius-rpc.com/?api-key=a0d7f2a9-847e-4290-bc12-e9b026f73a34";
 
 interface SolanaProviderProps {
   readonly children: React.ReactNode;
