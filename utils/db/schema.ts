@@ -103,7 +103,7 @@ export const subscriptionsTable = pgTable('subscriptions', {
     .notNull()
     .default('basic'),
   price_usdc: integer('price_usdc').notNull(), // cents
-  payment_tx: text('payment_tx'), // Solana transaction signature
+  payment_tx: text('payment_tx').notNull(), // Solana transaction signature
   status: text('status', { enum: ['active', 'expired', 'cancelled'] })
     .notNull()
     .default('active'),

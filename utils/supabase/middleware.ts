@@ -64,9 +64,17 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // If Supabase is not configured, skip auth entirely
+  // If Supabase is not configured, fail closed: block non-public routes
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return supabaseResponse;
+    const pathname = request.nextUrl.pathname;
+    const method = request.method;
+    if (isPublicRoute(pathname, method)) {
+      return supabaseResponse;
+    }
+    return new NextResponse(
+      JSON.stringify({ error: "Service unavailable", code: "SERVICE_UNAVAILABLE" }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   const supabase = createServerClient(
@@ -118,11 +126,14 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // For API routes that need auth: let the route handler check auth
-  // (returns 401 JSON instead of redirecting to login)
+  // For protected API routes: enforce auth at middleware level
   if (pathname.startsWith("/api/")) {
-    // API routes handle their own auth via getAuthenticatedUser()
-    // The middleware just refreshes the session
+    if (isProtectedApiRoute(pathname) && !user) {
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized", code: "AUTH_REQUIRED" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
     return supabaseResponse;
   }
 

@@ -9,6 +9,47 @@ import { eq } from 'drizzle-orm'
 
 const PUBLIC_URL = process.env.NEXT_PUBLIC_WEBSITE_URL || "http://localhost:3000"
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PASSWORD_MIN_LENGTH = 8
+
+function validatePassword(password: string): string | null {
+    if (!password || password.length < PASSWORD_MIN_LENGTH) {
+        return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`
+    }
+    if (!/[A-Z]/.test(password)) {
+        return "Password must contain at least one uppercase letter"
+    }
+    if (!/[a-z]/.test(password)) {
+        return "Password must contain at least one lowercase letter"
+    }
+    if (!/[0-9]/.test(password)) {
+        return "Password must contain at least one number"
+    }
+    return null
+}
+
+function validateEmail(email: string): string | null {
+    if (!email || !EMAIL_REGEX.test(email)) {
+        return "Please enter a valid email address"
+    }
+    return null
+}
+
+/**
+ * Sanitize a redirect path to prevent open redirect attacks.
+ */
+function sanitizeRedirectPath(path: string): string {
+    if (
+        !path.startsWith('/') ||
+        path.startsWith('//') ||
+        path.includes('\\') ||
+        path.includes(':')
+    ) {
+        return '/'
+    }
+    return path
+}
+
 export async function resetPassword(currentState: { message: string }, formData: FormData) {
     const supabase = createClient()
     const passwordData = {
@@ -18,6 +59,12 @@ export async function resetPassword(currentState: { message: string }, formData:
     }
     if (passwordData.password !== passwordData.confirm_password) {
         return { message: "Passwords do not match" }
+    }
+
+    // Server-side password validation for reset
+    const pwError = validatePassword(passwordData.password)
+    if (pwError) {
+        return { message: pwError }
     }
 
     const { data } = await supabase.auth.exchangeCodeForSession(passwordData.code)
@@ -52,6 +99,18 @@ export async function signup(currentState: { message: string }, formData: FormDa
         password: formData.get('password') as string,
         username: formData.get('username') as string || formData.get('name') as string || '',
         role: formData.get('role') as string || 'subscriber',
+    }
+
+    // Server-side email validation
+    const emailError = validateEmail(data.email)
+    if (emailError) {
+        return { message: emailError }
+    }
+
+    // Server-side password validation
+    const passwordError = validatePassword(data.password)
+    if (passwordError) {
+        return { message: passwordError }
     }
 
     // Check if user exists in our database first
@@ -98,7 +157,9 @@ export async function signup(currentState: { message: string }, formData: FormDa
         return { message: "Failed to setup user account" }
     }
 
-    const redirectPath = data.role === 'creator' ? '/onboarding' : '/dashboard'
+    const redirectPath = sanitizeRedirectPath(
+        data.role === 'creator' ? '/onboarding' : '/dashboard'
+    )
     revalidatePath("/", "layout")
     redirect(redirectPath)
 }

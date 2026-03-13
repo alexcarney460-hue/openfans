@@ -105,6 +105,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check for transaction replay (duplicate payment_tx)
+    const existingTx = await db
+      .select({ id: subscriptionsTable.id })
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.payment_tx, payment_tx.trim()))
+      .limit(1);
+
+    if (existingTx.length > 0) {
+      return NextResponse.json(
+        { error: "This transaction has already been used", code: "DUPLICATE_TX" },
+        { status: 409 },
+      );
+    }
+
     // Cannot subscribe to yourself
     if (creator_id === user.id) {
       return NextResponse.json(

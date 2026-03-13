@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { postsTable, usersTable } from "@/utils/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { postsTable, usersTable, subscriptionsTable } from "@/utils/db/schema";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
 const VALID_TIERS = ["free", "basic", "premium", "vip"] as const;
@@ -12,6 +12,35 @@ const MAX_LIMIT = 100;
 
 type Tier = (typeof VALID_TIERS)[number];
 type MediaType = (typeof VALID_MEDIA_TYPES)[number];
+
+// Tier hierarchy for access control: higher index = higher access
+const TIER_HIERARCHY: Record<string, number> = {
+  free: 0,
+  basic: 1,
+  premium: 2,
+  vip: 3,
+};
+
+/**
+ * Strip sensitive content from a paid post, returning only metadata.
+ */
+function redactPaidPost(post: Record<string, unknown>) {
+  return {
+    id: post.id,
+    creator_id: post.creator_id,
+    title: post.title,
+    media_type: post.media_type,
+    tier: post.tier,
+    is_free: post.is_free,
+    likes_count: post.likes_count,
+    comments_count: post.comments_count,
+    created_at: post.created_at,
+    // body and media_urls intentionally omitted
+    body: null,
+    media_urls: [],
+    is_locked: true,
+  };
+}
 
 /**
  * GET /api/posts
@@ -62,8 +91,46 @@ export async function GET(request: NextRequest) {
 
     const total = countResult[0]?.count ?? 0;
 
+    // Determine the user's subscription tier for this creator (if authenticated)
+    let userTierLevel = 0; // default: free-tier access only
+    const { user } = await getAuthenticatedUser();
+
+    if (user) {
+      // Creator always has full access to their own posts
+      if (user.id === creatorId) {
+        userTierLevel = TIER_HIERARCHY.vip + 1; // above all tiers
+      } else {
+        const activeSub = await db
+          .select({ tier: subscriptionsTable.tier })
+          .from(subscriptionsTable)
+          .where(
+            and(
+              eq(subscriptionsTable.subscriber_id, user.id),
+              eq(subscriptionsTable.creator_id, creatorId),
+              eq(subscriptionsTable.status, "active"),
+            ),
+          )
+          .limit(1);
+
+        if (activeSub.length > 0) {
+          userTierLevel = TIER_HIERARCHY[activeSub[0].tier] ?? 0;
+        }
+      }
+    }
+
+    // Filter post content based on access level
+    const filteredPosts = posts.map((post) => {
+      const postTierLevel = TIER_HIERARCHY[post.tier] ?? 0;
+      // Free posts or posts the user has access to: return full content
+      if (post.is_free || post.tier === "free" || userTierLevel >= postTierLevel) {
+        return { ...post, is_locked: false };
+      }
+      // Paid post the user cannot access: strip body and media_urls
+      return redactPaidPost(post);
+    });
+
     return NextResponse.json({
-      data: posts,
+      data: filteredPosts,
       meta: {
         page,
         limit,

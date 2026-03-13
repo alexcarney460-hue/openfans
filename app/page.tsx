@@ -5,7 +5,6 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { CreatorCard } from "@/components/CreatorCard";
 import { getAllCreators } from "@/lib/mock-data";
 import { DollarSign, Zap, Shield } from "lucide-react";
-import { ShareBanners } from "@/components/ShareBanners";
 
 // -------------------------------------------------------------------
 // Value props — short, punchy, no jargon
@@ -188,9 +187,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
-        {/* ==================== SHARE BANNERS ==================== */}
-        <ShareBanners />
 
         {/* ==================== BOTTOM CTA ==================== */}
         <section className="border-t border-gray-200 py-20 lg:py-28">

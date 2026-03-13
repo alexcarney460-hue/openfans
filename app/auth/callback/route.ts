@@ -4,10 +4,28 @@ import { db } from '@/utils/db/db'
 import { usersTable } from '@/utils/db/schema'
 import { eq } from 'drizzle-orm'
 
+/**
+ * Sanitize a redirect path to prevent open redirect attacks.
+ * Only allows relative paths starting with / and blocks protocol-relative URLs.
+ */
+function sanitizeRedirectPath(path: string): string {
+  // Must start with exactly one forward slash and not contain protocol indicators
+  if (
+    !path.startsWith('/') ||
+    path.startsWith('//') ||
+    path.includes('\\') ||
+    path.includes(':')
+  ) {
+    return '/'
+  }
+  return path
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const rawNext = searchParams.get('next') ?? '/'
+  const next = sanitizeRedirectPath(rawNext)
 
   if (code) {
     const supabase = createClient()
@@ -42,10 +60,16 @@ export async function GET(request: Request) {
 
       const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
+
+      // Validate x-forwarded-host against the origin to prevent host injection
+      const originHost = new URL(origin).host
+      const trustedHost =
+        forwardedHost && forwardedHost === originHost ? forwardedHost : null
+
       if (isLocalEnv) {
         return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+      } else if (trustedHost) {
+        return NextResponse.redirect(`https://${trustedHost}${next}`)
       } else {
         return NextResponse.redirect(`${origin}${next}`)
       }

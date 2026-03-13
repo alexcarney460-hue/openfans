@@ -15,7 +15,7 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 
 const SOLANA_RPC_ENDPOINT =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-  "https://mainnet.helius-rpc.com/?api-key=a0d7f2a9-847e-4290-bc12-e9b026f73a34";
+  "https://api.mainnet-beta.solana.com";
 
 interface SolanaProviderProps {
   readonly children: React.ReactNode;
