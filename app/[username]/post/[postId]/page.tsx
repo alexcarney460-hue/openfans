@@ -81,7 +81,7 @@ export default function SinglePostPage({ params }: PageProps) {
             className="flex-shrink-0"
             aria-label={`View ${creator.displayName}'s profile`}
           >
-            <div className="h-12 w-12 overflow-hidden rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-[2px]">
+            <div className="h-12 w-12 overflow-hidden rounded-full bg-[#00AFF0] p-[2px]">
               <div className="flex h-full w-full items-center justify-center rounded-full bg-[#1a1a1a] text-base font-bold text-white">
                 {creator.displayName.charAt(0)}
               </div>
@@ -96,7 +96,7 @@ export default function SinglePostPage({ params }: PageProps) {
                 {creator.displayName}
               </span>
               {creator.isVerified && (
-                <BadgeCheck className="h-4 w-4 flex-shrink-0 text-purple-400" />
+                <BadgeCheck className="h-4 w-4 flex-shrink-0 text-[#00AFF0]" />
               )}
             </Link>
             <p className="text-xs text-white/40">
@@ -104,7 +104,7 @@ export default function SinglePostPage({ params }: PageProps) {
             </p>
           </div>
           {post.isPremium && (
-            <span className="flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400">
+            <span className="flex items-center gap-1 rounded-full bg-[#00AFF0]/10 px-2.5 py-1 text-xs font-medium text-[#00AFF0]">
               <Lock className="h-3 w-3" />
               Premium
             </span>
@@ -134,7 +134,7 @@ export default function SinglePostPage({ params }: PageProps) {
                   : "flex aspect-video items-center justify-center bg-white/5"
               }
             >
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30">
+              <div className="flex h-full w-full items-center justify-center bg-[#00AFF0]/10">
                 <span className="text-sm text-white/20">
                   {post.mediaType === "video" ? "Video Content" : "Image Content"}
                 </span>
@@ -187,7 +187,7 @@ export default function SinglePostPage({ params }: PageProps) {
         {/* Actions Bar */}
         <div className="mb-6 flex items-center gap-6 border-b border-t border-white/5 py-3">
           <button
-            className="flex items-center gap-2 text-white/40 transition-colors hover:text-pink-500"
+            className="flex items-center gap-2 text-white/40 transition-colors hover:text-[#00AFF0]"
             aria-label={`Like this post. ${formatNumber(post.stats.likes)} likes`}
           >
             <Heart className="h-5 w-5" />
@@ -232,7 +232,7 @@ export default function SinglePostPage({ params }: PageProps) {
                 disabled={isLocked}
               />
               <button
-                className="ml-2 text-purple-400 transition-colors hover:text-purple-300 disabled:text-white/20"
+                className="ml-2 text-[#00AFF0] transition-colors hover:text-[#33C1F5] disabled:text-white/20"
                 aria-label="Submit comment"
                 disabled={isLocked}
               >
@@ -246,7 +246,7 @@ export default function SinglePostPage({ params }: PageProps) {
             <div className="space-y-4">
               {post.comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
-                  <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30">
+                  <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-[#00AFF0]/20">
                     <div className="flex h-full w-full items-center justify-center text-xs font-medium text-white/60">
                       {comment.displayName.charAt(0)}
                     </div>

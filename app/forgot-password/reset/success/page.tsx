@@ -3,9 +3,9 @@ import Image from "next/image"
 
 export default function ResetPasswordSuccess() {
   return (
-    <div className="mesh-gradient flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="bg-[#0a0a0a] flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
-        <div className="gradient-border rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-purple-500/5">
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/">
@@ -21,7 +21,7 @@ export default function ResetPasswordSuccess() {
 
           {/* Success Icon */}
           <div className="mb-4 flex justify-center">
-            <div className="gradient-bg flex h-14 w-14 items-center justify-center rounded-full">
+            <div className="bg-[#00AFF0] flex h-14 w-14 items-center justify-center rounded-full">
               <svg
                 className="h-7 w-7 text-white"
                 fill="none"
@@ -52,7 +52,7 @@ export default function ResetPasswordSuccess() {
           {/* Login Button */}
           <Link
             href="/login"
-            className="gradient-bg block w-full rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="bg-[#00AFF0] hover:bg-[#009dd8] block w-full rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors"
           >
             Sign In
           </Link>

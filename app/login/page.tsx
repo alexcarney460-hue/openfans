@@ -6,9 +6,9 @@ import WalletConnectButton from "@/components/WalletConnectButton"
 
 export default function Login() {
   return (
-    <div className="mesh-gradient flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="bg-[#0a0a0a] flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
-        <div className="gradient-border rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-purple-500/5">
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/">
@@ -53,7 +53,7 @@ export default function Login() {
           <div className="mt-6 space-y-2 text-center">
             <Link
               href="/forgot-password"
-              className="block text-sm text-zinc-500 transition-colors hover:text-[#8b5cf6]"
+              className="block text-sm text-zinc-500 transition-colors hover:text-[#00AFF0]"
             >
               Forgot password?
             </Link>
@@ -61,7 +61,7 @@ export default function Login() {
               Don&apos;t have an account?{" "}
               <Link
                 href="/signup"
-                className="font-medium text-[#8b5cf6] transition-colors hover:text-[#a78bfa]"
+                className="font-medium text-[#00AFF0] transition-colors hover:text-[#33C1F5]"
               >
                 Sign up
               </Link>

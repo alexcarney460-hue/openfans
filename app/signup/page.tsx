@@ -6,9 +6,9 @@ import WalletConnectButton from "@/components/WalletConnectButton"
 
 export default function Signup() {
   return (
-    <div className="mesh-gradient flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="bg-[#0a0a0a] flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
-        <div className="gradient-border rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-purple-500/5">
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/">
@@ -26,7 +26,7 @@ export default function Signup() {
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-bold text-white">
               Join{" "}
-              <span className="gradient-text">OpenFans</span>
+              <span className="text-[#00AFF0]">OpenFans</span>
             </h1>
             <p className="mt-1 text-sm text-zinc-400">
               Create your account to get started
@@ -58,7 +58,7 @@ export default function Signup() {
               Already have an account?{" "}
               <Link
                 href="/login"
-                className="font-medium text-[#8b5cf6] transition-colors hover:text-[#a78bfa]"
+                className="font-medium text-[#00AFF0] transition-colors hover:text-[#33C1F5]"
               >
                 Log in
               </Link>

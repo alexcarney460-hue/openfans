@@ -99,8 +99,8 @@ const MOCK_TRANSACTIONS: readonly Transaction[] = [
 // -- Helpers --
 
 const TYPE_STYLES: Record<Transaction["type"], { bg: string; icon: typeof ArrowUpRight }> = {
-  subscription: { bg: "bg-purple-500/15 text-purple-400", icon: ArrowDownLeft },
-  tip: { bg: "bg-pink-500/15 text-pink-400", icon: ArrowDownLeft },
+  subscription: { bg: "bg-[#00AFF0]/15 text-[#00AFF0]", icon: ArrowDownLeft },
+  tip: { bg: "bg-emerald-500/15 text-emerald-400", icon: ArrowDownLeft },
   payout: { bg: "bg-amber-500/15 text-amber-400", icon: ArrowUpRight },
 };
 
@@ -140,14 +140,14 @@ export default function EarningsPage() {
               Available Balance
             </p>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="gradient-text text-4xl font-bold tracking-tight">
+              <span className="text-[#00AFF0] text-4xl font-bold tracking-tight">
                 ${MOCK_BALANCE}
               </span>
               <span className="text-sm font-medium text-muted-foreground">
                 USDC
               </span>
             </div>
-            <Button className="mt-4 w-full gradient-bg hover:opacity-90">
+            <Button className="mt-4 w-full bg-[#00AFF0] hover:bg-[#009dd8]">
               <Wallet className="mr-2 h-4 w-4" />
               Withdraw to Wallet
             </Button>
@@ -161,8 +161,8 @@ export default function EarningsPage() {
               Connected Wallet
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                <Wallet className="h-4 w-4 text-purple-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00AFF0]/20">
+                <Wallet className="h-4 w-4 text-[#00AFF0]" />
               </div>
               <span className="font-mono text-lg font-semibold text-foreground">
                 {MOCK_WALLET}

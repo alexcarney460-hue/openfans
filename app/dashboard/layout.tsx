@@ -67,7 +67,7 @@ export default function DashboardLayout({
         <div className="flex h-16 items-center justify-between border-b border-white/[0.06] px-4">
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2">
-              <span className="gradient-text text-xl font-bold tracking-tight">
+              <span className="text-[#00AFF0] text-xl font-bold tracking-tight">
                 OpenFans
               </span>
             </Link>
@@ -110,7 +110,7 @@ export default function DashboardLayout({
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-gradient-to-r from-purple-500/15 to-pink-500/15 text-white"
+                    ? "bg-[#00AFF0]/15 text-white"
                     : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
                 )}
                 aria-current={active ? "page" : undefined}
@@ -118,12 +118,12 @@ export default function DashboardLayout({
                 <Icon
                   className={cn(
                     "h-[18px] w-[18px] shrink-0",
-                    active && "text-purple-400"
+                    active && "text-[#00AFF0]"
                   )}
                 />
                 {!collapsed && <span>{item.label}</span>}
                 {active && !collapsed && (
-                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-purple-400" />
+                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#00AFF0]" />
                 )}
               </Link>
             );
@@ -133,7 +133,7 @@ export default function DashboardLayout({
         {/* Sidebar footer */}
         {!collapsed && (
           <div className="border-t border-white/[0.06] p-4">
-            <div className="rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 p-3">
+            <div className="rounded-lg bg-[#00AFF0]/10 p-3">
               <p className="text-xs font-medium text-muted-foreground">
                 Creator Plan
               </p>
@@ -175,12 +175,12 @@ export default function DashboardLayout({
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-pink-500" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#00AFF0]" />
             </Button>
 
             {/* User avatar */}
             <button
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-sm font-bold text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00AFF0] text-sm font-bold text-white"
               aria-label="User menu"
             >
               C

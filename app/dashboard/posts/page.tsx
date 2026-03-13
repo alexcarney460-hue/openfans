@@ -99,8 +99,8 @@ const MOCK_POSTS: readonly Post[] = [
 const TIER_STYLES: Record<Post["tier"], string> = {
   free: "bg-white/[0.06] text-muted-foreground",
   basic: "bg-blue-500/15 text-blue-400",
-  premium: "bg-purple-500/15 text-purple-400",
-  vip: "bg-pink-500/15 text-pink-400",
+  premium: "bg-[#00AFF0]/15 text-[#00AFF0]",
+  vip: "bg-amber-500/15 text-amber-400",
 };
 
 function formatDate(dateStr: string): string {
@@ -126,7 +126,7 @@ export default function PostsPage() {
             Manage and organize your content.
           </p>
         </div>
-        <Button asChild className="gradient-bg hover:opacity-90">
+        <Button asChild className="bg-[#00AFF0] hover:bg-[#009dd8]">
           <Link href="/dashboard/posts/new">
             <PenSquare className="mr-2 h-4 w-4" />
             New Post

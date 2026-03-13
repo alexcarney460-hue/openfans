@@ -45,7 +45,7 @@ export default function ConversationList({
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={handleSearchChange}
-            className="w-full rounded-xl bg-[#141414] border border-[#262626] py-2.5 pl-10 pr-4 text-sm text-white placeholder-[#666] outline-none transition-colors focus:border-[#8b5cf6]/50 focus:ring-1 focus:ring-[#8b5cf6]/25"
+            className="w-full rounded-xl bg-[#141414] border border-[#262626] py-2.5 pl-10 pr-4 text-sm text-white placeholder-[#666] outline-none transition-colors focus:border-[#00AFF0]/50 focus:ring-1 focus:ring-[#00AFF0]/25"
             aria-label="Search conversations"
           />
         </div>
@@ -74,7 +74,7 @@ export default function ConversationList({
                 flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors
                 ${
                   isActive
-                    ? "bg-[#8b5cf6]/10 border-l-2 border-l-[#8b5cf6]"
+                    ? "bg-[#00AFF0]/10 border-l-2 border-l-[#00AFF0]"
                     : "border-l-2 border-l-transparent hover:bg-[#141414]"
                 }
               `}
@@ -88,7 +88,7 @@ export default function ConversationList({
                   className="h-11 w-11 rounded-full bg-[#1a1a1a]"
                 />
                 {conversation.unreadCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-[10px] font-bold text-white">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#00AFF0] text-[10px] font-bold text-white">
                     {conversation.unreadCount}
                   </span>
                 )}

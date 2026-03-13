@@ -12,7 +12,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
     <button
       type="submit"
       disabled={pending || disabled}
-      className="gradient-bg mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      className="bg-[#00AFF0] hover:bg-[#009dd8] mt-5 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? (
         <>
@@ -122,7 +122,7 @@ export default function SignupForm() {
             }}
             className={`rounded-lg border px-4 py-3 text-center text-sm font-medium transition-all ${
               role === "creator"
-                ? "border-[#8b5cf6] bg-[#8b5cf6]/10 text-white"
+                ? "border-[#00AFF0] bg-[#00AFF0]/10 text-white"
                 : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-300"
             }`}
           >
@@ -151,7 +151,7 @@ export default function SignupForm() {
             }}
             className={`rounded-lg border px-4 py-3 text-center text-sm font-medium transition-all ${
               role === "fan"
-                ? "border-[#ec4899] bg-[#ec4899]/10 text-white"
+                ? "border-[#00AFF0] bg-[#00AFF0]/10 text-white"
                 : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-300"
             }`}
           >
@@ -199,7 +199,7 @@ export default function SignupForm() {
               setUsername(e.target.value)
               clearError("username")
             }}
-            className="border-white/10 bg-white/5 pl-8 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+            className="border-white/10 bg-white/5 pl-8 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
             aria-describedby={errors.username ? "username-error" : undefined}
             aria-invalid={errors.username ? true : undefined}
           />
@@ -227,7 +227,7 @@ export default function SignupForm() {
             setEmail(e.target.value)
             clearError("email")
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={errors.email ? "email-error" : undefined}
           aria-invalid={errors.email ? true : undefined}
         />
@@ -253,7 +253,7 @@ export default function SignupForm() {
             setPassword(e.target.value)
             clearError("password")
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={errors.password ? "password-error" : undefined}
           aria-invalid={errors.password ? true : undefined}
         />
@@ -279,7 +279,7 @@ export default function SignupForm() {
             setConfirmPassword(e.target.value)
             clearError("confirmPassword")
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={
             errors.confirmPassword ? "confirm-password-error" : undefined
           }
@@ -302,13 +302,13 @@ export default function SignupForm() {
               setTermsAccepted(e.target.checked)
               clearError("terms")
             }}
-            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 text-[#8b5cf6] focus:ring-[#8b5cf6]/30"
+            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 text-[#00AFF0] focus:ring-[#00AFF0]/30"
           />
           <span className="text-xs text-zinc-400">
             I agree to the{" "}
             <a
               href="/terms"
-              className="text-[#8b5cf6] underline hover:text-[#a78bfa]"
+              className="text-[#00AFF0] underline hover:text-[#33C1F5]"
             >
               Terms of Service
             </a>

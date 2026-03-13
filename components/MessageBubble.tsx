@@ -19,7 +19,7 @@ export default function MessageBubble({ message, isSent }: MessageBubbleProps) {
           max-w-[75%] sm:max-w-[65%] rounded-2xl px-4 py-2.5
           ${
             isSent
-              ? "bg-gradient-to-br from-[#8b5cf6] to-[#7c3aed] text-white rounded-br-md"
+              ? "bg-[#00AFF0] text-white rounded-br-md"
               : "bg-[#1a1a1a] text-[#e5e5e5] border border-[#262626] rounded-bl-md"
           }
         `}
@@ -47,7 +47,7 @@ export default function MessageBubble({ message, isSent }: MessageBubbleProps) {
               ${
                 isSent
                   ? "bg-white/15 text-white"
-                  : "bg-[#8b5cf6]/15 text-[#a78bfa]"
+                  : "bg-[#00AFF0]/15 text-[#33C1F5]"
               }
             `}
           >

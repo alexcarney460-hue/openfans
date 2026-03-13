@@ -48,7 +48,7 @@ export default function WalletConnectButton({
         <button
           type="button"
           onClick={() => setShowMenu((prev) => !prev)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#ab9ff2]/30 bg-[#ab9ff2]/10 px-4 py-2.5 text-sm font-medium text-[#ab9ff2] transition-colors hover:bg-[#ab9ff2]/20"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00AFF0]/30 bg-[#00AFF0]/10 px-4 py-2.5 text-sm font-medium text-[#00AFF0] transition-colors hover:bg-[#00AFF0]/20"
         >
           <PhantomLogo />
           <span>{truncateAddress(address)}</span>
@@ -92,7 +92,7 @@ export default function WalletConnectButton({
       onClick={handleConnect}
       disabled={isConnecting}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-4 py-2.5 text-sm font-medium text-white transition-all hover:border-[#ab9ff2]/40 hover:bg-[#ab9ff2]/10 disabled:cursor-not-allowed disabled:opacity-60",
+        "flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-4 py-2.5 text-sm font-medium text-white transition-all hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/10 disabled:cursor-not-allowed disabled:opacity-60",
         className
       )}
     >

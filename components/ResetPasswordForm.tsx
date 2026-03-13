@@ -19,7 +19,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="gradient-bg mt-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      className="bg-[#00AFF0] hover:bg-[#009dd8] mt-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? (
         <>
@@ -100,7 +100,7 @@ export default function ResetPasswordForm() {
               setPassword(e.target.value)
               setErrors((prev) => ({ ...prev, password: undefined }))
             }}
-            className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+            className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
             aria-describedby={errors.password ? "password-error" : undefined}
             aria-invalid={errors.password ? true : undefined}
           />
@@ -125,7 +125,7 @@ export default function ResetPasswordForm() {
               setConfirmPassword(e.target.value)
               setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
             }}
-            className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+            className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
             aria-describedby={
               errors.confirmPassword ? "confirm-password-error" : undefined
             }

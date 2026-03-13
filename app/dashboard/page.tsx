@@ -25,8 +25,8 @@ const STATS = [
     change: "+12.5%",
     changeDir: "up" as const,
     icon: DollarSign,
-    gradient: "from-purple-500/20 to-purple-500/5",
-    iconColor: "text-purple-400",
+    gradient: "from-[#00AFF0]/20 to-[#00AFF0]/5",
+    iconColor: "text-[#00AFF0]",
   },
   {
     label: "Active Subscribers",
@@ -35,8 +35,8 @@ const STATS = [
     change: "+8.2%",
     changeDir: "up" as const,
     icon: Users,
-    gradient: "from-pink-500/20 to-pink-500/5",
-    iconColor: "text-pink-400",
+    gradient: "from-[#00AFF0]/20 to-[#00AFF0]/5",
+    iconColor: "text-[#00AFF0]",
   },
   {
     label: "Total Posts",
@@ -183,7 +183,7 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3">
-        <Button asChild className="gradient-bg hover:opacity-90">
+        <Button asChild className="bg-[#00AFF0] hover:bg-[#009dd8]">
           <Link href="/dashboard/posts/new">
             <PenSquare className="mr-2 h-4 w-4" />
             New Post
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                 (height, i) => (
                   <div
                     key={i}
-                    className="flex-1 rounded-t-sm bg-gradient-to-t from-purple-500/60 to-pink-500/40 transition-all hover:from-purple-500/80 hover:to-pink-500/60"
+                    className="flex-1 rounded-t-sm bg-[#00AFF0]/50 transition-all hover:bg-[#00AFF0]/70"
                     style={{ height: `${height}%` }}
                   />
                 )

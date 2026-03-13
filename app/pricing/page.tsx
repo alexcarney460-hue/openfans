@@ -139,16 +139,16 @@ export default function PricingPage() {
 
       <main className="flex-1 pt-16">
         {/* Hero */}
-        <section className="mesh-gradient relative overflow-hidden border-b border-white/5 py-16 sm:py-24">
+        <section className="bg-[#0a0a0a] relative overflow-hidden border-b border-white/5 py-16 sm:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center text-center">
-              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-1.5 text-sm text-purple-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#00AFF0]/20 bg-[#00AFF0]/10 px-4 py-1.5 text-sm text-[#33C1F5]">
                 <Zap className="h-4 w-4" />
                 For Creators
               </div>
               <h1 className="mt-6 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
                 Keep{" "}
-                <span className="gradient-text">95%</span>{" "}
+                <span className="text-[#00AFF0]">95%</span>{" "}
                 of Your Revenue
               </h1>
               <p className="mt-4 max-w-2xl text-lg text-white/50">
@@ -160,7 +160,7 @@ export default function PricingPage() {
                 <Link href="/signup">
                   <Button
                     size="lg"
-                    className="gradient-bg border-0 px-8 text-base font-semibold text-white hover:opacity-90 transition-opacity"
+                    className="bg-[#00AFF0] hover:bg-[#009dd8] border-0 px-8 text-base font-semibold text-white transition-opacity"
                   >
                     Start Creating
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -188,12 +188,12 @@ export default function PricingPage() {
             </h2>
             <div className="grid gap-5 sm:grid-cols-2">
               {/* OpenFans */}
-              <div className="gradient-border overflow-hidden rounded-2xl bg-white/5 p-6">
-                <p className="text-sm font-medium text-purple-400">OpenFans</p>
+              <div className="overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-white/5 p-6">
+                <p className="text-sm font-medium text-[#00AFF0]">OpenFans</p>
                 <p className="mt-2 text-4xl font-bold text-white">$9,500</p>
                 <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-white/10">
                   <div
-                    className="gradient-bg h-full rounded-full"
+                    className="bg-[#00AFF0] h-full rounded-full"
                     style={{ width: "95%" }}
                   />
                 </div>
@@ -238,8 +238,8 @@ export default function PricingPage() {
                     key={benefit.title}
                     className="rounded-xl border border-white/10 bg-white/5 p-6 transition-colors hover:border-white/15 hover:bg-white/[0.07]"
                   >
-                    <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
-                      <Icon className="h-5 w-5 text-purple-400" />
+                    <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#00AFF0]/10">
+                      <Icon className="h-5 w-5 text-[#00AFF0]" />
                     </div>
                     <h3 className="text-lg font-bold text-white">
                       {benefit.title}
@@ -267,7 +267,7 @@ export default function PricingPage() {
                     <th className="px-5 py-4 text-left font-medium text-white/60">
                       Feature
                     </th>
-                    <th className="px-5 py-4 text-center font-bold text-purple-400">
+                    <th className="px-5 py-4 text-center font-bold text-[#00AFF0]">
                       OpenFans
                     </th>
                     <th className="px-5 py-4 text-center font-medium text-white/40">
@@ -315,7 +315,7 @@ export default function PricingPage() {
         </section>
 
         {/* CTA */}
-        <section className="mesh-gradient py-20">
+        <section className="bg-[#0f0f0f] py-20">
           <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-white sm:text-4xl">
               Ready to Keep More of What You Earn?
@@ -328,7 +328,7 @@ export default function PricingPage() {
               <Link href="/signup">
                 <Button
                   size="lg"
-                  className="gradient-bg border-0 px-10 py-6 text-base font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="bg-[#00AFF0] hover:bg-[#009dd8] border-0 px-10 py-6 text-base font-semibold text-white transition-opacity"
                 >
                   Start Creating Now
                   <ArrowRight className="ml-2 h-5 w-5" />

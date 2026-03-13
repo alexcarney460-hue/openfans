@@ -181,9 +181,9 @@ export default function OnboardingPage() {
   }, [])
 
   return (
-    <div className="mesh-gradient flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="bg-[#0a0a0a] flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[520px]">
-        <div className="gradient-border rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-purple-500/5">
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Image src="/logo.png" alt="OpenFans" width={48} height={48} />
@@ -199,7 +199,7 @@ export default function OnboardingPage() {
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
               <div
-                className="gradient-bg h-full rounded-full transition-all duration-500 ease-out"
+                className="bg-[#00AFF0] h-full rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
               />
             </div>
@@ -209,7 +209,7 @@ export default function OnboardingPage() {
                   <span
                     key={label}
                     className={`text-xs font-medium ${
-                      idx + 1 <= step ? "text-[#8b5cf6]" : "text-zinc-600"
+                      idx + 1 <= step ? "text-[#00AFF0]" : "text-zinc-600"
                     }`}
                   >
                     {label}
@@ -337,7 +337,7 @@ export default function OnboardingPage() {
                   onChange={(e) =>
                     updateProfile("displayName", e.target.value)
                   }
-                  className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+                  className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                   aria-invalid={!!profileErrors.displayName}
                 />
                 {profileErrors.displayName && (
@@ -364,7 +364,7 @@ export default function OnboardingPage() {
                     onChange={(e) =>
                       updateProfile("username", e.target.value)
                     }
-                    className="border-white/10 bg-white/5 pl-8 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+                    className="border-white/10 bg-white/5 pl-8 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                     aria-invalid={!!profileErrors.username}
                   />
                 </div>
@@ -387,7 +387,7 @@ export default function OnboardingPage() {
                   onChange={(e) => updateProfile("bio", e.target.value)}
                   rows={3}
                   maxLength={300}
-                  className="flex w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]/30 focus:ring-offset-0"
+                  className="flex w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/30 focus:ring-offset-0"
                 />
                 <p className="text-right text-xs text-zinc-600">
                   {profile.bio.length}/300
@@ -424,7 +424,7 @@ export default function OnboardingPage() {
                     onChange={(e) =>
                       updateSubscription("monthlyPrice", e.target.value)
                     }
-                    className="border-white/10 bg-white/5 pr-16 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+                    className="border-white/10 bg-white/5 pr-16 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                     aria-invalid={!!subErrors.monthlyPrice}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-500">
@@ -461,7 +461,7 @@ export default function OnboardingPage() {
                     <div
                       className={`h-6 w-11 rounded-full transition-colors ${
                         subscription.hasPremiumTier
-                          ? "bg-[#8b5cf6]"
+                          ? "bg-[#00AFF0]"
                           : "bg-white/10"
                       }`}
                     >
@@ -492,7 +492,7 @@ export default function OnboardingPage() {
                         onChange={(e) =>
                           updateSubscription("premiumPrice", e.target.value)
                         }
-                        className="border-white/10 bg-white/5 pr-16 text-white placeholder:text-zinc-500 focus:border-[#8b5cf6]/50 focus:ring-[#8b5cf6]/30"
+                        className="border-white/10 bg-white/5 pr-16 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                         aria-invalid={!!subErrors.premiumPrice}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-500">
@@ -526,7 +526,7 @@ export default function OnboardingPage() {
                         onClick={() => toggleCategory(cat)}
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                           selected
-                            ? "border-[#8b5cf6] bg-[#8b5cf6]/15 text-[#a78bfa]"
+                            ? "border-[#00AFF0] bg-[#00AFF0]/15 text-[#33C1F5]"
                             : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20"
                         }`}
                       >
@@ -558,7 +558,7 @@ export default function OnboardingPage() {
 
               {/* Wallet Illustration */}
               <div className="flex justify-center py-4">
-                <div className="gradient-bg flex h-20 w-20 items-center justify-center rounded-2xl">
+                <div className="bg-[#00AFF0] flex h-20 w-20 items-center justify-center rounded-2xl">
                   <svg
                     className="h-10 w-10 text-white"
                     fill="none"
@@ -579,7 +579,7 @@ export default function OnboardingPage() {
               <div className="space-y-3">
                 <div className="flex items-start gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
                   <svg
-                    className="mt-0.5 h-4 w-4 shrink-0 text-[#8b5cf6]"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[#00AFF0]"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -598,7 +598,7 @@ export default function OnboardingPage() {
                 </div>
                 <div className="flex items-start gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
                   <svg
-                    className="mt-0.5 h-4 w-4 shrink-0 text-[#ec4899]"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[#00AFF0]"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -630,7 +630,7 @@ export default function OnboardingPage() {
             <div className="space-y-6 text-center">
               {/* Success Icon */}
               <div className="flex justify-center">
-                <div className="gradient-bg flex h-20 w-20 items-center justify-center rounded-full">
+                <div className="bg-[#00AFF0] flex h-20 w-20 items-center justify-center rounded-full">
                   <svg
                     className="h-10 w-10 text-white"
                     fill="none"
@@ -699,7 +699,7 @@ export default function OnboardingPage() {
               <div className="flex gap-3">
                 <Link
                   href="/dashboard"
-                  className="gradient-bg flex-1 rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  className="bg-[#00AFF0] hover:bg-[#009dd8] flex-1 rounded-lg px-4 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 >
                   Go to Dashboard
                 </Link>
@@ -728,7 +728,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={handleNext}
-                className={`gradient-bg rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 ${
+                className={`bg-[#00AFF0] hover:bg-[#009dd8] rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 ${
                   step > 1 ? "flex-1" : "w-full"
                 }`}
               >
@@ -750,7 +750,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={handleNext}
-                className="gradient-bg flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                className="bg-[#00AFF0] hover:bg-[#009dd8] flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               >
                 Continue
               </button>

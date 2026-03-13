@@ -71,8 +71,8 @@ export default function MessageInput({
   return (
     <div className="border-t border-[#1a1a1a] bg-[#0a0a0a] p-4">
       {showTipInput && (
-        <div className="mb-3 flex items-center gap-2 rounded-xl bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 px-3 py-2">
-          <DollarSign className="h-4 w-4 text-[#8b5cf6]" />
+        <div className="mb-3 flex items-center gap-2 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/20 px-3 py-2">
+          <DollarSign className="h-4 w-4 text-[#00AFF0]" />
           <input
             type="text"
             inputMode="decimal"
@@ -107,7 +107,7 @@ export default function MessageInput({
             flex-shrink-0 rounded-xl p-2.5 transition-colors
             ${
               showTipInput
-                ? "bg-[#8b5cf6]/20 text-[#8b5cf6]"
+                ? "bg-[#00AFF0]/20 text-[#00AFF0]"
                 : "text-[#666] hover:bg-[#1a1a1a] hover:text-white"
             }
           `}
@@ -123,14 +123,14 @@ export default function MessageInput({
           value={text}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
-          className="min-w-0 flex-1 rounded-xl bg-[#141414] border border-[#262626] px-4 py-2.5 text-sm text-white placeholder-[#666] outline-none transition-colors focus:border-[#8b5cf6]/50 focus:ring-1 focus:ring-[#8b5cf6]/25"
+          className="min-w-0 flex-1 rounded-xl bg-[#141414] border border-[#262626] px-4 py-2.5 text-sm text-white placeholder-[#666] outline-none transition-colors focus:border-[#00AFF0]/50 focus:ring-1 focus:ring-[#00AFF0]/25"
           aria-label="Message text"
         />
 
         <button
           onClick={handleSend}
           disabled={!text.trim()}
-          className="flex-shrink-0 rounded-xl gradient-bg p-2.5 text-white transition-opacity hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex-shrink-0 rounded-xl bg-[#00AFF0] hover:bg-[#009dd8] p-2.5 text-white transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label="Send message"
         >
           <Send className="h-5 w-5" />

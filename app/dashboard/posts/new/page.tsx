@@ -31,8 +31,8 @@ const TIERS: readonly { readonly value: Tier; readonly label: string; readonly d
 const TIER_RING_STYLES: Record<Tier, string> = {
   free: "border-white/20 bg-white/[0.04]",
   basic: "border-blue-500 bg-blue-500/10",
-  premium: "border-purple-500 bg-purple-500/10",
-  vip: "border-pink-500 bg-pink-500/10",
+  premium: "border-[#00AFF0] bg-[#00AFF0]/10",
+  vip: "border-amber-500 bg-amber-500/10",
 };
 
 const INITIAL_STATE: PostFormState = {
@@ -143,7 +143,7 @@ export default function NewPostPage() {
               placeholder="Give your post a title..."
               value={form.title}
               onChange={(e) => updateField("title", e.target.value)}
-              className="border-white/[0.08] bg-white/[0.03] text-foreground placeholder:text-muted-foreground focus-visible:ring-purple-500/50"
+              className="border-white/[0.08] bg-white/[0.03] text-foreground placeholder:text-muted-foreground focus-visible:ring-[#00AFF0]/50"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function NewPostPage() {
               placeholder="What do you want to share?"
               value={form.body}
               onChange={(e) => updateField("body", e.target.value)}
-              className="w-full resize-none rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="w-full resize-none rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             />
           </div>
 
@@ -199,7 +199,7 @@ export default function NewPostPage() {
                 className={cn(
                   "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors",
                   isDragging
-                    ? "border-purple-500 bg-purple-500/10"
+                    ? "border-[#00AFF0] bg-[#00AFF0]/10"
                     : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.15] hover:bg-white/[0.04]"
                 )}
               >
@@ -272,7 +272,7 @@ export default function NewPostPage() {
             </Button>
             <Button
               onClick={handlePublish}
-              className="gradient-bg px-8 hover:opacity-90"
+              className="bg-[#00AFF0] hover:bg-[#009dd8] px-8"
               disabled={!form.body.trim()}
             >
               Publish

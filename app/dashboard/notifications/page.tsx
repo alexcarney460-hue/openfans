@@ -28,7 +28,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "5 min ago",
     read: false,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=aria&backgroundColor=8b5cf6",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=aria&backgroundColor=00AFF0",
     userName: "Aria Velasquez",
   },
   {
@@ -38,7 +38,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "12 min ago",
     read: false,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=jordan&backgroundColor=ec4899",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=jordan&backgroundColor=00AFF0",
     userName: "Jordan Blake",
   },
   {
@@ -48,7 +48,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "1 hr ago",
     read: false,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=mika&backgroundColor=6366f1",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=mika&backgroundColor=00AFF0",
     userName: "Mika Tanaka",
   },
   {
@@ -67,7 +67,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "5 hrs ago",
     read: true,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=dex&backgroundColor=f43f5e",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=dex&backgroundColor=00AFF0",
     userName: "Dex Monroe",
   },
   {
@@ -77,7 +77,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "Yesterday",
     read: true,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=luna&backgroundColor=8b5cf6",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=luna&backgroundColor=00AFF0",
     userName: "Luna Chen",
   },
   {
@@ -87,7 +87,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "Yesterday",
     read: true,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=kai&backgroundColor=ec4899",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=kai&backgroundColor=00AFF0",
     userName: "Kai Reeves",
   },
   {
@@ -106,7 +106,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "3 days ago",
     read: true,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=nova&backgroundColor=6366f1",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=nova&backgroundColor=00AFF0",
     userName: "Nova Sinclair",
   },
   {
@@ -116,7 +116,7 @@ const initialNotifications: readonly Notification[] = [
     timestamp: "4 days ago",
     read: true,
     avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=rio&backgroundColor=f43f5e",
+      "https://api.dicebear.com/9.x/notionists/svg?seed=rio&backgroundColor=00AFF0",
     userName: "Rio Castillo",
   },
 ];
@@ -129,9 +129,9 @@ const ICON_MAP = {
 } as const;
 
 const ICON_COLOR_MAP = {
-  subscription: "text-[#8b5cf6] bg-[#8b5cf6]/10",
+  subscription: "text-[#00AFF0] bg-[#00AFF0]/10",
   tip: "text-[#10b981] bg-[#10b981]/10",
-  message: "text-[#ec4899] bg-[#ec4899]/10",
+  message: "text-[#00AFF0] bg-[#00AFF0]/10",
   payout: "text-[#f59e0b] bg-[#f59e0b]/10",
 } as const;
 
@@ -161,7 +161,7 @@ export default function NotificationsPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold text-white">Notifications</h1>
             {unreadCount > 0 && (
-              <span className="rounded-full gradient-bg px-2.5 py-0.5 text-xs font-bold text-white">
+              <span className="rounded-full bg-[#00AFF0] px-2.5 py-0.5 text-xs font-bold text-white">
                 {unreadCount}
               </span>
             )}
@@ -170,7 +170,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-[#8b5cf6] transition-colors hover:bg-[#8b5cf6]/10"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-[#00AFF0] transition-colors hover:bg-[#00AFF0]/10"
             >
               <Check className="h-3.5 w-3.5" />
               Mark all read
@@ -194,7 +194,7 @@ export default function NotificationsPage() {
                   ${
                     notification.read
                       ? "hover:bg-[#111]"
-                      : "bg-[#8b5cf6]/[0.04] hover:bg-[#8b5cf6]/[0.07]"
+                      : "bg-[#00AFF0]/[0.04] hover:bg-[#00AFF0]/[0.07]"
                   }
                 `}
               >
@@ -238,7 +238,7 @@ export default function NotificationsPage() {
 
                 {/* Unread indicator */}
                 {!notification.read && (
-                  <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full gradient-bg" />
+                  <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#00AFF0]" />
                 )}
               </button>
             );

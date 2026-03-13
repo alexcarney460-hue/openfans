@@ -119,8 +119,8 @@ const TIER_FILTERS: readonly { readonly value: TierFilter; readonly label: strin
 
 const TIER_BADGE_STYLES: Record<Tier, string> = {
   basic: "bg-blue-500/15 text-blue-400",
-  premium: "bg-purple-500/15 text-purple-400",
-  vip: "bg-pink-500/15 text-pink-400",
+  premium: "bg-[#00AFF0]/15 text-[#00AFF0]",
+  vip: "bg-amber-500/15 text-amber-400",
 };
 
 const STATUS_STYLES: Record<Subscriber["status"], string> = {
@@ -185,7 +185,7 @@ export default function SubscribersPage() {
             className={cn(
               "rounded-lg border p-4 text-left transition-all",
               filter === tier.value
-                ? "border-purple-500/50 bg-purple-500/10"
+                ? "border-[#00AFF0]/50 bg-[#00AFF0]/10"
                 : "border-white/[0.06] bg-[#111111] hover:border-white/[0.12]"
             )}
             aria-pressed={filter === tier.value}
@@ -207,7 +207,7 @@ export default function SubscribersPage() {
           placeholder="Search subscribers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border-white/[0.08] bg-white/[0.03] pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-purple-500/50"
+          className="border-white/[0.08] bg-white/[0.03] pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-[#00AFF0]/50"
           aria-label="Search subscribers"
         />
       </div>
@@ -244,7 +244,7 @@ export default function SubscribersPage() {
                 >
                   {/* Subscriber info */}
                   <div className="col-span-4 flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-sm font-bold text-purple-300">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00AFF0]/20 text-sm font-bold text-[#00AFF0]">
                       {getInitials(sub.username)}
                     </div>
                     <span className="text-sm font-medium text-foreground">

@@ -4,9 +4,9 @@ import ResetPasswordForm from "@/components/ResetPasswordForm"
 
 export default function ResetPassword() {
   return (
-    <div className="mesh-gradient flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="bg-[#0a0a0a] flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
-        <div className="gradient-border rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-purple-500/5">
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/">
