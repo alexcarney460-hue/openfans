@@ -79,7 +79,7 @@ export default function LoginForm() {
       }}
     >
       <div className="grid gap-2">
-        <Label htmlFor="email" className="text-zinc-300">
+        <Label htmlFor="email" className="text-gray-700">
           Email
         </Label>
         <Input
@@ -93,7 +93,7 @@ export default function LoginForm() {
             setEmail(e.target.value)
             setErrors((prev) => ({ ...prev, email: undefined }))
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+          className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={errors.email ? "email-error" : undefined}
           aria-invalid={errors.email ? true : undefined}
         />
@@ -104,7 +104,7 @@ export default function LoginForm() {
         )}
       </div>
       <div className="mt-3 grid gap-2">
-        <Label htmlFor="password" className="text-zinc-300">
+        <Label htmlFor="password" className="text-gray-700">
           Password
         </Label>
         <Input
@@ -117,7 +117,7 @@ export default function LoginForm() {
             setPassword(e.target.value)
             setErrors((prev) => ({ ...prev, password: undefined }))
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+          className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={errors.password ? "password-error" : undefined}
           aria-invalid={errors.password ? true : undefined}
         />

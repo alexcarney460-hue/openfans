@@ -154,12 +154,12 @@ export default function NotificationsPage() {
   }, []);
 
   return (
-    <main className="min-h-[calc(100vh-57px)] bg-[#0a0a0a]">
+    <main className="min-h-[calc(100vh-57px)] bg-gray-50">
       <div className="mx-auto max-w-2xl px-4 py-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-white">Notifications</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
             {unreadCount > 0 && (
               <span className="rounded-full bg-[#00AFF0] px-2.5 py-0.5 text-xs font-bold text-white">
                 {unreadCount}
@@ -193,7 +193,7 @@ export default function NotificationsPage() {
                   flex w-full items-start gap-3.5 rounded-xl px-4 py-3.5 text-left transition-colors
                   ${
                     notification.read
-                      ? "hover:bg-[#111]"
+                      ? "hover:bg-gray-50"
                       : "bg-[#00AFF0]/[0.04] hover:bg-[#00AFF0]/[0.07]"
                   }
                 `}
@@ -211,10 +211,10 @@ export default function NotificationsPage() {
                     <img
                       src={notification.avatar}
                       alt={notification.userName}
-                      className="h-10 w-10 rounded-full bg-[#1a1a1a]"
+                      className="h-10 w-10 rounded-full bg-gray-100"
                     />
                     <div
-                      className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#0a0a0a] ${iconColors}`}
+                      className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-50 ${iconColors}`}
                     >
                       <IconComponent className="h-2.5 w-2.5" />
                     </div>
@@ -223,15 +223,15 @@ export default function NotificationsPage() {
 
                 {/* Content */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-[#ccc]">
+                  <p className="text-sm text-gray-600">
                     <span
-                      className={`font-medium ${notification.read ? "text-[#ccc]" : "text-white"}`}
+                      className={`font-medium ${notification.read ? "text-gray-600" : "text-gray-900"}`}
                     >
                       {notification.userName}
                     </span>{" "}
                     {notification.text}
                   </p>
-                  <p className="mt-0.5 text-xs text-[#555]">
+                  <p className="mt-0.5 text-xs text-gray-400">
                     {notification.timestamp}
                   </p>
                 </div>
@@ -247,13 +247,13 @@ export default function NotificationsPage() {
 
         {notifications.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1a1a1a] border border-[#262626]">
-              <Bell className="h-8 w-8 text-[#555]" />
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 border border-gray-200">
+              <Bell className="h-8 w-8 text-gray-400" />
             </div>
-            <h3 className="mb-1 text-base font-medium text-[#999]">
+            <h3 className="mb-1 text-base font-medium text-gray-500">
               No notifications yet
             </h3>
-            <p className="text-sm text-[#555]">
+            <p className="text-sm text-gray-400">
               You will see activity here when it happens
             </p>
           </div>

@@ -81,12 +81,12 @@ export function PostInteractions({
   return (
     <>
       {/* Actions Bar */}
-      <div className="mb-6 flex items-center gap-6 border-b border-t border-white/5 py-3">
+      <div className="mb-6 flex items-center gap-6 border-b border-t border-gray-200 py-3">
         <button
           className={`flex items-center gap-2 transition-colors ${
             liked
               ? "text-red-500"
-              : "text-white/40 hover:text-[#00AFF0]"
+              : "text-gray-400 hover:text-[#00AFF0]"
           }`}
           aria-label={`Like this post. ${formatNumber(likeCount)} likes`}
           aria-pressed={liked}
@@ -96,7 +96,7 @@ export function PostInteractions({
           <span className="text-sm">{formatNumber(likeCount)}</span>
         </button>
         <div
-          className="flex items-center gap-2 text-white/40"
+          className="flex items-center gap-2 text-gray-400"
           aria-label={`${formatNumber(initialCommentCount + comments.length - initialComments.length)} comments`}
         >
           <MessageCircle className="h-5 w-5" />
@@ -107,7 +107,7 @@ export function PostInteractions({
           </span>
         </div>
         <button
-          className="relative ml-auto text-white/40 transition-colors hover:text-white/60"
+          className="relative ml-auto text-gray-400 transition-colors hover:text-gray-600"
           aria-label="Share this post"
           onClick={handleShare}
         >
@@ -122,7 +122,7 @@ export function PostInteractions({
 
       {/* Comments Section */}
       <section aria-label="Comments">
-        <h2 className="mb-4 text-sm font-semibold text-white">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">
           Comments (
           {formatNumber(
             initialCommentCount + comments.length - initialComments.length
@@ -132,16 +132,16 @@ export function PostInteractions({
 
         {/* Comment Input */}
         <div className="mb-6 flex items-center gap-3">
-          <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white/10">
-            <div className="flex h-full w-full items-center justify-center text-xs text-white/40">
+          <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
+            <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
               ?
             </div>
           </div>
-          <div className="flex flex-1 items-center rounded-full border border-white/10 bg-white/5 px-4 py-2">
+          <div className="flex flex-1 items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
             <input
               type="text"
               placeholder="Add a comment..."
-              className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
+              className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
               aria-label="Write a comment"
               disabled={isLocked}
               value={commentText}
@@ -149,7 +149,7 @@ export function PostInteractions({
               onKeyDown={handleKeyDown}
             />
             <button
-              className="ml-2 text-[#00AFF0] transition-colors hover:text-[#33C1F5] disabled:text-white/20"
+              className="ml-2 text-[#00AFF0] transition-colors hover:text-[#33C1F5] disabled:text-gray-300"
               aria-label="Submit comment"
               disabled={isLocked || !commentText.trim()}
               onClick={handleSubmitComment}
@@ -165,20 +165,20 @@ export function PostInteractions({
             {comments.map((comment) => (
               <div key={comment.id} className="flex gap-3">
                 <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-[#00AFF0]/20">
-                  <div className="flex h-full w-full items-center justify-center text-xs font-medium text-white/60">
+                  <div className="flex h-full w-full items-center justify-center text-xs font-medium text-gray-600">
                     {comment.displayName.charAt(0)}
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="mb-0.5 flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-sm font-semibold text-gray-900">
                       {comment.displayName}
                     </span>
-                    <span className="text-xs text-white/30">
+                    <span className="text-xs text-gray-400">
                       {timeAgo(comment.createdAt)}
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed text-white/60">
+                  <p className="text-sm leading-relaxed text-gray-600">
                     {comment.text}
                   </p>
                 </div>
@@ -186,7 +186,7 @@ export function PostInteractions({
             ))}
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-white/30">
+          <p className="py-8 text-center text-sm text-gray-400">
             No comments yet. Be the first to comment.
           </p>
         )}

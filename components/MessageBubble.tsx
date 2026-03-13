@@ -20,7 +20,7 @@ export default function MessageBubble({ message, isSent }: MessageBubbleProps) {
           ${
             isSent
               ? "bg-[#00AFF0] text-white rounded-br-md"
-              : "bg-[#1a1a1a] text-[#e5e5e5] border border-[#262626] rounded-bl-md"
+              : "bg-gray-100 text-gray-900 border border-gray-200 rounded-bl-md"
           }
         `}
       >
@@ -59,7 +59,7 @@ export default function MessageBubble({ message, isSent }: MessageBubbleProps) {
         <p
           className={`
             mt-1 text-[10px]
-            ${isSent ? "text-white/50 text-right" : "text-[#666]"}
+            ${isSent ? "text-white/50 text-right" : "text-gray-400"}
           `}
         >
           {message.timestamp}

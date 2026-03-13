@@ -57,17 +57,17 @@ export default function SinglePostPage({ params }: PageProps) {
   const isLocked = post.isPremium && !isSubscribed;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-gray-50">
       {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b border-white/5 bg-[#0a0a0a]/80 px-4 backdrop-blur-xl">
+      <nav className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b border-gray-200 bg-white/80 px-4 backdrop-blur-xl">
         <Link
           href={`/${creator.username}`}
-          className="flex items-center gap-2 text-white/60 transition-colors hover:text-white"
+          className="flex items-center gap-2 text-gray-500 transition-colors hover:text-gray-900"
           aria-label="Back to profile"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-sm font-bold text-white">Post</h1>
+        <h1 className="text-sm font-bold text-gray-900">Post</h1>
       </nav>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
@@ -79,7 +79,7 @@ export default function SinglePostPage({ params }: PageProps) {
             aria-label={`View ${creator.displayName}'s profile`}
           >
             <div className="h-12 w-12 overflow-hidden rounded-full bg-[#00AFF0] p-[2px]">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-[#1a1a1a] text-base font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-100 text-base font-bold text-gray-600">
                 {creator.displayName.charAt(0)}
               </div>
             </div>
@@ -89,14 +89,14 @@ export default function SinglePostPage({ params }: PageProps) {
               href={`/${creator.username}`}
               className="flex items-center gap-1.5"
             >
-              <span className="truncate text-sm font-semibold text-white hover:underline">
+              <span className="truncate text-sm font-semibold text-gray-900 hover:underline">
                 {creator.displayName}
               </span>
               {creator.isVerified && (
                 <BadgeCheck className="h-4 w-4 flex-shrink-0 text-[#00AFF0]" />
               )}
             </Link>
-            <p className="text-xs text-white/40">
+            <p className="text-xs text-gray-400">
               @{creator.username} &middot; {timeAgo(post.createdAt)}
             </p>
           </div>
@@ -113,8 +113,8 @@ export default function SinglePostPage({ params }: PageProps) {
           <p
             className={
               isLocked
-                ? "text-sm leading-relaxed text-white/80 line-clamp-3"
-                : "text-sm leading-relaxed text-white/80"
+                ? "text-sm leading-relaxed text-gray-600 line-clamp-3"
+                : "text-sm leading-relaxed text-gray-600"
             }
           >
             {post.text}
@@ -127,12 +127,12 @@ export default function SinglePostPage({ params }: PageProps) {
             <div
               className={
                 isLocked
-                  ? "flex aspect-video items-center justify-center bg-white/5 blur-xl"
-                  : "flex aspect-video items-center justify-center bg-white/5"
+                  ? "flex aspect-video items-center justify-center bg-gray-100 blur-xl"
+                  : "flex aspect-video items-center justify-center bg-gray-100"
               }
             >
               <div className="flex h-full w-full items-center justify-center bg-[#00AFF0]/10">
-                <span className="text-sm text-white/20">
+                <span className="text-sm text-gray-300">
                   {post.mediaType === "video" ? "Video Content" : "Image Content"}
                 </span>
               </div>
@@ -162,15 +162,15 @@ export default function SinglePostPage({ params }: PageProps) {
 
         {/* Locked text-only posts */}
         {isLocked && !post.mediaUrl && (
-          <div className="mb-4 flex flex-col items-center gap-4 rounded-xl border border-white/5 bg-white/[0.02] px-6 py-10">
-            <div className="rounded-full bg-white/10 p-4">
-              <Lock className="h-8 w-8 text-white" />
+          <div className="mb-4 flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 px-6 py-10">
+            <div className="rounded-full bg-gray-200 p-4">
+              <Lock className="h-8 w-8 text-gray-500" />
             </div>
             <div className="text-center">
-              <p className="mb-1 text-base font-semibold text-white">
+              <p className="mb-1 text-base font-semibold text-gray-900">
                 Subscribe to see full post
               </p>
-              <p className="mb-4 text-sm text-white/50">
+              <p className="mb-4 text-sm text-gray-500">
                 Subscribe to {creator.displayName} to unlock all premium content
               </p>
               <SubscribeButton

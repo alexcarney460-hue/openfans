@@ -98,7 +98,7 @@ const MOCK_POSTS: readonly Post[] = [
 // -- Helpers --
 
 const TIER_STYLES: Record<Post["tier"], string> = {
-  free: "bg-white/[0.06] text-muted-foreground",
+  free: "bg-gray-100 text-gray-500",
   basic: "bg-blue-500/15 text-blue-400",
   premium: "bg-[#00AFF0]/15 text-[#00AFF0]",
   vip: "bg-amber-500/15 text-amber-400",
@@ -137,8 +137,8 @@ export default function PostsPage() {
       </div>
 
       {/* Posts list */}
-      <Card className="border-white/[0.06] bg-[#111111]">
-        <CardHeader className="border-b border-white/[0.06] pb-3">
+      <Card className="border-gray-200 bg-white">
+        <CardHeader className="border-b border-gray-200 pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold">
               All Posts ({posts.length})
@@ -147,7 +147,7 @@ export default function PostsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {/* Table header */}
-          <div className="hidden border-b border-white/[0.06] px-6 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-12 md:gap-4">
+          <div className="hidden border-b border-gray-200 px-6 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-12 md:gap-4">
             <div className="col-span-5">Post</div>
             <div className="col-span-2">Date</div>
             <div className="col-span-1">Tier</div>
@@ -157,15 +157,15 @@ export default function PostsPage() {
           </div>
 
           {/* Table rows */}
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-gray-200">
             {posts.map((post) => (
               <div
                 key={post.id}
-                className="group flex flex-col gap-3 px-6 py-4 transition-colors hover:bg-white/[0.02] md:grid md:grid-cols-12 md:items-center md:gap-4"
+                className="group flex flex-col gap-3 px-6 py-4 transition-colors hover:bg-gray-50 md:grid md:grid-cols-12 md:items-center md:gap-4"
               >
                 {/* Post info */}
                 <div className="col-span-5 flex items-center gap-3">
-                  <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-md bg-white/[0.04]">
+                  <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-md bg-gray-100">
                     <ImageIcon className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">

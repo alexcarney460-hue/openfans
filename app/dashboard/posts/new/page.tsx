@@ -29,7 +29,7 @@ const TIERS: readonly { readonly value: Tier; readonly label: string; readonly d
 ] as const;
 
 const TIER_RING_STYLES: Record<Tier, string> = {
-  free: "border-white/20 bg-white/[0.04]",
+  free: "border-gray-300 bg-gray-50",
   basic: "border-blue-500 bg-blue-500/10",
   premium: "border-[#00AFF0] bg-[#00AFF0]/10",
   vip: "border-amber-500 bg-amber-500/10",
@@ -130,7 +130,7 @@ export default function NewPostPage() {
         </p>
       </div>
 
-      <Card className="border-white/[0.06] bg-[#111111]">
+      <Card className="border-gray-200 bg-white">
         <CardContent className="space-y-6 p-6">
           {/* Title */}
           <div className="space-y-2">
@@ -143,7 +143,7 @@ export default function NewPostPage() {
               placeholder="Give your post a title..."
               value={form.title}
               onChange={(e) => updateField("title", e.target.value)}
-              className="border-white/[0.08] bg-white/[0.03] text-foreground placeholder:text-muted-foreground focus-visible:ring-[#00AFF0]/50"
+              className="border-gray-200 bg-gray-50 text-foreground placeholder:text-muted-foreground focus-visible:ring-[#00AFF0]/50"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function NewPostPage() {
               placeholder="What do you want to share?"
               value={form.body}
               onChange={(e) => updateField("body", e.target.value)}
-              className="w-full resize-none rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="w-full resize-none rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             />
           </div>
 
@@ -168,7 +168,7 @@ export default function NewPostPage() {
               Media
             </Label>
             {form.mediaPreview ? (
-              <div className="relative overflow-hidden rounded-lg border border-white/[0.08]">
+              <div className="relative overflow-hidden rounded-lg border border-gray-200">
                 <img
                   src={form.mediaPreview}
                   alt="Upload preview"
@@ -200,7 +200,7 @@ export default function NewPostPage() {
                   "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors",
                   isDragging
                     ? "border-[#00AFF0] bg-[#00AFF0]/10"
-                    : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.15] hover:bg-white/[0.04]"
+                    : "border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100"
                 )}
               >
                 <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
@@ -211,11 +211,11 @@ export default function NewPostPage() {
                   Images, videos, or audio. Max 100MB.
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <div className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[10px] text-muted-foreground">
                     <ImageIcon className="h-3 w-3" />
                     JPG, PNG, GIF
                   </div>
-                  <div className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[10px] text-muted-foreground">
                     <Film className="h-3 w-3" />
                     MP4, MOV
                   </div>
@@ -246,7 +246,7 @@ export default function NewPostPage() {
                     "flex flex-col items-center rounded-lg border-2 p-3 text-center transition-all",
                     form.tier === tier.value
                       ? TIER_RING_STYLES[tier.value]
-                      : "border-white/[0.06] bg-transparent hover:border-white/[0.12]"
+                      : "border-gray-200 bg-transparent hover:border-gray-300"
                   )}
                   aria-pressed={form.tier === tier.value}
                 >
@@ -262,10 +262,10 @@ export default function NewPostPage() {
           </div>
 
           {/* Publish */}
-          <div className="flex items-center justify-end gap-3 border-t border-white/[0.06] pt-6">
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-6">
             <Button
               variant="outline"
-              className="border-white/[0.08]"
+              className="border-gray-200"
               onClick={() => router.push("/dashboard/posts")}
             >
               Cancel

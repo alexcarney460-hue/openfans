@@ -9,13 +9,13 @@ const FOOTER_LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/5 bg-black">
+    <footer className="border-t border-gray-200 bg-gray-50">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-6 sm:flex-row sm:justify-between sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
-          <p className="text-xs text-white/30">
+          <p className="text-xs text-gray-400">
             &copy; 2026 OpenFans
           </p>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/5 bg-white/[0.03] px-2.5 py-0.5 text-[10px] font-medium text-white/25">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-400">
             <span className="inline-block h-1 w-1 rounded-full bg-emerald-500/60" />
             Solana
           </span>
@@ -25,7 +25,7 @@ export function SiteFooter() {
             <Link
               key={link.label}
               href={link.href}
-              className="text-xs text-white/30 transition-colors hover:text-white/60"
+              className="text-xs text-gray-400 transition-colors hover:text-gray-600"
             >
               {link.label}
             </Link>

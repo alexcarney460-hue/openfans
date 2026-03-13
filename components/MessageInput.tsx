@@ -69,7 +69,7 @@ export default function MessageInput({
   }, []);
 
   return (
-    <div className="border-t border-[#1a1a1a] bg-[#0a0a0a] p-4">
+    <div className="border-t border-gray-200 bg-white p-4">
       {showTipInput && (
         <div className="mb-3 flex items-center gap-2 rounded-xl bg-[#00AFF0]/10 border border-[#00AFF0]/20 px-3 py-2">
           <DollarSign className="h-4 w-4 text-[#00AFF0]" />
@@ -79,12 +79,12 @@ export default function MessageInput({
             placeholder="Tip amount (USDC)"
             value={tipAmount}
             onChange={handleTipAmountChange}
-            className="flex-1 bg-transparent text-sm text-white placeholder-[#666] outline-none"
+            className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
             aria-label="Tip amount in USDC"
           />
           <button
             onClick={toggleTipInput}
-            className="rounded-md p-1 text-[#666] transition-colors hover:text-white"
+            className="rounded-md p-1 text-gray-400 transition-colors hover:text-gray-900"
             aria-label="Cancel tip"
           >
             <X className="h-3.5 w-3.5" />
@@ -95,7 +95,7 @@ export default function MessageInput({
       <div className="flex items-center gap-2">
         <button
           onClick={onAttachment}
-          className="flex-shrink-0 rounded-xl p-2.5 text-[#666] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+          className="flex-shrink-0 rounded-xl p-2.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
           aria-label="Attach image"
         >
           <ImageIcon className="h-5 w-5" />
@@ -108,7 +108,7 @@ export default function MessageInput({
             ${
               showTipInput
                 ? "bg-[#00AFF0]/20 text-[#00AFF0]"
-                : "text-[#666] hover:bg-[#1a1a1a] hover:text-white"
+                : "text-gray-400 hover:bg-gray-100 hover:text-gray-900"
             }
           `}
           aria-label="Send tip"
@@ -123,7 +123,7 @@ export default function MessageInput({
           value={text}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
-          className="min-w-0 flex-1 rounded-xl bg-[#141414] border border-[#262626] px-4 py-2.5 text-sm text-white placeholder-[#666] outline-none transition-colors focus:border-[#00AFF0]/50 focus:ring-1 focus:ring-[#00AFF0]/25"
+          className="min-w-0 flex-1 rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-[#00AFF0]/50 focus:ring-1 focus:ring-[#00AFF0]/25"
           aria-label="Message text"
         />
 

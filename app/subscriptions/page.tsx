@@ -79,29 +79,29 @@ export default function SubscriptionsPage() {
   const isEmpty = subscriptions.length === 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
 
       <main className="flex-1 pt-14">
         <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
               My Subscriptions
             </h1>
-            <p className="mt-1 text-sm text-white/50">
+            <p className="mt-1 text-sm text-gray-500">
               Manage your active subscriptions and renewals.
             </p>
           </div>
 
           {isEmpty ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02] py-20 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.04] mb-4">
-                <Star className="h-8 w-8 text-white/20" />
+            <div className="flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white py-20 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
+                <Star className="h-8 w-8 text-gray-300" />
               </div>
-              <p className="text-lg font-medium text-white/60">
+              <p className="text-lg font-medium text-gray-500">
                 You haven&apos;t subscribed to any creators yet
               </p>
-              <p className="mt-1 text-sm text-white/30">
+              <p className="mt-1 text-sm text-gray-400">
                 Discover amazing creators and support their work.
               </p>
               <Button asChild className="mt-6 bg-[#00AFF0] hover:bg-[#009dd8]">
@@ -113,7 +113,7 @@ export default function SubscriptionsPage() {
               {subscriptions.map((sub) => {
                 const TierIcon = sub.tierIcon;
                 return (
-                  <Card key={sub.id} className="border-white/[0.06] bg-[#111111]">
+                  <Card key={sub.id} className="border-gray-200 bg-white">
                     <CardContent className="p-5">
                       <div className="flex items-start gap-4">
                         {/* Avatar */}
@@ -123,7 +123,7 @@ export default function SubscriptionsPage() {
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-white truncate">
+                            <h3 className="text-sm font-semibold text-gray-900 truncate">
                               {sub.creator}
                             </h3>
                             <Badge className="shrink-0 bg-[#00AFF0]/15 text-[#00AFF0] text-[10px] border-0">
@@ -134,15 +134,15 @@ export default function SubscriptionsPage() {
 
                           <div className="mt-2 flex items-center gap-2">
                             <span className={`inline-block h-2 w-2 rounded-full ${statusColor(sub.status)}`} />
-                            <span className="text-xs text-white/50">
+                            <span className="text-xs text-gray-500">
                               {statusLabel(sub.status)}
                             </span>
                           </div>
 
                           <div className="mt-3 flex items-center justify-between">
                             <div>
-                              <p className="text-lg font-bold text-white">{sub.price}</p>
-                              <p className="text-[10px] text-white/30">
+                              <p className="text-lg font-bold text-gray-900">{sub.price}</p>
+                              <p className="text-[10px] text-gray-400">
                                 {sub.status === "expired"
                                   ? `Expired ${sub.renewalDate}`
                                   : `Renews ${sub.renewalDate}`}
@@ -151,7 +151,7 @@ export default function SubscriptionsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="border-white/[0.08] text-xs"
+                              className="border-gray-200 text-xs"
                             >
                               Manage
                             </Button>

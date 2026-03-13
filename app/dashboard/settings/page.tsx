@@ -33,7 +33,7 @@ function ToggleSwitch({ enabled, onToggle, id, label, description }: ToggleSwitc
         aria-checked={enabled}
         onClick={onToggle}
         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-          enabled ? "bg-[#00AFF0]" : "bg-white/10"
+          enabled ? "bg-[#00AFF0]" : "bg-gray-300"
         }`}
       >
         <span
@@ -71,7 +71,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Settings */}
-      <Card className="border-white/[0.06] bg-[#111111]">
+      <Card className="border-gray-200 bg-white">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Profile Settings</h2>
 
@@ -83,7 +83,7 @@ export default function SettingsPage() {
               </div>
               <button
                 type="button"
-                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#1a1a1a] border border-white/[0.06] text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Upload avatar"
               >
                 <Camera className="h-4 w-4" />
@@ -105,7 +105,7 @@ export default function SettingsPage() {
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="mt-1.5 border-white/[0.06] bg-white/[0.03] focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                 />
               </div>
               <div>
@@ -116,7 +116,7 @@ export default function SettingsPage() {
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="mt-1.5 border-white/[0.06] bg-white/[0.03] focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                 />
               </div>
             </div>
@@ -129,7 +129,7 @@ export default function SettingsPage() {
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 rows={3}
-                className="mt-1.5 w-full rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00AFF0]/50 focus:ring-2 focus:ring-[#00AFF0]/30 focus:outline-none resize-none"
+                className="mt-1.5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00AFF0]/50 focus:ring-2 focus:ring-[#00AFF0]/30 focus:outline-none resize-none"
               />
             </div>
           </div>
@@ -137,7 +137,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Account Settings */}
-      <Card className="border-white/[0.06] bg-[#111111]">
+      <Card className="border-gray-200 bg-white">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Account Settings</h2>
           <div className="space-y-4">
@@ -150,10 +150,10 @@ export default function SettingsPage() {
                 type="email"
                 value="creator@example.com"
                 readOnly
-                className="mt-1.5 border-white/[0.06] bg-white/[0.03] text-muted-foreground cursor-not-allowed"
+                className="mt-1.5 border-gray-200 bg-gray-50 text-muted-foreground cursor-not-allowed"
               />
             </div>
-            <Button variant="outline" className="border-white/[0.08]">
+            <Button variant="outline" className="border-gray-200">
               Change Password
             </Button>
           </div>
@@ -161,10 +161,10 @@ export default function SettingsPage() {
       </Card>
 
       {/* Notification Preferences */}
-      <Card className="border-white/[0.06] bg-[#111111]">
+      <Card className="border-gray-200 bg-white">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-foreground mb-2">Notification Preferences</h2>
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-gray-200">
             <ToggleSwitch
               id="emailNotifs"
               enabled={emailNotifs}
@@ -191,10 +191,10 @@ export default function SettingsPage() {
       </Card>
 
       {/* Privacy */}
-      <Card className="border-white/[0.06] bg-[#111111]">
+      <Card className="border-gray-200 bg-white">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-foreground mb-2">Privacy</h2>
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-gray-200">
             <ToggleSwitch
               id="showActivity"
               enabled={showActivity}
@@ -214,10 +214,10 @@ export default function SettingsPage() {
       </Card>
 
       {/* Connected Wallet */}
-      <Card className="border-white/[0.06] bg-[#111111]">
+      <Card className="border-gray-200 bg-white">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Connected Wallet</h2>
-          <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4">
             <div className="flex items-center gap-3">
               <Wallet className="h-5 w-5 text-[#00AFF0]" />
               <div>
@@ -227,7 +227,7 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="border-white/[0.08] text-red-400 hover:text-red-300">
+            <Button variant="outline" size="sm" className="border-gray-200 text-red-400 hover:text-red-300">
               Disconnect
             </Button>
           </div>
@@ -242,7 +242,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Danger Zone */}
-      <Card className="border-red-500/20 bg-[#111111]">
+      <Card className="border-red-500/20 bg-white">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-red-400 mb-2">Danger Zone</h2>
           <p className="text-sm text-muted-foreground mb-4">
@@ -257,7 +257,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-white/[0.08]"
+                  className="border-gray-200"
                   onClick={() => setShowDeleteConfirm(false)}
                 >
                   Cancel

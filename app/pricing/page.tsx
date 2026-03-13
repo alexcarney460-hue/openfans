@@ -97,9 +97,9 @@ const COMPARISONS: readonly PlatformComparison[] = [
 function CellValue({ value }: { readonly value: string | boolean }) {
   if (typeof value === "boolean") {
     return value ? (
-      <Check className="mx-auto h-5 w-5 text-green-400" />
+      <Check className="mx-auto h-5 w-5 text-green-500" />
     ) : (
-      <X className="mx-auto h-5 w-5 text-white/20" />
+      <X className="mx-auto h-5 w-5 text-gray-300" />
     );
   }
   return <span>{value}</span>;
@@ -134,24 +134,24 @@ const BENEFITS = [
 
 export default function PricingPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#0a0a0a]">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
 
       <main className="flex-1 pt-16">
         {/* Hero */}
-        <section className="bg-[#0a0a0a] relative overflow-hidden border-b border-white/5 py-16 sm:py-24">
+        <section className="bg-white relative overflow-hidden border-b border-gray-200 py-16 sm:py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center text-center">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#00AFF0]/20 bg-[#00AFF0]/10 px-4 py-1.5 text-sm text-[#33C1F5]">
                 <Zap className="h-4 w-4" />
                 For Creators
               </div>
-              <h1 className="mt-6 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="mt-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
                 Keep{" "}
                 <span className="text-[#00AFF0]">95%</span>{" "}
                 of Your Revenue
               </h1>
-              <p className="mt-4 max-w-2xl text-lg text-white/50">
+              <p className="mt-4 max-w-2xl text-lg text-gray-500">
                 While other platforms take 20% of your hard-earned income,
                 OpenFans charges just 5%. No payment processors. No bank
                 holdups. Get paid instantly in crypto.
@@ -170,7 +170,7 @@ export default function PricingPage() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    className="border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100"
                   >
                     Browse Creators
                   </Button>
@@ -181,53 +181,53 @@ export default function PricingPage() {
         </section>
 
         {/* Revenue comparison visual */}
-        <section className="border-b border-white/5 py-16">
+        <section className="border-b border-gray-200 py-16">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-            <h2 className="mb-10 text-center text-2xl font-bold text-white sm:text-3xl">
+            <h2 className="mb-10 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
               You Earn $10,000/month. Here is What You Keep.
             </h2>
             <div className="grid gap-5 sm:grid-cols-2">
               {/* OpenFans */}
-              <div className="overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-white/5 p-6">
+              <div className="overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-white p-6">
                 <p className="text-sm font-medium text-[#00AFF0]">OpenFans</p>
-                <p className="mt-2 text-4xl font-bold text-white">$9,500</p>
-                <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-white/10">
+                <p className="mt-2 text-4xl font-bold text-gray-900">$9,500</p>
+                <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-gray-100">
                   <div
                     className="bg-[#00AFF0] h-full rounded-full"
                     style={{ width: "95%" }}
                   />
                 </div>
-                <p className="mt-2 text-sm text-white/40">
+                <p className="mt-2 text-sm text-gray-400">
                   5% platform fee -- $500
                 </p>
               </div>
 
               {/* OnlyFans */}
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm font-medium text-white/50">OnlyFans</p>
-                <p className="mt-2 text-4xl font-bold text-white/60">$8,000</p>
-                <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-6">
+                <p className="text-sm font-medium text-gray-500">OnlyFans</p>
+                <p className="mt-2 text-4xl font-bold text-gray-400">$8,000</p>
+                <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-gray-100">
                   <div
-                    className="h-full rounded-full bg-white/30"
+                    className="h-full rounded-full bg-gray-300"
                     style={{ width: "80%" }}
                   />
                 </div>
-                <p className="mt-2 text-sm text-white/30">
+                <p className="mt-2 text-sm text-gray-400">
                   20% platform fee -- $2,000
                 </p>
               </div>
             </div>
 
-            <p className="mt-6 text-center text-sm text-white/40">
+            <p className="mt-6 text-center text-sm text-gray-400">
               That is an extra $18,000 in your pocket every year.
             </p>
           </div>
         </section>
 
         {/* Benefits grid */}
-        <section className="border-b border-white/5 py-16">
+        <section className="border-b border-gray-200 py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="mb-10 text-center text-2xl font-bold text-white sm:text-3xl">
+            <h2 className="mb-10 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
               Why Creators Choose OpenFans
             </h2>
             <div className="grid gap-6 sm:grid-cols-2">
@@ -236,15 +236,15 @@ export default function PricingPage() {
                 return (
                   <div
                     key={benefit.title}
-                    className="rounded-xl border border-white/10 bg-white/5 p-6 transition-colors hover:border-white/15 hover:bg-white/[0.07]"
+                    className="rounded-xl border border-gray-200 bg-white p-6 transition-colors hover:border-gray-300 hover:shadow-sm"
                   >
                     <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#00AFF0]/10">
                       <Icon className="h-5 w-5 text-[#00AFF0]" />
                     </div>
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 className="text-lg font-bold text-gray-900">
                       {benefit.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-white/50">
+                    <p className="mt-2 text-sm leading-relaxed text-gray-500">
                       {benefit.description}
                     </p>
                   </div>
@@ -255,28 +255,28 @@ export default function PricingPage() {
         </section>
 
         {/* Comparison table */}
-        <section className="border-b border-white/5 py-16">
+        <section className="border-b border-gray-200 py-16">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <h2 className="mb-10 text-center text-2xl font-bold text-white sm:text-3xl">
+            <h2 className="mb-10 text-center text-2xl font-bold text-gray-900 sm:text-3xl">
               Platform Comparison
             </h2>
-            <div className="overflow-x-auto rounded-xl border border-white/10">
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
               <table className="w-full min-w-[600px] text-sm" role="table">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/5">
-                    <th className="px-5 py-4 text-left font-medium text-white/60">
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-5 py-4 text-left font-medium text-gray-500">
                       Feature
                     </th>
                     <th className="px-5 py-4 text-center font-bold text-[#00AFF0]">
                       OpenFans
                     </th>
-                    <th className="px-5 py-4 text-center font-medium text-white/40">
+                    <th className="px-5 py-4 text-center font-medium text-gray-400">
                       OnlyFans
                     </th>
-                    <th className="px-5 py-4 text-center font-medium text-white/40">
+                    <th className="px-5 py-4 text-center font-medium text-gray-400">
                       Patreon
                     </th>
-                    <th className="px-5 py-4 text-center font-medium text-white/40">
+                    <th className="px-5 py-4 text-center font-medium text-gray-400">
                       Fansly
                     </th>
                   </tr>
@@ -287,23 +287,23 @@ export default function PricingPage() {
                       key={row.feature}
                       className={
                         index < COMPARISONS.length - 1
-                          ? "border-b border-white/5"
+                          ? "border-b border-gray-100"
                           : ""
                       }
                     >
-                      <td className="px-5 py-3.5 text-white/70">
+                      <td className="px-5 py-3.5 text-gray-600">
                         {row.feature}
                       </td>
-                      <td className="px-5 py-3.5 text-center font-medium text-white">
+                      <td className="px-5 py-3.5 text-center font-medium text-gray-900">
                         <CellValue value={row.openfans} />
                       </td>
-                      <td className="px-5 py-3.5 text-center text-white/40">
+                      <td className="px-5 py-3.5 text-center text-gray-400">
                         <CellValue value={row.onlyfans} />
                       </td>
-                      <td className="px-5 py-3.5 text-center text-white/40">
+                      <td className="px-5 py-3.5 text-center text-gray-400">
                         <CellValue value={row.patreon} />
                       </td>
-                      <td className="px-5 py-3.5 text-center text-white/40">
+                      <td className="px-5 py-3.5 text-center text-gray-400">
                         <CellValue value={row.fansly} />
                       </td>
                     </tr>
@@ -315,12 +315,12 @@ export default function PricingPage() {
         </section>
 
         {/* CTA */}
-        <section className="bg-[#0f0f0f] py-20">
+        <section className="bg-white py-20">
           <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-white sm:text-4xl">
+            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
               Ready to Keep More of What You Earn?
             </h2>
-            <p className="mt-4 text-lg text-white/50">
+            <p className="mt-4 text-lg text-gray-500">
               Join OpenFans today. Set up your creator profile in under 2
               minutes. Start earning with crypto -- no bank account needed.
             </p>
@@ -340,8 +340,8 @@ export default function PricingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-8">
-        <div className="mx-auto max-w-7xl px-4 text-center text-xs text-white/30 sm:px-6 lg:px-8">
+      <footer className="border-t border-gray-200 py-8">
+        <div className="mx-auto max-w-7xl px-4 text-center text-xs text-gray-400 sm:px-6 lg:px-8">
           OpenFans -- Own Your Content, Own Your Money.
         </div>
       </footer>

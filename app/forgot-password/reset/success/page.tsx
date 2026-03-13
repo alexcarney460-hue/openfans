@@ -3,9 +3,9 @@ import Image from "next/image"
 
 export default function ResetPasswordSuccess() {
   return (
-    <div className="bg-[#0a0a0a] flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="bg-gray-50 flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/">
@@ -40,10 +40,10 @@ export default function ResetPasswordSuccess() {
 
           {/* Header */}
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-gray-900">
               Password reset successful
             </h1>
-            <p className="mt-2 text-sm text-zinc-400">
+            <p className="mt-2 text-sm text-gray-500">
               Your password has been updated. You can now sign in with your new
               password.
             </p>

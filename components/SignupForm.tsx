@@ -112,7 +112,7 @@ export default function SignupForm() {
     >
       {/* Role Selector */}
       <div className="mb-4 grid gap-2">
-        <Label className="text-zinc-300">I am a...</Label>
+        <Label className="text-gray-700">I am a...</Label>
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
@@ -122,8 +122,8 @@ export default function SignupForm() {
             }}
             className={`rounded-lg border px-4 py-3 text-center text-sm font-medium transition-all ${
               role === "creator"
-                ? "border-[#00AFF0] bg-[#00AFF0]/10 text-white"
-                : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-300"
+                ? "border-[#00AFF0] bg-[#00AFF0]/10 text-gray-900"
+                : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
             }`}
           >
             <div className="mb-1 text-lg">
@@ -151,8 +151,8 @@ export default function SignupForm() {
             }}
             className={`rounded-lg border px-4 py-3 text-center text-sm font-medium transition-all ${
               role === "fan"
-                ? "border-[#00AFF0] bg-[#00AFF0]/10 text-white"
-                : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-300"
+                ? "border-[#00AFF0] bg-[#00AFF0]/10 text-gray-900"
+                : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700"
             }`}
           >
             <div className="mb-1 text-lg">
@@ -181,11 +181,11 @@ export default function SignupForm() {
 
       {/* Username */}
       <div className="grid gap-2">
-        <Label htmlFor="username" className="text-zinc-300">
+        <Label htmlFor="username" className="text-gray-700">
           Username
         </Label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
             @
           </span>
           <Input
@@ -199,7 +199,7 @@ export default function SignupForm() {
               setUsername(e.target.value)
               clearError("username")
             }}
-            className="border-white/10 bg-white/5 pl-8 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+            className="border-gray-200 bg-gray-50 pl-8 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
             aria-describedby={errors.username ? "username-error" : undefined}
             aria-invalid={errors.username ? true : undefined}
           />
@@ -213,7 +213,7 @@ export default function SignupForm() {
 
       {/* Email */}
       <div className="mt-3 grid gap-2">
-        <Label htmlFor="email" className="text-zinc-300">
+        <Label htmlFor="email" className="text-gray-700">
           Email
         </Label>
         <Input
@@ -227,7 +227,7 @@ export default function SignupForm() {
             setEmail(e.target.value)
             clearError("email")
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+          className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={errors.email ? "email-error" : undefined}
           aria-invalid={errors.email ? true : undefined}
         />
@@ -240,7 +240,7 @@ export default function SignupForm() {
 
       {/* Password */}
       <div className="mt-3 grid gap-2">
-        <Label htmlFor="password" className="text-zinc-300">
+        <Label htmlFor="password" className="text-gray-700">
           Password
         </Label>
         <Input
@@ -253,7 +253,7 @@ export default function SignupForm() {
             setPassword(e.target.value)
             clearError("password")
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+          className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={errors.password ? "password-error" : undefined}
           aria-invalid={errors.password ? true : undefined}
         />
@@ -266,7 +266,7 @@ export default function SignupForm() {
 
       {/* Confirm Password */}
       <div className="mt-3 grid gap-2">
-        <Label htmlFor="confirm_password" className="text-zinc-300">
+        <Label htmlFor="confirm_password" className="text-gray-700">
           Confirm Password
         </Label>
         <Input
@@ -279,7 +279,7 @@ export default function SignupForm() {
             setConfirmPassword(e.target.value)
             clearError("confirmPassword")
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+          className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={
             errors.confirmPassword ? "confirm-password-error" : undefined
           }
@@ -302,9 +302,9 @@ export default function SignupForm() {
               setTermsAccepted(e.target.checked)
               clearError("terms")
             }}
-            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 text-[#00AFF0] focus:ring-[#00AFF0]/30"
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 bg-gray-50 text-[#00AFF0] focus:ring-[#00AFF0]/30"
           />
-          <span className="text-xs text-zinc-400">
+          <span className="text-xs text-gray-500">
             I agree to the{" "}
             <a
               href="/terms"

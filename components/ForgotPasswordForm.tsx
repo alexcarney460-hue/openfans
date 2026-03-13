@@ -73,7 +73,7 @@ export default function ForgotPasswordForm() {
       }}
     >
       <div className="grid gap-2">
-        <Label htmlFor="email" className="text-zinc-300">
+        <Label htmlFor="email" className="text-gray-700">
           Email
         </Label>
         <Input
@@ -87,7 +87,7 @@ export default function ForgotPasswordForm() {
             setEmail(e.target.value)
             setError("")
           }}
-          className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+          className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
           aria-describedby={error ? "email-error" : undefined}
           aria-invalid={error ? true : undefined}
         />

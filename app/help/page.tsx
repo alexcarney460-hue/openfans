@@ -102,16 +102,16 @@ export default function HelpPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
 
       <main className="flex-1 pt-14">
         <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-white">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Help &amp; FAQ
             </h1>
-            <p className="mt-2 text-sm text-white/50">
+            <p className="mt-2 text-sm text-gray-500">
               Find answers to common questions about OpenFans.
             </p>
           </div>
@@ -129,7 +129,7 @@ export default function HelpPage() {
                 className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   activeCategory === cat
                     ? "bg-[#00AFF0]/15 text-[#00AFF0]"
-                    : "text-white/40 hover:bg-white/[0.04] hover:text-white/60"
+                    : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 }`}
               >
                 {cat}
@@ -144,7 +144,7 @@ export default function HelpPage() {
               return (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-white/[0.06] bg-[#111111] overflow-hidden"
+                  className="rounded-xl border border-gray-200 bg-white overflow-hidden"
                 >
                   <button
                     type="button"
@@ -152,19 +152,19 @@ export default function HelpPage() {
                     className="flex w-full items-center justify-between px-5 py-4 text-left"
                     aria-expanded={isOpen}
                   >
-                    <span className="pr-4 text-sm font-medium text-white">
+                    <span className="pr-4 text-sm font-medium text-gray-900">
                       {item.question}
                     </span>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 shrink-0 text-white/30 transition-transform",
+                        "h-4 w-4 shrink-0 text-gray-400 transition-transform",
                         isOpen && "rotate-180"
                       )}
                     />
                   </button>
                   {isOpen && (
-                    <div className="border-t border-white/[0.04] px-5 py-4">
-                      <p className="text-sm leading-relaxed text-white/60">
+                    <div className="border-t border-gray-100 px-5 py-4">
+                      <p className="text-sm leading-relaxed text-gray-600">
                         {item.answer}
                       </p>
                     </div>
@@ -175,12 +175,12 @@ export default function HelpPage() {
           </div>
 
           {/* Contact section */}
-          <div className="mt-12 rounded-xl border border-white/[0.06] bg-[#111111] p-8 text-center">
+          <div className="mt-12 rounded-xl border border-gray-200 bg-white p-8 text-center">
             <Mail className="mx-auto h-8 w-8 text-[#00AFF0] mb-3" />
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-gray-900">
               Still need help?
             </h2>
-            <p className="mt-2 text-sm text-white/50">
+            <p className="mt-2 text-sm text-gray-500">
               Can&apos;t find what you&apos;re looking for? Reach out to our support team.
             </p>
             <a

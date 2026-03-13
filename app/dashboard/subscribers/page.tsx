@@ -186,7 +186,7 @@ export default function SubscribersPage() {
               "rounded-lg border p-4 text-left transition-all",
               filter === tier.value
                 ? "border-[#00AFF0]/50 bg-[#00AFF0]/10"
-                : "border-white/[0.06] bg-[#111111] hover:border-white/[0.12]"
+                : "border-gray-200 bg-white hover:border-gray-300"
             )}
             aria-pressed={filter === tier.value}
           >
@@ -207,14 +207,14 @@ export default function SubscribersPage() {
           placeholder="Search subscribers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border-white/[0.08] bg-white/[0.03] pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-[#00AFF0]/50"
+          className="border-gray-200 bg-gray-50 pl-9 text-foreground placeholder:text-muted-foreground focus-visible:ring-[#00AFF0]/50"
           aria-label="Search subscribers"
         />
       </div>
 
       {/* Subscriber table */}
-      <Card className="border-white/[0.06] bg-[#111111]">
-        <CardHeader className="border-b border-white/[0.06] pb-3">
+      <Card className="border-gray-200 bg-white">
+        <CardHeader className="border-b border-gray-200 pb-3">
           <CardTitle className="text-base font-semibold">
             {filter === "all" ? "All Subscribers" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} Subscribers`}{" "}
             ({filteredSubscribers.length})
@@ -222,7 +222,7 @@ export default function SubscribersPage() {
         </CardHeader>
         <CardContent className="p-0">
           {/* Table header */}
-          <div className="hidden border-b border-white/[0.06] px-6 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-12 md:gap-4">
+          <div className="hidden border-b border-gray-200 px-6 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-12 md:gap-4">
             <div className="col-span-4">Subscriber</div>
             <div className="col-span-2">Tier</div>
             <div className="col-span-3">Subscribed Since</div>
@@ -236,11 +236,11 @@ export default function SubscribersPage() {
               <p className="text-sm">No subscribers found.</p>
             </div>
           ) : (
-            <div className="divide-y divide-white/[0.04]">
+            <div className="divide-y divide-gray-200">
               {filteredSubscribers.map((sub) => (
                 <div
                   key={sub.id}
-                  className="flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-white/[0.02] md:grid md:grid-cols-12 md:items-center md:gap-4"
+                  className="flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-gray-50 md:grid md:grid-cols-12 md:items-center md:gap-4"
                 >
                   {/* Subscriber info */}
                   <div className="col-span-4 flex items-center gap-3">

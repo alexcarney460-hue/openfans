@@ -80,15 +80,15 @@ export default function WalletConnectButton({
           </svg>
         </button>
         {showMenu && (
-          <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-white/10 bg-[#141414] shadow-xl">
-            <div className="border-b border-white/5 px-4 py-2.5">
-              <p className="text-xs text-white/40">Connected with {walletName}</p>
-              <p className="mt-0.5 font-mono text-xs text-white/60">{address}</p>
+          <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+            <div className="border-b border-gray-100 px-4 py-2.5">
+              <p className="text-xs text-gray-400">Connected with {walletName}</p>
+              <p className="mt-0.5 font-mono text-xs text-gray-600">{address}</p>
             </div>
             <button
               type="button"
               onClick={handleDisconnect}
-              className="w-full px-4 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-white/5"
+              className="w-full px-4 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-gray-50"
             >
               Disconnect Wallet
             </button>
@@ -104,7 +104,7 @@ export default function WalletConnectButton({
       onClick={handleConnect}
       disabled={connecting}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-4 py-2.5 text-sm font-medium text-white transition-all hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/10 disabled:cursor-not-allowed disabled:opacity-60",
+        "flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 transition-all hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/10 disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
     >

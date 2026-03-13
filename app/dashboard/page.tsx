@@ -143,7 +143,7 @@ export default function DashboardPage() {
           const Icon = stat.icon;
           const isUp = stat.changeDir === "up";
           return (
-            <Card key={stat.label} className="border-white/[0.06] bg-[#111111]">
+            <Card key={stat.label} className="border-gray-200 bg-white">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div
@@ -190,13 +190,13 @@ export default function DashboardPage() {
           </Link>
         </Button>
         {/* TODO: replace "/alexfitness" with the real username from auth context */}
-        <Button asChild variant="outline" className="border-white/[0.08]">
+        <Button asChild variant="outline" className="border-gray-200">
           <Link href="/alexfitness">
             <User className="mr-2 h-4 w-4" />
             View Profile
           </Link>
         </Button>
-        <Button asChild variant="outline" className="border-white/[0.08]">
+        <Button asChild variant="outline" className="border-gray-200">
           <Link href="/dashboard/earnings">
             <Wallet className="mr-2 h-4 w-4" />
             Withdraw Funds
@@ -206,7 +206,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Earnings chart placeholder */}
-        <Card className="border-white/[0.06] bg-[#111111] lg:col-span-3">
+        <Card className="border-gray-200 bg-white lg:col-span-3">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">
@@ -220,7 +220,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {/* Chart placeholder */}
-            <div className="flex h-64 items-end gap-2 rounded-lg border border-dashed border-white/[0.06] p-4">
+            <div className="flex h-64 items-end gap-2 rounded-lg border border-dashed border-gray-200 p-4">
               {[40, 55, 35, 70, 50, 80, 65, 90, 60, 75, 85, 95].map(
                 (height, i) => (
                   <div
@@ -249,7 +249,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Recent activity */}
-        <Card className="border-white/[0.06] bg-[#111111] lg:col-span-2">
+        <Card className="border-gray-200 bg-white lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold">
               Recent Activity
@@ -260,10 +260,10 @@ export default function DashboardPage() {
               {RECENT_ACTIVITY.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-white/[0.02]"
+                  className="flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50"
                 >
                   {/* Avatar placeholder */}
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs font-semibold text-muted-foreground">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-muted-foreground">
                     {item.user.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">

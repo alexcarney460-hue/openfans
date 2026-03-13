@@ -64,7 +64,7 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a]">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -77,14 +77,14 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/[0.06] bg-[#0f0f0f] transition-all duration-200",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white transition-all duration-200",
           collapsed ? "w-[68px]" : "w-64",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0"
         )}
       >
         {/* Sidebar header */}
-        <div className="flex h-16 items-center justify-between border-b border-white/[0.06] px-4">
+        <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2">
               <span className="text-[#00AFF0] text-xl font-bold tracking-tight">
@@ -130,8 +130,8 @@ export default function DashboardLayout({
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-[#00AFF0]/15 text-white"
-                    : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+                    ? "bg-[#00AFF0]/15 text-gray-900"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 )}
                 aria-current={active ? "page" : undefined}
               >
@@ -152,7 +152,7 @@ export default function DashboardLayout({
 
         {/* Sidebar footer */}
         {!collapsed && (
-          <div className="border-t border-white/[0.06] p-4">
+          <div className="border-t border-gray-200 p-4">
             <div className="rounded-lg bg-[#00AFF0]/10 p-3">
               <p className="text-xs font-medium text-muted-foreground">
                 Creator Plan
@@ -173,7 +173,7 @@ export default function DashboardLayout({
         )}
       >
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/[0.06] bg-[#0a0a0a]/80 px-4 backdrop-blur-md lg:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white/80 px-4 backdrop-blur-md lg:px-6">
           <Button
             variant="ghost"
             size="icon"
@@ -213,12 +213,12 @@ export default function DashboardLayout({
               </button>
               {userMenuOpen && (
                 <div
-                  className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-white/[0.08] bg-[#1a1a1a] py-1 shadow-xl"
+                  className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-xl"
                   role="menu"
                   aria-label="User menu"
                 >
                   <button
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
                     role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
@@ -230,7 +230,7 @@ export default function DashboardLayout({
                     My Profile
                   </button>
                   <button
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
                     role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
@@ -240,9 +240,9 @@ export default function DashboardLayout({
                     <Settings className="h-4 w-4" />
                     Settings
                   </button>
-                  <div className="my-1 border-t border-white/[0.06]" />
+                  <div className="my-1 border-t border-gray-200" />
                   <button
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-white/[0.04]"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-gray-100"
                     role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);

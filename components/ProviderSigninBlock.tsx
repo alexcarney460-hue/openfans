@@ -8,7 +8,7 @@ export default function ProviderSigninBlock() {
       <form action={signInWithGoogle} className="basis-full">
         <button
           type="submit"
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:bg-white/10"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-100"
           aria-label="Sign in with Google"
         >
           <svg width="18" height="18" viewBox="0 0 24 24">
@@ -36,7 +36,7 @@ export default function ProviderSigninBlock() {
       <form action={signInWithTwitter} className="basis-full">
         <button
           type="submit"
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:bg-white/10"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-100"
           aria-label="Sign in with X"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

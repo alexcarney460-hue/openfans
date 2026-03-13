@@ -179,17 +179,17 @@ export function SubscribeModal({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Modal Card */}
-      <div className="relative w-full max-w-md rounded-xl border border-white/[0.06] bg-[#111] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
           aria-label="Close modal"
         >
           <svg
@@ -212,7 +212,7 @@ export function SubscribeModal({
           <div className="flex flex-col items-center py-4 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
               <svg
-                className="h-8 w-8 text-green-400"
+                className="h-8 w-8 text-green-500"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -225,14 +225,14 @@ export function SubscribeModal({
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-white">
+            <h3 className="text-lg font-bold text-gray-900">
               Subscription Active!
             </h3>
-            <p className="mt-1 text-sm text-white/50">
+            <p className="mt-1 text-sm text-gray-500">
               You are now subscribed to @{creatorUsername}
             </p>
-            <div className="mt-4 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3">
-              <p className="text-xs text-white/40">Transaction</p>
+            <div className="mt-4 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+              <p className="text-xs text-gray-400">Transaction</p>
               <a
                 href={`https://explorer.solana.com/tx/${txState.signature}`}
                 target="_blank"
@@ -261,18 +261,18 @@ export function SubscribeModal({
                   {creatorName.charAt(0)}
                 </span>
               </div>
-              <h3 className="text-lg font-bold text-white">{creatorName}</h3>
-              <p className="text-sm text-white/40">@{creatorUsername}</p>
+              <h3 className="text-lg font-bold text-gray-900">{creatorName}</h3>
+              <p className="text-sm text-gray-400">@{creatorUsername}</p>
             </div>
 
             {/* Subscription Tier */}
-            <div className="mb-5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-center">
-              <p className="text-sm text-white/60">Monthly subscription</p>
-              <p className="mt-0.5 text-xl font-bold text-white">
+            <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-center">
+              <p className="text-sm text-gray-500">Monthly subscription</p>
+              <p className="mt-0.5 text-xl font-bold text-gray-900">
                 ${price.toFixed(2)}
-                <span className="text-sm font-normal text-white/40">/mo</span>
+                <span className="text-sm font-normal text-gray-400">/mo</span>
               </p>
-              <p className="mt-0.5 text-xs text-white/30">Paid in USDC on Solana</p>
+              <p className="mt-0.5 text-xs text-gray-400">Paid in USDC on Solana</p>
             </div>
 
             {/* Payment Options */}
@@ -301,10 +301,10 @@ export function SubscribeModal({
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-gray-900">
                     Pay with Wallet
                   </p>
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-gray-400">
                     {connected
                       ? `${walletName} - ${truncateAddress(publicKey?.toBase58() ?? "")}`
                       : "Connect wallet to pay with USDC"}
@@ -314,10 +314,10 @@ export function SubscribeModal({
               </label>
 
               {/* Pay with Card (Coming Soon) */}
-              <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 opacity-50">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/5">
+              <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 opacity-50">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
                   <svg
-                    className="h-5 w-5 text-white/30"
+                    className="h-5 w-5 text-gray-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -331,12 +331,12 @@ export function SubscribeModal({
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white/50">
+                  <p className="text-sm font-semibold text-gray-500">
                     Pay with Card
                   </p>
-                  <p className="text-xs text-white/30">Coming soon</p>
+                  <p className="text-xs text-gray-400">Coming soon</p>
                 </div>
-                <div className="ml-auto h-4 w-4 flex-shrink-0 rounded-full border-2 border-white/10" />
+                <div className="ml-auto h-4 w-4 flex-shrink-0 rounded-full border-2 border-gray-300" />
               </div>
             </div>
 
@@ -344,14 +344,14 @@ export function SubscribeModal({
             {connected ? (
               <div className="space-y-3">
                 {/* Connected wallet info */}
-                <div className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2.5">
+                <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-400" />
-                    <span className="text-xs text-white/60">
+                    <span className="text-xs text-gray-500">
                       {walletName}
                     </span>
                   </div>
-                  <span className="font-mono text-xs text-white/40">
+                  <span className="font-mono text-xs text-gray-400">
                     {truncateAddress(publicKey?.toBase58() ?? "")}
                   </span>
                 </div>
@@ -395,7 +395,7 @@ export function SubscribeModal({
                 >
                   Connect Wallet
                 </button>
-                <p className="text-center text-xs text-white/30">
+                <p className="text-center text-xs text-gray-400">
                   Don&apos;t have a wallet?{" "}
                   <a
                     href="https://phantom.app/"
@@ -410,7 +410,7 @@ export function SubscribeModal({
             )}
 
             {/* Disclaimer */}
-            <p className="mt-3 text-center text-xs text-white/30">
+            <p className="mt-3 text-center text-xs text-gray-400">
               Cancel anytime. You&apos;ll be charged monthly.
             </p>
           </>

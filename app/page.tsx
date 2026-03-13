@@ -52,7 +52,7 @@ export default function LandingPage() {
   const creators = getAllCreators();
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col bg-white">
       <SiteHeader />
 
       <main className="flex-1">
@@ -61,7 +61,7 @@ export default function LandingPage() {
           {/* Subtle top glow */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-32 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full opacity-15 blur-3xl"
+            className="pointer-events-none absolute -top-32 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full opacity-10 blur-3xl"
             style={{
               background:
                 "radial-gradient(ellipse, #00AFF0 0%, transparent 70%)",
@@ -70,12 +70,12 @@ export default function LandingPage() {
 
           <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl text-center">
-              <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+              <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl">
                 The creator platform{" "}
                 <span className="text-accent-blue">that pays more.</span>
               </h1>
 
-              <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-white/55 sm:text-xl">
+              <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-500 sm:text-xl">
                 Share exclusive content, build real community, and keep more of
                 what you earn. Fans subscribe. You get paid. Simple.
               </p>
@@ -93,7 +93,7 @@ export default function LandingPage() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-12 border-white/15 bg-transparent px-8 text-base font-semibold text-white hover:bg-white/5"
+                    className="h-12 border-gray-200 bg-transparent px-8 text-base font-semibold text-gray-900 hover:bg-gray-100"
                   >
                     Browse Creators
                   </Button>
@@ -115,19 +115,19 @@ export default function LandingPage() {
         </section>
 
         {/* ==================== SOCIAL PROOF ==================== */}
-        <section className="border-y border-white/5 bg-white/[0.02] py-6">
-          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 text-sm text-white/40">
+        <section className="border-y border-gray-200 bg-gray-50 py-6">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 text-sm text-gray-400">
             <span>
-              <strong className="text-white/70">10,000+</strong> creators
+              <strong className="text-gray-600">10,000+</strong> creators
             </span>
-            <span className="hidden text-white/10 sm:inline">|</span>
+            <span className="hidden text-gray-300 sm:inline">|</span>
             <span>
-              <strong className="text-white/70">$2.4M+</strong> earned this
+              <strong className="text-gray-600">$2.4M+</strong> earned this
               month
             </span>
-            <span className="hidden text-white/10 sm:inline">|</span>
+            <span className="hidden text-gray-300 sm:inline">|</span>
             <span>
-              <strong className="text-white/70">500K+</strong> subscribers
+              <strong className="text-gray-600">500K+</strong> subscribers
             </span>
           </div>
         </section>
@@ -141,15 +141,15 @@ export default function LandingPage() {
                 return (
                   <div
                     key={prop.title}
-                    className="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center transition-colors hover:border-white/10 hover:bg-white/[0.04]"
+                    className="rounded-xl border border-gray-200 bg-white p-6 text-center transition-colors hover:border-gray-300 hover:bg-gray-50"
                   >
                     <div className="mx-auto mb-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#00AFF0]/10 text-[#00AFF0]">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 className="text-lg font-bold text-gray-900">
                       {prop.title}
                     </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-white/45">
+                    <p className="mt-1.5 text-sm leading-relaxed text-gray-500">
                       {prop.description}
                     </p>
                   </div>
@@ -160,13 +160,13 @@ export default function LandingPage() {
         </section>
 
         {/* ==================== CREATOR SHOWCASE ==================== */}
-        <section className="border-t border-white/5 py-20 lg:py-28">
+        <section className="border-t border-gray-200 py-20 lg:py-28">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="mb-10 text-center">
-              <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h2 className="font-display text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                 Discover creators you will love
               </h2>
-              <p className="mt-3 text-base text-white/45">
+              <p className="mt-3 text-base text-gray-500">
                 Fitness coaches, artists, chefs, analysts, and more.
               </p>
             </div>
@@ -181,7 +181,7 @@ export default function LandingPage() {
               <Link href="/explore">
                 <Button
                   variant="outline"
-                  className="border-white/10 bg-transparent text-white hover:bg-white/5"
+                  className="border-gray-200 bg-transparent text-gray-900 hover:bg-gray-100"
                 >
                   See all creators
                 </Button>
@@ -191,12 +191,12 @@ export default function LandingPage() {
         </section>
 
         {/* ==================== BOTTOM CTA ==================== */}
-        <section className="border-t border-white/5 py-20 lg:py-28">
+        <section className="border-t border-gray-200 py-20 lg:py-28">
           <div className="mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8">
-            <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            <h2 className="font-display text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Ready to earn on your terms?
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-white/45">
+            <p className="mt-4 text-base leading-relaxed text-gray-500">
               Join thousands of creators who chose a platform that respects
               their work and their wallet.
             </p>

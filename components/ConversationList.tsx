@@ -36,16 +36,16 @@ export default function ConversationList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-[#1a1a1a] p-4">
-        <h2 className="mb-3 text-lg font-semibold text-white">Messages</h2>
+      <div className="border-b border-gray-200 p-4">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">Messages</h2>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#666]" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={handleSearchChange}
-            className="w-full rounded-xl bg-[#141414] border border-[#262626] py-2.5 pl-10 pr-4 text-sm text-white placeholder-[#666] outline-none transition-colors focus:border-[#00AFF0]/50 focus:ring-1 focus:ring-[#00AFF0]/25"
+            className="w-full rounded-xl bg-gray-50 border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-[#00AFF0]/50 focus:ring-1 focus:ring-[#00AFF0]/25"
             aria-label="Search conversations"
           />
         </div>
@@ -57,7 +57,7 @@ export default function ConversationList({
         aria-label="Conversations"
       >
         {filteredConversations.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-[#666]">
+          <div className="px-4 py-8 text-center text-sm text-gray-400">
             No conversations found
           </div>
         )}
@@ -75,7 +75,7 @@ export default function ConversationList({
                 ${
                   isActive
                     ? "bg-[#00AFF0]/10 border-l-2 border-l-[#00AFF0]"
-                    : "border-l-2 border-l-transparent hover:bg-[#141414]"
+                    : "border-l-2 border-l-transparent hover:bg-gray-50"
                 }
               `}
             >
@@ -85,7 +85,7 @@ export default function ConversationList({
                 <img
                   src={conversation.userAvatar}
                   alt={conversation.userName}
-                  className="h-11 w-11 rounded-full bg-[#1a1a1a]"
+                  className="h-11 w-11 rounded-full bg-gray-100"
                 />
                 {conversation.unreadCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#00AFF0] text-[10px] font-bold text-white">
@@ -100,21 +100,21 @@ export default function ConversationList({
                   <span
                     className={`truncate text-sm font-medium ${
                       conversation.unreadCount > 0
-                        ? "text-white"
-                        : "text-[#ccc]"
+                        ? "text-gray-900"
+                        : "text-gray-600"
                     }`}
                   >
                     {conversation.userName}
                   </span>
-                  <span className="ml-2 flex-shrink-0 text-[11px] text-[#555]">
+                  <span className="ml-2 flex-shrink-0 text-[11px] text-gray-400">
                     {conversation.lastMessageTime}
                   </span>
                 </div>
                 <p
                   className={`mt-0.5 truncate text-xs ${
                     conversation.unreadCount > 0
-                      ? "text-[#999] font-medium"
-                      : "text-[#555]"
+                      ? "text-gray-500 font-medium"
+                      : "text-gray-400"
                   }`}
                 >
                   {conversation.lastMessage}

@@ -71,11 +71,11 @@ export default function MessagesPage() {
   );
 
   return (
-    <main className="flex h-[calc(100vh-57px)] overflow-hidden bg-[#0a0a0a]">
+    <main className="flex h-[calc(100vh-57px)] overflow-hidden bg-gray-50">
       {/* Left Panel - Conversation List */}
       <div
         className={`
-          w-full flex-shrink-0 border-r border-[#1a1a1a] bg-[#0d0d0d]
+          w-full flex-shrink-0 border-r border-gray-200 bg-white
           md:w-[340px] lg:w-[380px]
           ${activeConversationId ? "hidden md:flex md:flex-col" : "flex flex-col"}
         `}
@@ -97,10 +97,10 @@ export default function MessagesPage() {
         {activeConversation ? (
           <>
             {/* Conversation Header */}
-            <div className="flex items-center gap-3 border-b border-[#1a1a1a] bg-[#0d0d0d]/80 backdrop-blur-sm px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-4 py-3">
               <button
                 onClick={handleBackToList}
-                className="rounded-lg p-1.5 text-[#999] transition-colors hover:bg-[#1a1a1a] hover:text-white md:hidden"
+                className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
                 aria-label="Back to conversations"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -110,14 +110,14 @@ export default function MessagesPage() {
               <img
                 src={activeConversation.userAvatar}
                 alt={activeConversation.userName}
-                className="h-9 w-9 rounded-full bg-[#1a1a1a]"
+                className="h-9 w-9 rounded-full bg-gray-100"
               />
 
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold text-white truncate">
+                <h3 className="text-sm font-semibold text-gray-900 truncate">
                   {activeConversation.userName}
                 </h3>
-                <p className="text-xs text-[#666]">Online</p>
+                <p className="text-xs text-gray-500">Online</p>
               </div>
             </div>
 
@@ -143,9 +143,9 @@ export default function MessagesPage() {
         ) : (
           /* Empty State */
           <div className="flex flex-1 flex-col items-center justify-center px-4">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1a1a1a] border border-[#262626]">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 border border-gray-200">
               <svg
-                className="h-8 w-8 text-[#555]"
+                className="h-8 w-8 text-gray-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -158,10 +158,10 @@ export default function MessagesPage() {
                 />
               </svg>
             </div>
-            <h3 className="mb-1 text-base font-medium text-[#999]">
+            <h3 className="mb-1 text-base font-medium text-gray-500">
               Select a conversation
             </h3>
-            <p className="text-sm text-[#555]">
+            <p className="text-sm text-gray-400">
               Choose someone from the left to start chatting
             </p>
           </div>

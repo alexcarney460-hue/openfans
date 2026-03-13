@@ -194,9 +194,9 @@ export default function OnboardingPage() {
   }, [])
 
   return (
-    <div className="bg-[#0a0a0a] flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="bg-gray-50 flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[520px]">
-        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00AFF0]">
@@ -206,13 +206,13 @@ export default function OnboardingPage() {
 
           {/* Progress Bar */}
           <div className="mb-8">
-            <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
+            <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
               <span>
                 Step {step} of {TOTAL_STEPS}
               </span>
               <span>{Math.round((step / TOTAL_STEPS) * 100)}%</span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
               <div
                 className="bg-[#00AFF0] h-full rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
                   <span
                     key={label}
                     className={`text-xs font-medium ${
-                      idx + 1 <= step ? "text-[#00AFF0]" : "text-zinc-600"
+                      idx + 1 <= step ? "text-[#00AFF0]" : "text-gray-400"
                     }`}
                   >
                     {label}
@@ -238,22 +238,22 @@ export default function OnboardingPage() {
           {step === 1 && (
             <div className="space-y-5">
               <div className="text-center">
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-gray-900">
                   Set up your profile
                 </h2>
-                <p className="mt-1 text-sm text-zinc-400">
+                <p className="mt-1 text-sm text-gray-500">
                   Tell your fans who you are
                 </p>
               </div>
 
               {/* Banner Upload */}
               <div>
-                <Label className="mb-2 block text-zinc-300">
+                <Label className="mb-2 block text-gray-700">
                   Banner Image
                 </Label>
                 <label
                   htmlFor="banner-upload"
-                  className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/10 bg-white/[0.02] transition-colors hover:border-white/20"
+                  className="flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400"
                 >
                   {profile.bannerPreview ? (
                     <img
@@ -264,7 +264,7 @@ export default function OnboardingPage() {
                   ) : (
                     <div className="text-center">
                       <svg
-                        className="mx-auto h-8 w-8 text-zinc-600"
+                        className="mx-auto h-8 w-8 text-gray-400"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -276,7 +276,7 @@ export default function OnboardingPage() {
                           d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"
                         />
                       </svg>
-                      <p className="mt-1 text-xs text-zinc-500">
+                      <p className="mt-1 text-xs text-gray-500">
                         Click to upload banner (1500x500 recommended)
                       </p>
                     </div>
@@ -293,11 +293,11 @@ export default function OnboardingPage() {
 
               {/* Avatar Upload */}
               <div>
-                <Label className="mb-2 block text-zinc-300">Avatar</Label>
+                <Label className="mb-2 block text-gray-700">Avatar</Label>
                 <div className="flex items-center gap-4">
                   <label
                     htmlFor="avatar-upload"
-                    className="flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-white/10 bg-white/[0.02] transition-colors hover:border-white/20"
+                    className="flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-gray-300 bg-gray-50 transition-colors hover:border-gray-400"
                   >
                     {profile.avatarPreview ? (
                       <img
@@ -307,7 +307,7 @@ export default function OnboardingPage() {
                       />
                     ) : (
                       <svg
-                        className="h-8 w-8 text-zinc-600"
+                        className="h-8 w-8 text-gray-400"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -333,7 +333,7 @@ export default function OnboardingPage() {
                     className="hidden"
                     onChange={(e) => handleFileSelect(e, "avatar")}
                   />
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-gray-500">
                     Upload a profile picture (400x400 recommended)
                   </p>
                 </div>
@@ -341,7 +341,7 @@ export default function OnboardingPage() {
 
               {/* Display Name */}
               <div className="grid gap-2">
-                <Label htmlFor="displayName" className="text-zinc-300">
+                <Label htmlFor="displayName" className="text-gray-700">
                   Display Name
                 </Label>
                 <Input
@@ -352,7 +352,7 @@ export default function OnboardingPage() {
                   onChange={(e) =>
                     updateProfile("displayName", e.target.value)
                   }
-                  className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                   aria-invalid={!!profileErrors.displayName}
                 />
                 {profileErrors.displayName && (
@@ -364,11 +364,11 @@ export default function OnboardingPage() {
 
               {/* Username */}
               <div className="grid gap-2">
-                <Label htmlFor="onboard-username" className="text-zinc-300">
+                <Label htmlFor="onboard-username" className="text-gray-700">
                   Username
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
                     @
                   </span>
                   <Input
@@ -379,7 +379,7 @@ export default function OnboardingPage() {
                     onChange={(e) =>
                       updateProfile("username", e.target.value)
                     }
-                    className="border-white/10 bg-white/5 pl-8 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                    className="border-gray-200 bg-gray-50 pl-8 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                     aria-invalid={!!profileErrors.username}
                   />
                 </div>
@@ -392,7 +392,7 @@ export default function OnboardingPage() {
 
               {/* Bio */}
               <div className="grid gap-2">
-                <Label htmlFor="bio" className="text-zinc-300">
+                <Label htmlFor="bio" className="text-gray-700">
                   Bio
                 </Label>
                 <textarea
@@ -402,9 +402,9 @@ export default function OnboardingPage() {
                   onChange={(e) => updateProfile("bio", e.target.value)}
                   rows={3}
                   maxLength={300}
-                  className="flex w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/30 focus:ring-offset-0"
+                  className="flex w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/30 focus:ring-offset-0"
                 />
-                <p className="text-right text-xs text-zinc-600">
+                <p className="text-right text-xs text-gray-400">
                   {profile.bio.length}/300
                 </p>
               </div>
@@ -415,17 +415,17 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div className="space-y-5">
               <div className="text-center">
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-gray-900">
                   Set your pricing
                 </h2>
-                <p className="mt-1 text-sm text-zinc-400">
+                <p className="mt-1 text-sm text-gray-500">
                   Choose how much fans pay to subscribe
                 </p>
               </div>
 
               {/* Monthly Price */}
               <div className="grid gap-2">
-                <Label htmlFor="monthlyPrice" className="text-zinc-300">
+                <Label htmlFor="monthlyPrice" className="text-gray-700">
                   Monthly Subscription Price
                 </Label>
                 <div className="relative">
@@ -439,10 +439,10 @@ export default function OnboardingPage() {
                     onChange={(e) =>
                       updateSubscription("monthlyPrice", e.target.value)
                     }
-                    className="border-white/10 bg-white/5 pr-16 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                    className="border-gray-200 bg-gray-50 pr-16 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                     aria-invalid={!!subErrors.monthlyPrice}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-500">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
                     USDC/mo
                   </span>
                 </div>
@@ -454,13 +454,13 @@ export default function OnboardingPage() {
               </div>
 
               {/* Premium Tier Toggle */}
-              <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <label className="flex cursor-pointer items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-gray-900">
                       Add Premium Tier
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-gray-500">
                       Offer an exclusive tier with higher pricing
                     </p>
                   </div>
@@ -477,7 +477,7 @@ export default function OnboardingPage() {
                       className={`h-6 w-11 rounded-full transition-colors ${
                         subscription.hasPremiumTier
                           ? "bg-[#00AFF0]"
-                          : "bg-white/10"
+                          : "bg-gray-300"
                       }`}
                     >
                       <div
@@ -493,7 +493,7 @@ export default function OnboardingPage() {
 
                 {subscription.hasPremiumTier && (
                   <div className="mt-4 grid gap-2">
-                    <Label htmlFor="premiumPrice" className="text-zinc-300">
+                    <Label htmlFor="premiumPrice" className="text-gray-700">
                       Premium Tier Price
                     </Label>
                     <div className="relative">
@@ -507,10 +507,10 @@ export default function OnboardingPage() {
                         onChange={(e) =>
                           updateSubscription("premiumPrice", e.target.value)
                         }
-                        className="border-white/10 bg-white/5 pr-16 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                        className="border-gray-200 bg-white pr-16 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                         aria-invalid={!!subErrors.premiumPrice}
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-500">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
                         USDC/mo
                       </span>
                     </div>
@@ -525,10 +525,10 @@ export default function OnboardingPage() {
 
               {/* Category Selection */}
               <div className="grid gap-2">
-                <Label className="text-zinc-300">
+                <Label className="text-gray-700">
                   Content Categories
                 </Label>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-gray-500">
                   Select one or more categories that describe your content
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -542,7 +542,7 @@ export default function OnboardingPage() {
                         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                           selected
                             ? "border-[#00AFF0] bg-[#00AFF0]/15 text-[#33C1F5]"
-                            : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20"
+                            : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300"
                         }`}
                       >
                         {cat}
@@ -563,10 +563,10 @@ export default function OnboardingPage() {
           {step === 3 && (
             <div className="space-y-5">
               <div className="text-center">
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-gray-900">
                   Connect your wallet
                 </h2>
-                <p className="mt-1 text-sm text-zinc-400">
+                <p className="mt-1 text-sm text-gray-500">
                   Connect your Solana wallet to receive payments
                 </p>
               </div>
@@ -592,7 +592,7 @@ export default function OnboardingPage() {
 
               {/* Info Boxes */}
               <div className="space-y-3">
-                <div className="flex items-start gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <svg
                     className="mt-0.5 h-4 w-4 shrink-0 text-[#00AFF0]"
                     fill="none"
@@ -606,12 +606,12 @@ export default function OnboardingPage() {
                       d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
                     />
                   </svg>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-gray-500">
                     Your wallet is used to receive subscription payments in USDC
                     and SOL directly from fans.
                   </p>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <svg
                     className="mt-0.5 h-4 w-4 shrink-0 text-[#00AFF0]"
                     fill="none"
@@ -625,7 +625,7 @@ export default function OnboardingPage() {
                       d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
                     />
                   </svg>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-gray-500">
                     We never have access to your funds. All payments go directly
                     to your wallet via smart contracts.
                   </p>
@@ -663,48 +663,48 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-gray-900">
                   You&apos;re all set!
                 </h2>
-                <p className="mt-2 text-sm text-zinc-400">
+                <p className="mt-2 text-sm text-gray-500">
                   Your creator profile is ready. Start sharing content and
                   building your audience.
                 </p>
               </div>
 
               {/* Summary */}
-              <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.02] p-4 text-left">
+              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4 text-left">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-500">Username</span>
-                  <span className="text-sm text-white">
+                  <span className="text-xs text-gray-500">Username</span>
+                  <span className="text-sm text-gray-900">
                     @{profile.username}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-500">Monthly Price</span>
-                  <span className="text-sm text-white">
+                  <span className="text-xs text-gray-500">Monthly Price</span>
+                  <span className="text-sm text-gray-900">
                     {subscription.monthlyPrice} USDC
                   </span>
                 </div>
                 {subscription.hasPremiumTier && (
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-500">Premium Price</span>
-                    <span className="text-sm text-white">
+                    <span className="text-xs text-gray-500">Premium Price</span>
+                    <span className="text-sm text-gray-900">
                       {subscription.premiumPrice} USDC
                     </span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-500">Wallet</span>
-                  <span className="text-sm text-white">
+                  <span className="text-xs text-gray-500">Wallet</span>
+                  <span className="text-sm text-gray-900">
                     {wallet.connected
                       ? `${wallet.address.slice(0, 4)}...${wallet.address.slice(-4)}`
                       : "Not connected"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-500">Categories</span>
-                  <span className="text-sm text-white">
+                  <span className="text-xs text-gray-500">Categories</span>
+                  <span className="text-sm text-gray-900">
                     {subscription.categories.join(", ")}
                   </span>
                 </div>
@@ -720,7 +720,7 @@ export default function OnboardingPage() {
                 </Link>
                 <Link
                   href={`/${profile.username}`}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-center text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10"
+                  className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-center text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
                 >
                   View My Profile
                 </Link>
@@ -735,7 +735,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10"
+                  className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
                 >
                   Back
                 </button>
@@ -758,7 +758,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={handleBack}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10"
+                className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
               >
                 Back
               </button>

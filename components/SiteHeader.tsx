@@ -14,11 +14,11 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/80 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-1" aria-label="OpenFans home">
-          <span className="text-xl font-bold tracking-tight text-white">
+          <span className="text-xl font-bold tracking-tight text-gray-900">
             <span className="text-[#00AFF0]">Open</span>Fans
           </span>
         </Link>
@@ -29,7 +29,7 @@ export function SiteHeader() {
             <Link
               key={link.label}
               href={link.href}
-              className="text-sm font-medium text-white/60 transition-colors hover:text-white"
+              className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
             >
               {link.label}
             </Link>
@@ -40,7 +40,7 @@ export function SiteHeader() {
         <div className="hidden items-center gap-4 md:flex">
           <Link
             href="/login"
-            className="text-sm font-medium text-white/60 transition-colors hover:text-white"
+            className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
           >
             Log In
           </Link>
@@ -55,7 +55,7 @@ export function SiteHeader() {
         {/* Mobile Hamburger */}
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-md p-2 text-white/60 hover:text-white md:hidden"
+          className="inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:text-gray-900 md:hidden"
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-expanded={mobileOpen}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -66,22 +66,22 @@ export function SiteHeader() {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="border-t border-white/5 bg-black/95 backdrop-blur-xl md:hidden">
+        <div className="border-t border-gray-200 bg-white/95 backdrop-blur-xl md:hidden">
           <nav className="flex flex-col gap-1 px-4 py-3" aria-label="Mobile navigation">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 onClick={() => setMobileOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            <hr className="my-2 border-white/10" />
+            <hr className="my-2 border-gray-200" />
             <Link
               href="/login"
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
               onClick={() => setMobileOpen(false)}
             >
               Log In

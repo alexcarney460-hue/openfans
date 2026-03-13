@@ -86,7 +86,7 @@ export default function ResetPasswordForm() {
     >
       <div className="grid gap-3">
         <div className="grid gap-2">
-          <Label htmlFor="password" className="text-zinc-300">
+          <Label htmlFor="password" className="text-gray-700">
             New Password
           </Label>
           <Input
@@ -100,7 +100,7 @@ export default function ResetPasswordForm() {
               setPassword(e.target.value)
               setErrors((prev) => ({ ...prev, password: undefined }))
             }}
-            className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+            className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
             aria-describedby={errors.password ? "password-error" : undefined}
             aria-invalid={errors.password ? true : undefined}
           />
@@ -111,7 +111,7 @@ export default function ResetPasswordForm() {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="confirm_password" className="text-zinc-300">
+          <Label htmlFor="confirm_password" className="text-gray-700">
             Confirm Password
           </Label>
           <Input
@@ -125,7 +125,7 @@ export default function ResetPasswordForm() {
               setConfirmPassword(e.target.value)
               setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
             }}
-            className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+            className="border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
             aria-describedby={
               errors.confirmPassword ? "confirm-password-error" : undefined
             }

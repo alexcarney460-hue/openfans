@@ -20,24 +20,24 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />
 
       <main className="flex-1 pt-14">
         <div className="mx-auto max-w-xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-white">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Contact Us
             </h1>
-            <p className="mt-2 text-sm text-white/50">
+            <p className="mt-2 text-sm text-gray-500">
               Have a question or need help? We&apos;d love to hear from you.
             </p>
           </div>
 
-          <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-6 sm:p-8">
+          <div className="rounded-xl border border-gray-200 bg-white p-6 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <Label htmlFor="name" className="text-sm text-white/60">
+                <Label htmlFor="name" className="text-sm text-gray-600">
                   Name
                 </Label>
                 <Input
@@ -46,12 +46,12 @@ export default function ContactPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name"
                   required
-                  className="mt-1.5 border-white/[0.06] bg-white/[0.03] focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                 />
               </div>
 
               <div>
-                <Label htmlFor="email" className="text-sm text-white/60">
+                <Label htmlFor="email" className="text-sm text-gray-600">
                   Email
                 </Label>
                 <Input
@@ -61,12 +61,12 @@ export default function ContactPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="mt-1.5 border-white/[0.06] bg-white/[0.03] focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                 />
               </div>
 
               <div>
-                <Label htmlFor="subject" className="text-sm text-white/60">
+                <Label htmlFor="subject" className="text-sm text-gray-600">
                   Subject
                 </Label>
                 <Input
@@ -75,12 +75,12 @@ export default function ContactPage() {
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="How can we help?"
                   required
-                  className="mt-1.5 border-white/[0.06] bg-white/[0.03] focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                 />
               </div>
 
               <div>
-                <Label htmlFor="message" className="text-sm text-white/60">
+                <Label htmlFor="message" className="text-sm text-gray-600">
                   Message
                 </Label>
                 <textarea
@@ -90,7 +90,7 @@ export default function ContactPage() {
                   placeholder="Tell us more..."
                   required
                   rows={5}
-                  className="mt-1.5 w-full rounded-md border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00AFF0]/50 focus:ring-2 focus:ring-[#00AFF0]/30 focus:outline-none resize-none"
+                  className="mt-1.5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00AFF0]/50 focus:ring-2 focus:ring-[#00AFF0]/30 focus:outline-none resize-none"
                 />
               </div>
 
@@ -106,7 +106,7 @@ export default function ContactPage() {
 
           {/* Alternative contact */}
           <div className="mt-8 text-center">
-            <div className="flex items-center justify-center gap-2 text-sm text-white/40">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
               <Mail className="h-4 w-4" />
               <span>
                 Or reach us at{" "}

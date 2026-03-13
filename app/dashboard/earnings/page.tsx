@@ -166,7 +166,7 @@ export default function EarningsPage() {
       {/* Balance and wallet cards */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Total balance */}
-        <Card className="border-white/[0.06] bg-[#111111]">
+        <Card className="border-gray-200 bg-white">
           <CardContent className="p-6">
             <p className="text-sm font-medium text-muted-foreground">
               Available Balance
@@ -187,7 +187,7 @@ export default function EarningsPage() {
         </Card>
 
         {/* Connected wallet */}
-        <Card className="border-white/[0.06] bg-[#111111]">
+        <Card className="border-gray-200 bg-white">
           <CardContent className="p-6">
             <p className="text-sm font-medium text-muted-foreground">
               Connected Wallet
@@ -205,7 +205,7 @@ export default function EarningsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-white/[0.08] text-xs"
+                className="border-gray-200 text-xs"
                 onClick={handleCopyAddress}
               >
                 {copied ? (
@@ -223,7 +223,7 @@ export default function EarningsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-white/[0.08] text-xs"
+                className="border-gray-200 text-xs"
                 onClick={handleViewOnExplorer}
               >
                 <ExternalLink className="mr-1.5 h-3 w-3" />
@@ -235,15 +235,15 @@ export default function EarningsPage() {
       </div>
 
       {/* Transaction history */}
-      <Card className="border-white/[0.06] bg-[#111111]">
-        <CardHeader className="border-b border-white/[0.06] pb-3">
+      <Card className="border-gray-200 bg-white">
+        <CardHeader className="border-b border-gray-200 pb-3">
           <CardTitle className="text-base font-semibold">
             Transaction History
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {/* Table header */}
-          <div className="hidden border-b border-white/[0.06] px-6 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-12 md:gap-4">
+          <div className="hidden border-b border-gray-200 px-6 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground md:grid md:grid-cols-12 md:gap-4">
             <div className="col-span-2">Date</div>
             <div className="col-span-1">Type</div>
             <div className="col-span-5">Description</div>
@@ -252,7 +252,7 @@ export default function EarningsPage() {
           </div>
 
           {/* Table rows */}
-          <div className="divide-y divide-white/[0.04]">
+          <div className="divide-y divide-gray-200">
             {MOCK_TRANSACTIONS.map((tx) => {
               const typeConfig = TYPE_STYLES[tx.type];
               const statusConfig = STATUS_CONFIG[tx.status];
@@ -263,7 +263,7 @@ export default function EarningsPage() {
               return (
                 <div
                   key={tx.id}
-                  className="flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-white/[0.02] md:grid md:grid-cols-12 md:items-center md:gap-4"
+                  className="flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-gray-50 md:grid md:grid-cols-12 md:items-center md:gap-4"
                 >
                   {/* Date */}
                   <div className="col-span-2 text-sm text-muted-foreground">

@@ -30,7 +30,7 @@ export function SubscribeButton({
       <button
         disabled
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 font-medium text-white/50 transition-colors",
+          "inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-gray-100 font-medium text-gray-400 transition-colors",
           sizeClasses[size],
           className,
         )}

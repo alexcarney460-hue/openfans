@@ -42,12 +42,12 @@ export default function ExplorePage() {
   }, [filteredCreators]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0a0a0a]">
+    <div className="flex min-h-screen flex-col bg-white">
       <SiteHeader />
 
       <main className="flex-1 pt-14">
         {/* Search and filters */}
-        <div className="border-b border-white/5 bg-black/40">
+        <div className="border-b border-gray-200 bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center gap-4">
               <div className="w-full max-w-xl">
@@ -78,7 +78,7 @@ export default function ExplorePage() {
         ) : (
           <section className="py-24">
             <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-              <p className="text-lg text-white/40">
+              <p className="text-lg text-gray-400">
                 No creators found matching your search.
               </p>
               <button

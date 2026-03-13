@@ -22,7 +22,7 @@ export function PostCard({
   return (
     <article
       className={cn(
-        "rounded-xl border border-white/[0.06] bg-[#111111] transition-colors hover:border-white/10",
+        "rounded-xl border border-gray-200 bg-white transition-colors hover:border-gray-300",
         className,
       )}
     >
@@ -33,8 +33,8 @@ export function PostCard({
           className="flex-shrink-0"
           aria-label={`View ${post.creatorDisplayName}'s profile`}
         >
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#1e1e1e]">
-            <span className="text-sm font-semibold text-white">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+            <span className="text-sm font-semibold text-gray-600">
               {post.creatorDisplayName.charAt(0)}
             </span>
           </div>
@@ -44,11 +44,11 @@ export function PostCard({
             href={`/${post.creatorUsername}`}
             className="flex items-center gap-1.5"
           >
-            <span className="truncate text-sm font-semibold text-white hover:underline">
+            <span className="truncate text-sm font-semibold text-gray-900 hover:underline">
               {post.creatorDisplayName}
             </span>
           </Link>
-          <p className="text-xs text-white/40">{timeAgo(post.createdAt)}</p>
+          <p className="text-xs text-gray-400">{timeAgo(post.createdAt)}</p>
         </div>
         {post.isPremium && (
           <span className="flex items-center gap-1 rounded-full bg-[#00AFF0]/10 px-2.5 py-1 text-xs font-medium text-[#00AFF0]">
@@ -62,7 +62,7 @@ export function PostCard({
       <div className="px-4 pb-3">
         <p
           className={cn(
-            "text-sm leading-relaxed text-white/80",
+            "text-sm leading-relaxed text-gray-600",
             isLocked && "line-clamp-2",
           )}
         >
@@ -76,19 +76,19 @@ export function PostCard({
           <Link href={`/${post.creatorUsername}/post/${post.id}`}>
             <div
               className={cn(
-                "flex aspect-video items-center justify-center bg-[#1a1a1a]",
+                "flex aspect-video items-center justify-center bg-gray-100",
                 isLocked && "blur-xl",
               )}
             >
-              <span className="text-sm text-white/15">
+              <span className="text-sm text-gray-300">
                 {post.mediaType === "video" ? "Video" : "Image"}
               </span>
             </div>
           </Link>
           {isLocked && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <Lock className="h-6 w-6 text-white/70" />
-              <p className="text-sm font-medium text-white/80">
+              <Lock className="h-6 w-6 text-gray-500" />
+              <p className="text-sm font-medium text-gray-700">
                 Subscribe to unlock
               </p>
             </div>
@@ -97,9 +97,9 @@ export function PostCard({
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-6 border-t border-white/[0.06] px-4 py-3">
+      <div className="flex items-center gap-6 border-t border-gray-200 px-4 py-3">
         <button
-          className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-red-400"
+          className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-red-400"
           aria-label={`Like this post. ${formatNumber(post.stats.likes)} likes`}
         >
           <Heart className="h-4 w-4" />
@@ -107,14 +107,14 @@ export function PostCard({
         </button>
         <Link
           href={`/${post.creatorUsername}/post/${post.id}`}
-          className="flex items-center gap-1.5 text-white/40 transition-colors hover:text-[#00AFF0]"
+          className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-[#00AFF0]"
           aria-label={`View comments. ${formatNumber(post.stats.comments)} comments`}
         >
           <MessageCircle className="h-4 w-4" />
           <span className="text-xs">{formatNumber(post.stats.comments)}</span>
         </Link>
         <button
-          className="ml-auto text-white/40 transition-colors hover:text-white/60"
+          className="ml-auto text-gray-400 transition-colors hover:text-gray-600"
           aria-label="Share this post"
         >
           <Share2 className="h-4 w-4" />
