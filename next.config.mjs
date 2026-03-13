@@ -17,10 +17,32 @@ const nextConfig = {
     ],
   },
   async headers() {
+    const isDev = process.env.NODE_ENV === "development";
+
+    // Build CSP directives
+    const cspDirectives = [
+      "default-src 'self'",
+      `script-src 'self'${isDev ? " 'unsafe-eval'" : ""}`,
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com blob:",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mainnet-beta.solana.com https://api.devnet.solana.com",
+      "frame-src 'none'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "font-src 'self'",
+    ];
+
+    const csp = cspDirectives.join("; ");
+
     return [
       {
         source: "/(.*)",
         headers: [
+          {
+            key: "Content-Security-Policy",
+            value: csp,
+          },
           {
             key: "X-Frame-Options",
             value: "DENY",

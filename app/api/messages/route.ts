@@ -4,6 +4,8 @@ import { messagesTable, usersTable } from "@/utils/db/schema";
 import { eq, or, and, desc, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { createNotification } from "@/utils/notifications";
+import { isValidStorageUrl } from "@/utils/validation";
+import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 /**
  * GET /api/messages
@@ -119,6 +121,10 @@ export async function POST(request: NextRequest) {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
+    // Rate limit: 30 requests per minute per user
+    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "messages", 30, 60_000);
+    if (rateLimited) return rateLimited;
+
     const reqBody = await request.json().catch(() => null);
     if (!reqBody) {
       return NextResponse.json(
@@ -171,6 +177,16 @@ export async function POST(request: NextRequest) {
         { error: "Receiver not found", code: "RECEIVER_NOT_FOUND" },
         { status: 404 },
       );
+    }
+
+    // Validate media_url if provided
+    if (media_url !== undefined && media_url !== null) {
+      if (typeof media_url !== "string" || !isValidStorageUrl(media_url)) {
+        return NextResponse.json(
+          { error: "media_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_MEDIA_URL" },
+          { status: 400 },
+        );
+      }
     }
 
     // Validate paid message fields

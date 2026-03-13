@@ -259,6 +259,7 @@ export default function SettingsPage() {
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={100}
                   className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                 />
               </div>
@@ -270,6 +271,7 @@ export default function SettingsPage() {
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  maxLength={30}
                   className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                 />
               </div>
@@ -282,6 +284,7 @@ export default function SettingsPage() {
                 id="bio"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
+                maxLength={2000}
                 rows={3}
                 className="mt-1.5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#00AFF0]/50 focus:ring-2 focus:ring-[#00AFF0]/30 focus:outline-none resize-none"
               />

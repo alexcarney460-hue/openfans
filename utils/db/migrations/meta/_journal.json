@@ -15,6 +15,13 @@
       "when": 1773389707160,
       "tag": "0001_futuristic_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773391316703,
+      "tag": "0002_shallow_zarda",
+      "breakpoints": true
     }
   ]
 }

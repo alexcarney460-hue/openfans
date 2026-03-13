@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import { contactMessagesTable } from "@/utils/db/schema";
+import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 5000;
@@ -18,6 +19,10 @@ const MAX_FIELD_LENGTH = 200;
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 requests per minute per IP (unauthenticated endpoint)
+    const rateLimitKey = getRateLimitKey(request);
+    const rateLimited = checkRateLimit(request, rateLimitKey, "contact", 5, 60_000);
+    if (rateLimited) return rateLimited;
     const body = await request.json().catch(() => null);
     if (!body) {
       return NextResponse.json(
@@ -27,6 +32,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, email, subject, message } = body;
+
+    // Honeypot anti-spam check: the "website" field is hidden via CSS,
+    // so real users will never fill it in. Bots get a fake success response.
+    if (body.website) {
+      return NextResponse.json({ data: { success: true } });
+    }
 
     // Validate required fields
     if (typeof name !== "string" || name.trim().length === 0) {

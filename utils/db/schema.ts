@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  index,
   integer,
   pgTable,
   serial,
   text,
   timestamp,
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -14,8 +16,8 @@ export const usersTable = pgTable('users_table', {
   id: text('id').primaryKey(), // Supabase auth UUID
   email: text('email').notNull().unique(),
   username: text('username').notNull().unique(),
-  display_name: text('display_name').notNull(),
-  bio: text('bio'),
+  display_name: varchar('display_name', { length: 100 }).notNull(),
+  bio: varchar('bio', { length: 2000 }),
   avatar_url: text('avatar_url'),
   banner_url: text('banner_url'),
   role: text('role', { enum: ['creator', 'subscriber', 'admin'] })
@@ -85,7 +87,9 @@ export const postsTable = pgTable('posts', {
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => ({
+  creatorIdIdx: index('posts_creator_id_idx').on(table.creator_id),
+}));
 
 export type InsertPost = typeof postsTable.$inferInsert;
 export type SelectPost = typeof postsTable.$inferSelect;
@@ -96,17 +100,19 @@ export type SelectPost = typeof postsTable.$inferSelect;
 export const ppvPurchasesTable = pgTable('ppv_purchases', {
   id: serial('id').primaryKey(),
   post_id: integer('post_id')
-    .notNull()
-    .references(() => postsTable.id, { onDelete: 'cascade' }),
+    .references(() => postsTable.id, { onDelete: 'set null' }),
   buyer_id: text('buyer_id')
     .notNull()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   amount_usdc: integer('amount_usdc').notNull(), // cents
-  payment_tx: text('payment_tx').notNull(), // Solana transaction signature
+  payment_tx: text('payment_tx').notNull().unique(), // Solana transaction signature
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => ({
+  buyerIdIdx: index('ppv_purchases_buyer_id_idx').on(table.buyer_id),
+  postIdIdx: index('ppv_purchases_post_id_idx').on(table.post_id),
+}));
 
 export type InsertPpvPurchase = typeof ppvPurchasesTable.$inferInsert;
 export type SelectPpvPurchase = typeof ppvPurchasesTable.$inferSelect;
@@ -125,7 +131,7 @@ export const subscriptionsTable = pgTable('subscriptions', {
     .notNull()
     .default('basic'),
   price_usdc: integer('price_usdc').notNull(), // cents
-  payment_tx: text('payment_tx').notNull(), // Solana transaction signature
+  payment_tx: text('payment_tx').notNull().unique(), // Solana transaction signature
   status: text('status', { enum: ['active', 'expired', 'cancelled'] })
     .notNull()
     .default('active'),
@@ -136,7 +142,11 @@ export const subscriptionsTable = pgTable('subscriptions', {
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => ({
+  subscriberIdIdx: index('subscriptions_subscriber_id_idx').on(table.subscriber_id),
+  creatorIdIdx: index('subscriptions_creator_id_idx').on(table.creator_id),
+  statusIdx: index('subscriptions_status_idx').on(table.status),
+}));
 
 export type InsertSubscription = typeof subscriptionsTable.$inferInsert;
 export type SelectSubscription = typeof subscriptionsTable.$inferSelect;
@@ -159,7 +169,10 @@ export const messagesTable = pgTable('messages', {
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => ({
+  senderIdIdx: index('messages_sender_id_idx').on(table.sender_id),
+  receiverIdIdx: index('messages_receiver_id_idx').on(table.receiver_id),
+}));
 
 export type InsertMessage = typeof messagesTable.$inferInsert;
 export type SelectMessage = typeof messagesTable.$inferSelect;
@@ -178,12 +191,15 @@ export const tipsTable = pgTable('tips', {
     onDelete: 'set null',
   }),
   amount_usdc: integer('amount_usdc').notNull(), // cents
-  payment_tx: text('payment_tx').notNull(), // Solana tx signature
+  payment_tx: text('payment_tx').notNull().unique(), // Solana tx signature
   message: text('message'),
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => ({
+  creatorIdIdx: index('tips_creator_id_idx').on(table.creator_id),
+  paymentTxIdx: index('tips_payment_tx_idx').on(table.payment_tx),
+}));
 
 export type InsertTip = typeof tipsTable.$inferInsert;
 export type SelectTip = typeof tipsTable.$inferSelect;
@@ -197,7 +213,7 @@ export const payoutsTable = pgTable('payouts', {
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   amount_usdc: integer('amount_usdc').notNull(), // cents
   wallet_address: text('wallet_address').notNull(),
-  payment_tx: text('payment_tx').notNull(),
+  payment_tx: text('payment_tx').notNull().unique(),
   status: text('status', { enum: ['pending', 'completed', 'failed'] })
     .notNull()
     .default('pending'),
@@ -270,7 +286,10 @@ export const walletTransactionsTable = pgTable('wallet_transactions', {
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('wallet_transactions_user_id_idx').on(table.user_id),
+  walletIdIdx: index('wallet_transactions_wallet_id_idx').on(table.wallet_id),
+}));
 
 export type InsertWalletTransaction = typeof walletTransactionsTable.$inferInsert;
 export type SelectWalletTransaction = typeof walletTransactionsTable.$inferSelect;
@@ -375,7 +394,10 @@ export const notificationsTable = pgTable('notifications', {
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('notifications_user_id_idx').on(table.user_id),
+  isReadIdx: index('notifications_is_read_idx').on(table.is_read),
+}));
 
 export type InsertNotification = typeof notificationsTable.$inferInsert;
 export type SelectNotification = typeof notificationsTable.$inferSelect;

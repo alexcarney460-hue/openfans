@@ -3,26 +3,8 @@ import { createClient } from '@/utils/supabase/server'
 import { db } from '@/utils/db/db'
 import { usersTable } from '@/utils/db/schema'
 import { eq } from 'drizzle-orm'
-
-/**
- * Sanitize a redirect path to prevent open redirect attacks.
- * Only allows relative paths starting with / and blocks protocol-relative URLs.
- */
-// Emails that should automatically receive the admin role
-const ADMIN_EMAILS = ["gardenablaze@gmail.com"]
-
-function sanitizeRedirectPath(path: string): string {
-  // Must start with exactly one forward slash and not contain protocol indicators
-  if (
-    !path.startsWith('/') ||
-    path.startsWith('//') ||
-    path.includes('\\') ||
-    path.includes(':')
-  ) {
-    return '/'
-  }
-  return path
-}
+import { isAdminEmail } from '@/utils/admin'
+import { sanitizeRedirectPath } from '@/utils/redirect'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -63,7 +45,7 @@ export async function GET(request: Request) {
             username: emailPrefix,
             display_name: displayName,
             avatar_url: user.user_metadata?.picture ?? user.user_metadata?.avatar_url ?? null,
-            role: ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? '') ? 'admin' : 'subscriber',
+            role: isAdminEmail(user.email ?? '') ? 'admin' : 'subscriber',
           })
         }
       }

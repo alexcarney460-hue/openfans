@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
         avatar_url: usersTable.avatar_url,
         banner_url: usersTable.banner_url,
         is_verified: usersTable.is_verified,
-        wallet_address: usersTable.wallet_address,
         created_at: usersTable.created_at,
         // Creator profile fields
         profile_id: creatorProfilesTable.id,

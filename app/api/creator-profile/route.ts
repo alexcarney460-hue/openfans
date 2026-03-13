@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from "@/utils/api/auth";
 import { db } from "@/utils/db/db";
 import { creatorProfilesTable, usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
+import { isValidSolanaAddress } from "@/utils/validation";
 
 /**
  * GET /api/creator-profile
@@ -100,6 +101,12 @@ export async function POST(request: NextRequest) {
         categories: categories.map(String),
       };
       if (typeof payout_wallet === "string" && payout_wallet.trim()) {
+        if (!isValidSolanaAddress(payout_wallet.trim())) {
+          return NextResponse.json(
+            { error: "payout_wallet must be a valid Solana address", code: "INVALID_WALLET" },
+            { status: 400 },
+          );
+        }
         updates.payout_wallet = payout_wallet.trim();
       }
 
@@ -112,16 +119,24 @@ export async function POST(request: NextRequest) {
       profile = updated[0];
     } else {
       // Create new profile
+      let validatedWallet: string | null = null;
+      if (typeof payout_wallet === "string" && payout_wallet.trim()) {
+        if (!isValidSolanaAddress(payout_wallet.trim())) {
+          return NextResponse.json(
+            { error: "payout_wallet must be a valid Solana address", code: "INVALID_WALLET" },
+            { status: 400 },
+          );
+        }
+        validatedWallet = payout_wallet.trim();
+      }
+
       const inserted = await db
         .insert(creatorProfilesTable)
         .values({
           user_id: user.id,
           subscription_price_usdc: priceInCents,
           categories: categories.map(String),
-          payout_wallet:
-            typeof payout_wallet === "string" && payout_wallet.trim()
-              ? payout_wallet.trim()
-              : null,
+          payout_wallet: validatedWallet,
         })
         .returning();
 
@@ -184,7 +199,14 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (typeof body.payout_wallet === "string") {
-      updates.payout_wallet = body.payout_wallet.trim() || null;
+      const trimmedWallet = body.payout_wallet.trim();
+      if (trimmedWallet && !isValidSolanaAddress(trimmedWallet)) {
+        return NextResponse.json(
+          { error: "payout_wallet must be a valid Solana address", code: "INVALID_WALLET" },
+          { status: 400 },
+        );
+      }
+      updates.payout_wallet = trimmedWallet || null;
     }
 
     if (Object.keys(updates).length === 0) {

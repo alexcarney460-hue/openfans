@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { db } from "@/utils/db/db";
 import { usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
+import { isValidStorageUrl } from "@/utils/validation";
 
 /**
  * GET /api/me
@@ -90,11 +92,25 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (typeof body.avatar_url === "string") {
-      updates.avatar_url = body.avatar_url.trim() || null;
+      const trimmed = body.avatar_url.trim();
+      if (trimmed && !isValidStorageUrl(trimmed)) {
+        return NextResponse.json(
+          { error: "avatar_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_AVATAR_URL" },
+          { status: 400 },
+        );
+      }
+      updates.avatar_url = trimmed || null;
     }
 
     if (typeof body.banner_url === "string") {
-      updates.banner_url = body.banner_url.trim() || null;
+      const trimmed = body.banner_url.trim();
+      if (trimmed && !isValidStorageUrl(trimmed)) {
+        return NextResponse.json(
+          { error: "banner_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_BANNER_URL" },
+          { status: 400 },
+        );
+      }
+      updates.banner_url = trimmed || null;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -159,13 +175,33 @@ export async function DELETE() {
     // Delete from our users_table (cascades to subscriptions, posts, messages, etc.)
     await db.delete(usersTable).where(eq(usersTable.id, user.id));
 
-    // Delete from Supabase auth
-    const supabase = createClient();
-    await supabase.auth.admin.deleteUser(user.id).catch(() => {
-      // Admin API may not be available with anon key — user row is already gone
+    // Delete from Supabase auth using the service role key (admin privileges required)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("DELETE /api/me: Missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL");
+      return NextResponse.json(
+        { error: "Account deletion is not configured", code: "CONFIG_ERROR" },
+        { status: 500 },
+      );
+    }
+
+    const adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(user.id);
+    if (deleteAuthError) {
+      console.error("DELETE /api/me: Failed to delete auth user:", deleteAuthError.message);
+      return NextResponse.json(
+        { error: "Failed to delete account", code: "AUTH_DELETE_FAILED" },
+        { status: 500 },
+      );
+    }
+
     // Sign out the current session
+    const supabase = createClient();
     await supabase.auth.signOut();
 
     return NextResponse.json({ data: { deleted: true } });

@@ -3,12 +3,15 @@ import { db } from "@/utils/db/db";
 import {
   postsTable,
   ppvPurchasesTable,
+  creatorProfilesTable,
   notificationsTable,
   walletsTable,
   walletTransactionsTable,
 } from "@/utils/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
+import { verifyTransaction } from "@/utils/solana/verify";
+import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 const PLATFORM_FEE_PERCENT = 5;
 
@@ -28,6 +31,10 @@ export async function POST(
   try {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
+
+    // Rate limit: 10 requests per minute per user (financial endpoint)
+    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "posts/unlock", 10, 60_000);
+    if (rateLimited) return rateLimited;
 
     const postId = parseInt(params.id, 10);
     if (isNaN(postId)) {
@@ -50,6 +57,20 @@ export async function POST(
       return NextResponse.json(
         { error: "payment_tx is required", code: "MISSING_PAYMENT_TX" },
         { status: 400 },
+      );
+    }
+
+    // Check for transaction replay (duplicate payment_tx)
+    const existingTx = await db
+      .select({ id: ppvPurchasesTable.id })
+      .from(ppvPurchasesTable)
+      .where(eq(ppvPurchasesTable.payment_tx, payment_tx.trim()))
+      .limit(1);
+
+    if (existingTx.length > 0) {
+      return NextResponse.json(
+        { error: "This transaction has already been used", code: "DUPLICATE_TX" },
+        { status: 409 },
       );
     }
 
@@ -95,6 +116,29 @@ export async function POST(
       );
     }
 
+    // Get creator wallet for on-chain verification
+    const creatorProfile = await db
+      .select({ payout_wallet: creatorProfilesTable.payout_wallet })
+      .from(creatorProfilesTable)
+      .where(eq(creatorProfilesTable.user_id, post.creator_id))
+      .limit(1);
+
+    const recipientWallet = creatorProfile[0]?.payout_wallet || "";
+
+    // Verify the Solana transaction on-chain
+    const verification = await verifyTransaction(
+      payment_tx.trim(),
+      post.ppv_price_usdc,
+      recipientWallet,
+    );
+
+    if (!verification.verified) {
+      return NextResponse.json(
+        { error: verification.error ?? "Transaction verification failed", code: "INVALID_TX" },
+        { status: 400 },
+      );
+    }
+
     // Record the PPV purchase
     const [purchase] = await db
       .insert(ppvPurchasesTable)
@@ -106,48 +150,67 @@ export async function POST(
       })
       .returning();
 
-    // Record wallet transactions for buyer and creator
-    // Buyer: ppv_charge (debit)
-    const buyerWallet = await db
-      .select()
-      .from(walletsTable)
-      .where(eq(walletsTable.user_id, user.id))
-      .limit(1);
+    // Atomic wallet balance updates for buyer and creator
+    // Buyer: ppv_charge (debit) -- atomic debit with insufficient-balance guard
+    const buyerUpdated = await db
+      .update(walletsTable)
+      .set({
+        balance_usdc: sql`${walletsTable.balance_usdc} - ${post.ppv_price_usdc}`,
+        updated_at: new Date(),
+      })
+      .where(
+        sql`${walletsTable.user_id} = ${user.id} AND ${walletsTable.balance_usdc} >= ${post.ppv_price_usdc}`,
+      )
+      .returning();
 
-    if (buyerWallet.length > 0) {
-      const newBalance = buyerWallet[0].balance_usdc - post.ppv_price_usdc;
-      await db.insert(walletTransactionsTable).values({
-        wallet_id: buyerWallet[0].id,
-        user_id: user.id,
-        type: "ppv_charge",
-        amount_usdc: -post.ppv_price_usdc,
-        balance_after: newBalance,
-        description: `PPV unlock: "${post.title ?? "Untitled"}"`,
-        reference_id: payment_tx.trim(),
-        related_user_id: post.creator_id,
-      });
+    if (buyerUpdated.length === 0) {
+      // Rollback the PPV purchase record since payment failed
+      await db
+        .delete(ppvPurchasesTable)
+        .where(eq(ppvPurchasesTable.id, purchase.id));
+
+      return NextResponse.json(
+        {
+          error: "Insufficient wallet balance for this purchase",
+          code: "INSUFFICIENT_BALANCE",
+        },
+        { status: 400 },
+      );
     }
 
-    // Creator: ppv_received (credit, minus platform fee)
+    await db.insert(walletTransactionsTable).values({
+      wallet_id: buyerUpdated[0].id,
+      user_id: user.id,
+      type: "ppv_charge",
+      amount_usdc: -post.ppv_price_usdc,
+      balance_after: buyerUpdated[0].balance_usdc,
+      description: `PPV unlock: "${post.title ?? "Untitled"}"`,
+      reference_id: payment_tx.trim(),
+      related_user_id: post.creator_id,
+    });
+
+    // Creator: ppv_received (credit, minus platform fee) -- atomic credit
     const platformFee = Math.round(
       (post.ppv_price_usdc * PLATFORM_FEE_PERCENT) / 100,
     );
     const creatorAmount = post.ppv_price_usdc - platformFee;
 
-    const creatorWallet = await db
-      .select()
-      .from(walletsTable)
+    const creatorUpdated = await db
+      .update(walletsTable)
+      .set({
+        balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
+        updated_at: new Date(),
+      })
       .where(eq(walletsTable.user_id, post.creator_id))
-      .limit(1);
+      .returning();
 
-    if (creatorWallet.length > 0) {
-      const newCreatorBalance = creatorWallet[0].balance_usdc + creatorAmount;
+    if (creatorUpdated.length > 0) {
       await db.insert(walletTransactionsTable).values({
-        wallet_id: creatorWallet[0].id,
+        wallet_id: creatorUpdated[0].id,
         user_id: post.creator_id,
         type: "ppv_received",
         amount_usdc: creatorAmount,
-        balance_after: newCreatorBalance,
+        balance_after: creatorUpdated[0].balance_usdc,
         description: `PPV sale: "${post.title ?? "Untitled"}" (5% fee: $${(platformFee / 100).toFixed(2)})`,
         reference_id: payment_tx.trim(),
         related_user_id: user.id,

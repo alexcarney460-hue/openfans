@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { validateMagicBytes } from "@/utils/validation";
+import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -45,6 +47,10 @@ export async function POST(request: NextRequest) {
         { status: 401 },
       );
     }
+
+    // Rate limit: 20 requests per minute per user
+    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "upload", 20, 60_000);
+    if (rateLimited) return rateLimited;
 
     // Parse form data
     const formData = await request.formData().catch(() => null);
@@ -105,8 +111,20 @@ export async function POST(request: NextRequest) {
       .slice(0, 50);
     const filePath = `${user.id}/${Date.now()}-${sanitizedName}.${extension}`;
 
-    // Upload to Supabase Storage
+    // Read file buffer and validate magic bytes match the declared MIME type
     const arrayBuffer = await file.arrayBuffer();
+
+    if (!validateMagicBytes(arrayBuffer, file.type)) {
+      return NextResponse.json(
+        {
+          error: "File content does not match declared type",
+          code: "MAGIC_BYTES_MISMATCH",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Upload to Supabase Storage
     const buffer = new Uint8Array(arrayBuffer);
 
     const { error: uploadError } = await supabase.storage

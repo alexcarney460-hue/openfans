@@ -5,12 +5,11 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/utils/db/db'
 import { usersTable } from '@/utils/db/schema'
 import { eq } from 'drizzle-orm'
+import { isAdminEmail } from '@/utils/admin'
+import { sanitizeRedirectPath } from '@/utils/redirect'
 
 
 const PUBLIC_URL = process.env.NEXT_PUBLIC_WEBSITE_URL || "http://localhost:3000"
-
-// Emails that should automatically receive the admin role
-const ADMIN_EMAILS = ["gardenablaze@gmail.com"]
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_MIN_LENGTH = 8
@@ -36,21 +35,6 @@ function validateEmail(email: string): string | null {
         return "Please enter a valid email address"
     }
     return null
-}
-
-/**
- * Sanitize a redirect path to prevent open redirect attacks.
- */
-function sanitizeRedirectPath(path: string): string {
-    if (
-        !path.startsWith('/') ||
-        path.startsWith('//') ||
-        path.includes('\\') ||
-        path.includes(':')
-    ) {
-        return '/'
-    }
-    return path
 }
 
 export async function resetPassword(currentState: { message: string }, formData: FormData) {
@@ -101,7 +85,6 @@ export async function signup(currentState: { message: string }, formData: FormDa
         email: formData.get('email') as string,
         password: formData.get('password') as string,
         username: formData.get('username') as string || formData.get('name') as string || '',
-        role: formData.get('role') as string || 'subscriber',
     }
 
     // Server-side email validation
@@ -153,16 +136,14 @@ export async function signup(currentState: { message: string }, formData: FormDa
             email: signUpData.user.email!,
             username: data.username,
             display_name: data.username,
-            role: ADMIN_EMAILS.includes(data.email.toLowerCase()) ? 'admin' : data.role === 'creator' ? 'creator' : 'subscriber',
+            role: isAdminEmail(data.email) ? 'admin' : 'subscriber',
         })
     } catch (err) {
         console.error("Error in signup:", err instanceof Error ? err.message : "Unknown error")
         return { message: "Failed to setup user account" }
     }
 
-    const redirectPath = sanitizeRedirectPath(
-        data.role === 'creator' ? '/onboarding' : '/dashboard'
-    )
+    const redirectPath = '/dashboard'
     revalidatePath("/", "layout")
     redirect(redirectPath)
 }

@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
 import { createNotification } from "@/utils/notifications";
+import { isValidAmount } from "@/utils/validation";
+import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 /**
  * POST /api/tips
@@ -21,6 +23,10 @@ export async function POST(request: NextRequest) {
   try {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
+
+    // Rate limit: 10 requests per minute per user (financial endpoint)
+    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "tips", 10, 60_000);
+    if (rateLimited) return rateLimited;
 
     const body = await request.json().catch(() => null);
     if (!body) {
@@ -40,9 +46,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (typeof amount_usdc !== "number" || amount_usdc <= 0) {
+    if (typeof amount_usdc !== "number" || !isValidAmount(amount_usdc)) {
       return NextResponse.json(
-        { error: "amount_usdc must be a positive number", code: "INVALID_AMOUNT" },
+        { error: "amount_usdc must be a positive integer not exceeding 1000000 (i.e. $10,000)", code: "INVALID_AMOUNT" },
         { status: 400 },
       );
     }
@@ -133,16 +139,16 @@ export async function POST(request: NextRequest) {
 
     const recipientWallet = creatorProfile[0]?.payout_wallet || "";
 
-    // Verify the Solana transaction (placeholder)
-    const isValid = await verifyTransaction(
+    // Verify the Solana transaction on-chain
+    const verification = await verifyTransaction(
       payment_tx.trim(),
       amount_usdc,
       recipientWallet,
     );
 
-    if (!isValid) {
+    if (!verification.verified) {
       return NextResponse.json(
-        { error: "Transaction verification failed", code: "INVALID_TX" },
+        { error: verification.error ?? "Transaction verification failed", code: "INVALID_TX" },
         { status: 400 },
       );
     }

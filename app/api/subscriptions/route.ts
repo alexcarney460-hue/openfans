@@ -9,6 +9,8 @@ import { eq, and, desc } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
 import { createNotification } from "@/utils/notifications";
+import { isValidAmount } from "@/utils/validation";
+import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 const VALID_TIERS = ["basic", "premium", "vip"] as const;
 type SubscriptionTier = (typeof VALID_TIERS)[number];
@@ -70,6 +72,10 @@ export async function POST(request: NextRequest) {
   try {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
+
+    // Rate limit: 10 requests per minute per user (financial endpoint)
+    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "subscriptions", 10, 60_000);
+    if (rateLimited) return rateLimited;
 
     const body = await request.json().catch(() => null);
     if (!body) {
@@ -169,18 +175,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the Solana transaction (placeholder)
+    // Validate subscription price is within safe bounds
     const priceUsdc = creatorProfile[0].subscription_price_usdc;
+    if (!isValidAmount(priceUsdc)) {
+      return NextResponse.json(
+        { error: "Subscription price is outside the valid range", code: "INVALID_AMOUNT" },
+        { status: 400 },
+      );
+    }
+
+    // Verify the Solana transaction on-chain
     const recipientWallet = creatorProfile[0].payout_wallet || "";
-    const isValid = await verifyTransaction(
+    const verification = await verifyTransaction(
       payment_tx.trim(),
       priceUsdc,
       recipientWallet,
     );
 
-    if (!isValid) {
+    if (!verification.verified) {
       return NextResponse.json(
-        { error: "Transaction verification failed", code: "INVALID_TX" },
+        { error: verification.error ?? "Transaction verification failed", code: "INVALID_TX" },
         { status: 400 },
       );
     }

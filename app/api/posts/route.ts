@@ -3,6 +3,10 @@ import { db } from "@/utils/db/db";
 import { postsTable, usersTable, subscriptionsTable, ppvPurchasesTable } from "@/utils/db/schema";
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
+import { isValidStorageUrl } from "@/utils/validation";
+
+const MAX_MEDIA_URLS = 20;
+const MAX_URL_LENGTH = 2048;
 
 const VALID_TIERS = ["free", "basic", "premium", "vip"] as const;
 const VALID_MEDIA_TYPES = ["image", "video", "text", "mixed"] as const;
@@ -138,7 +142,7 @@ export async function GET(request: NextRequest) {
           ),
         );
       for (const p of purchases) {
-        purchasedPostIds.add(p.post_id);
+        if (p.post_id !== null) purchasedPostIds.add(p.post_id);
       }
     }
 
@@ -284,10 +288,28 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+      if (media_urls.length > MAX_MEDIA_URLS) {
+        return NextResponse.json(
+          { error: `media_urls cannot exceed ${MAX_MEDIA_URLS} items`, code: "TOO_MANY_MEDIA_URLS" },
+          { status: 400 },
+        );
+      }
       for (const url of media_urls) {
         if (typeof url !== "string") {
           return NextResponse.json(
             { error: "Each media_url must be a string", code: "INVALID_MEDIA_URL" },
+            { status: 400 },
+          );
+        }
+        if (url.length > MAX_URL_LENGTH) {
+          return NextResponse.json(
+            { error: `Each media_url must be under ${MAX_URL_LENGTH} characters`, code: "MEDIA_URL_TOO_LONG" },
+            { status: 400 },
+          );
+        }
+        if (!isValidStorageUrl(url)) {
+          return NextResponse.json(
+            { error: "Each media_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_MEDIA_URL" },
             { status: 400 },
           );
         }
