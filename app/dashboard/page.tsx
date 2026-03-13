@@ -10,6 +10,9 @@ import {
   User,
   Wallet,
   TrendingUp,
+  Compass,
+  Heart,
+  MessageSquare,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,30 +80,41 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<RecentTransaction[]>([]);
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [username, setUsername] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("subscriber");
+  const [displayName, setDisplayName] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+
+  const isCreator = userRole === "creator" || userRole === "admin";
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [earningsRes, subscribersRes, meRes] = await Promise.allSettled([
-          fetch("/api/earnings").then((r) => r.json()),
-          fetch("/api/subscribers").then((r) => r.json()),
-          fetch("/api/me").then((r) => r.json()),
-        ]);
+        const meRes = await fetch("/api/me").then((r) => r.json());
+        if (meRes.data) {
+          setUsername(meRes.data.username ?? null);
+          setUserRole(meRes.data.role ?? "subscriber");
+          setDisplayName(meRes.data.display_name ?? "");
+        }
 
-        if (earningsRes.status === "fulfilled" && earningsRes.value.data) {
-          setSummary(earningsRes.value.data);
-          if (earningsRes.value.transactions) {
-            setRecentActivity(earningsRes.value.transactions.slice(0, 6));
+        const role = meRes.data?.role ?? "subscriber";
+        const isCreatorRole = role === "creator" || role === "admin";
+
+        if (isCreatorRole) {
+          const [earningsRes, subscribersRes] = await Promise.allSettled([
+            fetch("/api/earnings").then((r) => r.json()),
+            fetch("/api/subscribers").then((r) => r.json()),
+          ]);
+
+          if (earningsRes.status === "fulfilled" && earningsRes.value.data) {
+            setSummary(earningsRes.value.data);
+            if (earningsRes.value.transactions) {
+              setRecentActivity(earningsRes.value.transactions.slice(0, 6));
+            }
           }
-        }
 
-        if (subscribersRes.status === "fulfilled" && subscribersRes.value.data) {
-          setSubscriberCount(subscribersRes.value.data.length);
-        }
-
-        if (meRes.status === "fulfilled" && meRes.value.data) {
-          setUsername(meRes.value.data.username ?? null);
+          if (subscribersRes.status === "fulfilled" && subscribersRes.value.data) {
+            setSubscriberCount(subscribersRes.value.data.length);
+          }
         }
       } catch {
         setError("Failed to load dashboard data. Please try again.");
@@ -163,6 +177,79 @@ export default function DashboardPage() {
     },
   ];
 
+  // Fan dashboard
+  if (!isCreator) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Welcome{displayName ? `, ${displayName}` : ""}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Discover and support your favorite creators.
+          </p>
+        </div>
+
+        {/* Fan quick actions */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Link href="/explore">
+            <Card className="border-gray-200 bg-white transition-colors hover:border-[#00AFF0]/30 hover:shadow-sm cursor-pointer">
+              <CardContent className="p-6 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#00AFF0]/10">
+                  <Compass className="h-6 w-6 text-[#00AFF0]" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Explore Creators</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Find new creators to follow</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/messages">
+            <Card className="border-gray-200 bg-white transition-colors hover:border-[#00AFF0]/30 hover:shadow-sm cursor-pointer">
+              <CardContent className="p-6 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#00AFF0]/10">
+                  <MessageSquare className="h-6 w-6 text-[#00AFF0]" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Messages</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Chat with your favorite creators</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/dashboard/wallet">
+            <Card className="border-gray-200 bg-white transition-colors hover:border-[#00AFF0]/30 hover:shadow-sm cursor-pointer">
+              <CardContent className="p-6 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#00AFF0]/10">
+                  <Wallet className="h-6 w-6 text-[#00AFF0]" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Wallet</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Manage your connected wallet</p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Become a creator CTA */}
+        <Card className="border-[#00AFF0]/20 bg-gradient-to-r from-[#00AFF0]/5 to-transparent">
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Want to start creating?</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Keep up to 95% of your earnings. Set up your creator profile in under 2 minutes.
+              </p>
+            </div>
+            <Button asChild className="bg-[#00AFF0] hover:bg-[#009dd8] shrink-0">
+              <Link href="/onboarding">
+                Become a Creator
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Creator dashboard
   return (
     <div className="space-y-6">
       {/* Page header */}

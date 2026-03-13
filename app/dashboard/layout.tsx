@@ -21,22 +21,34 @@ import {
   ChevronLeft,
   User,
   LogOut,
+  Compass,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
 
-const NAV_ITEMS = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  creatorOnly?: boolean;
+  fanOnly?: boolean;
+};
+
+const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/dashboard/posts", label: "My Posts", icon: FileText },
-  { href: "/dashboard/posts/new", label: "New Post", icon: PenSquare },
+  { href: "/explore", label: "Explore Creators", icon: Compass, fanOnly: true },
+  { href: "/dashboard/subscriptions", label: "My Subscriptions", icon: Heart, fanOnly: true },
+  { href: "/dashboard/posts", label: "My Posts", icon: FileText, creatorOnly: true },
+  { href: "/dashboard/posts/new", label: "New Post", icon: PenSquare, creatorOnly: true },
   { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
-  { href: "/dashboard/subscribers", label: "Subscribers", icon: Users },
-  { href: "/dashboard/earnings", label: "Earnings", icon: DollarSign },
+  { href: "/dashboard/subscribers", label: "Subscribers", icon: Users, creatorOnly: true },
+  { href: "/dashboard/earnings", label: "Earnings", icon: DollarSign, creatorOnly: true },
   { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
-  { href: "/dashboard/affiliate", label: "Affiliates", icon: Gift },
+  { href: "/dashboard/affiliate", label: "Affiliates", icon: Gift, creatorOnly: true },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 export default function DashboardLayout({
   children,
@@ -55,6 +67,7 @@ export default function DashboardLayout({
     display_name: string;
     avatar_url: string | null;
     email: string;
+    role: string;
   } | null>(null);
 
   // Fetch current user profile on mount
@@ -162,7 +175,12 @@ export default function DashboardLayout({
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Dashboard navigation">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => {
+            const isCreator = currentUser?.role === "creator" || currentUser?.role === "admin";
+            if (item.creatorOnly && !isCreator) return false;
+            if (item.fanOnly && isCreator) return false;
+            return true;
+          }).map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;
             return (
@@ -198,10 +216,10 @@ export default function DashboardLayout({
           <div className="border-t border-gray-200 p-4">
             <div className="rounded-lg bg-[#00AFF0]/10 p-3">
               <p className="text-xs font-medium text-muted-foreground">
-                Creator Plan
+                Account Type
               </p>
-              <p className="mt-0.5 text-sm font-semibold text-foreground">
-                Pro
+              <p className="mt-0.5 text-sm font-semibold text-foreground capitalize">
+                {currentUser?.role === "admin" ? "Admin" : currentUser?.role === "creator" ? "Creator" : "Fan"}
               </p>
             </div>
           </div>
