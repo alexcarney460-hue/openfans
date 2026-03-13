@@ -186,3 +186,67 @@ export const payoutsTable = pgTable('payouts', {
 
 export type InsertPayout = typeof payoutsTable.$inferInsert;
 export type SelectPayout = typeof payoutsTable.$inferSelect;
+
+// ─── Platform Wallets ───────────────────────────────────────────────────────
+// On-platform USDC balance for each user. Users deposit crypto here; the
+// platform deducts monthly subscription fees automatically. A minimum
+// balance is required to keep subscriptions active.
+
+export const walletsTable = pgTable('wallets', {
+  id: serial('id').primaryKey(),
+  user_id: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  balance_usdc: integer('balance_usdc').notNull().default(0), // cents
+  minimum_balance_usdc: integer('minimum_balance_usdc').notNull().default(0), // cents — set per active subscriptions
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type InsertWallet = typeof walletsTable.$inferInsert;
+export type SelectWallet = typeof walletsTable.$inferSelect;
+
+// ─── Wallet Transactions ────────────────────────────────────────────────────
+// Ledger of all wallet balance changes: deposits, subscription charges,
+// tips sent/received, withdrawals, refunds.
+
+export const walletTransactionsTable = pgTable('wallet_transactions', {
+  id: serial('id').primaryKey(),
+  wallet_id: integer('wallet_id')
+    .notNull()
+    .references(() => walletsTable.id, { onDelete: 'cascade' }),
+  user_id: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  type: text('type', {
+    enum: [
+      'deposit',
+      'withdrawal',
+      'subscription_charge',
+      'subscription_received',
+      'tip_sent',
+      'tip_received',
+      'refund',
+      'platform_fee',
+    ],
+  }).notNull(),
+  amount_usdc: integer('amount_usdc').notNull(), // cents — positive for credits, negative for debits
+  balance_after: integer('balance_after').notNull(), // cents — running balance after this txn
+  description: text('description'),
+  reference_id: text('reference_id'), // Solana tx sig, subscription id, etc.
+  related_user_id: text('related_user_id').references(() => usersTable.id), // other party
+  status: text('status', { enum: ['pending', 'completed', 'failed'] })
+    .notNull()
+    .default('completed'),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type InsertWalletTransaction = typeof walletTransactionsTable.$inferInsert;
+export type SelectWalletTransaction = typeof walletTransactionsTable.$inferSelect;
