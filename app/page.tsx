@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { CreatorCard } from "@/components/CreatorCard";
 import { getAllCreators } from "@/lib/mock-data";
 import { DollarSign, Zap, Shield } from "lucide-react";
+import { ShareBanners } from "@/components/ShareBanners";
 
 // -------------------------------------------------------------------
 // Value props — short, punchy, no jargon
@@ -84,7 +85,7 @@ export default function LandingPage() {
                 <Link href="/signup">
                   <Button
                     size="lg"
-                    className="bg-accent-blue bg-accent-blue-hover h-12 border-0 px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:shadow-sky-500/30"
+                    className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
                   >
                     Start Earning Today
                   </Button>
@@ -92,8 +93,7 @@ export default function LandingPage() {
                 <Link href="/explore">
                   <Button
                     size="lg"
-                    variant="outline"
-                    className="h-12 border-gray-200 bg-transparent px-8 text-base font-semibold text-gray-900 hover:bg-gray-100"
+                    className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
                   >
                     Browse Creators
                   </Button>
@@ -180,8 +180,7 @@ export default function LandingPage() {
             <div className="mt-10 text-center">
               <Link href="/explore">
                 <Button
-                  variant="outline"
-                  className="border-gray-200 bg-transparent text-gray-900 hover:bg-gray-100"
+                  className="border-0 bg-[#00AFF0] text-white shadow-sm transition-all hover:bg-[#009ad6]"
                 >
                   See all creators
                 </Button>
@@ -189,6 +188,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* ==================== SHARE BANNERS ==================== */}
+        <ShareBanners />
 
         {/* ==================== BOTTOM CTA ==================== */}
         <section className="border-t border-gray-200 py-20 lg:py-28">
@@ -204,7 +206,7 @@ export default function LandingPage() {
               <Link href="/signup">
                 <Button
                   size="lg"
-                  className="bg-accent-blue bg-accent-blue-hover h-12 border-0 px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:shadow-sky-500/30"
+                  className="h-12 border-0 bg-[#00AFF0] px-8 text-base font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] hover:shadow-sky-500/30"
                 >
                   Start Earning Today
                 </Button>
