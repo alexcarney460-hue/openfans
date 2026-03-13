@@ -8,6 +8,9 @@ import { eq } from 'drizzle-orm'
  * Sanitize a redirect path to prevent open redirect attacks.
  * Only allows relative paths starting with / and blocks protocol-relative URLs.
  */
+// Emails that should automatically receive the admin role
+const ADMIN_EMAILS = ["gardenablaze@gmail.com"]
+
 function sanitizeRedirectPath(path: string): string {
   // Must start with exactly one forward slash and not contain protocol indicators
   if (
@@ -53,7 +56,7 @@ export async function GET(request: Request) {
             email: user.email!,
             username: emailPrefix,
             display_name: displayName,
-            role: 'subscriber',
+            role: ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? '') ? 'admin' : 'subscriber',
           })
         }
       }

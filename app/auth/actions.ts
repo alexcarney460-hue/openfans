@@ -9,6 +9,9 @@ import { eq } from 'drizzle-orm'
 
 const PUBLIC_URL = process.env.NEXT_PUBLIC_WEBSITE_URL || "http://localhost:3000"
 
+// Emails that should automatically receive the admin role
+const ADMIN_EMAILS = ["gardenablaze@gmail.com"]
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_MIN_LENGTH = 8
 
@@ -150,7 +153,7 @@ export async function signup(currentState: { message: string }, formData: FormDa
             email: signUpData.user.email!,
             username: data.username,
             display_name: data.username,
-            role: data.role === 'creator' ? 'creator' : 'subscriber',
+            role: ADMIN_EMAILS.includes(data.email.toLowerCase()) ? 'admin' : data.role === 'creator' ? 'creator' : 'subscriber',
         })
     } catch (err) {
         console.error("Error in signup:", err instanceof Error ? err.message : "Unknown error")
