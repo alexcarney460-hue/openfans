@@ -15,11 +15,14 @@ import {
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 
-const USDC_MINT_ADDRESS = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+// Devnet USDC (Circle's devnet faucet mint). Switch to mainnet mint for production:
+// Mainnet USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+const USDC_MINT_ADDRESS =
+  process.env.NEXT_PUBLIC_USDC_MINT || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
-// Placeholder platform vault — replace with your real Solana wallet address.
-// This must be a valid base58-encoded 32-byte public key.
-const PLATFORM_WALLET_ADDRESS = "11111111111111111111111111111111";
+// Platform vault — replace with your real Solana wallet address for production.
+const PLATFORM_WALLET_ADDRESS =
+  process.env.NEXT_PUBLIC_PLATFORM_WALLET || "11111111111111111111111111111111";
 
 type TxState =
   | { status: "idle" }
