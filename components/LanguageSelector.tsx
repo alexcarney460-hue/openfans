@@ -74,7 +74,7 @@ export function LanguageSelector({
 
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-xl"
+          className="absolute right-0 top-full z-[100] mt-1.5 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-xl"
           role="listbox"
           aria-label="Available languages"
         >

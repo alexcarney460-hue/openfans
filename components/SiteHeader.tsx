@@ -33,7 +33,7 @@ export function SiteHeader() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-xl" style={{ overflow: "visible" }}>
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-1" aria-label="OpenFans home">
@@ -54,7 +54,7 @@ export function SiteHeader() {
         </nav>
 
         {/* Desktop Actions */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 md:flex" style={{ overflow: "visible" }}>
           <LanguageSelector />
           {isLoggedIn ? (
             <Link
