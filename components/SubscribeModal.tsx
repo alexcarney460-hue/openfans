@@ -1,6 +1,32 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import {
+  PublicKey,
+  Transaction,
+} from "@solana/web3.js";
+import {
+  createTransferInstruction,
+  getAssociatedTokenAddress,
+  getAccount,
+  createAssociatedTokenAccountInstruction,
+} from "@solana/spl-token";
+
+const USDC_MINT_ADDRESS = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+
+// Placeholder platform vault — replace with your real Solana wallet address.
+// This must be a valid base58-encoded 32-byte public key.
+const PLATFORM_WALLET_ADDRESS = "11111111111111111111111111111111";
+
+type TxState =
+  | { status: "idle" }
+  | { status: "connecting" }
+  | { status: "confirming" }
+  | { status: "success"; signature: string }
+  | { status: "error"; message: string };
 
 interface SubscribeModalProps {
   readonly isOpen: boolean;
@@ -10,6 +36,22 @@ interface SubscribeModalProps {
   readonly price: number;
 }
 
+function truncateAddress(address: string): string {
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
+function truncateSignature(sig: string): string {
+  return `${sig.slice(0, 8)}...${sig.slice(-8)}`;
+}
+
+/**
+ * Convert a dollar amount to USDC smallest units (6 decimals).
+ * e.g. $9.99 -> 9_990_000
+ */
+function dollarsToUsdcUnits(dollars: number): number {
+  return Math.round(dollars * 1_000_000);
+}
+
 export function SubscribeModal({
   isOpen,
   onClose,
@@ -17,6 +59,11 @@ export function SubscribeModal({
   creatorUsername,
   price,
 }: SubscribeModalProps) {
+  const { publicKey, sendTransaction, connected, wallet } = useWallet();
+  const { connection } = useConnection();
+  const { setVisible: openWalletModal } = useWalletModal();
+  const [txState, setTxState] = useState<TxState>({ status: "idle" });
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -37,7 +84,88 @@ export function SubscribeModal({
     };
   }, [isOpen, handleKeyDown]);
 
+  // Reset transaction state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setTxState({ status: "idle" });
+    }
+  }, [isOpen]);
+
+  const handleConnectWallet = useCallback(() => {
+    openWalletModal(true);
+  }, [openWalletModal]);
+
+  const handleSubscribe = useCallback(async () => {
+    if (!publicKey || !sendTransaction) {
+      setTxState({ status: "error", message: "Wallet not connected" });
+      return;
+    }
+
+    try {
+      setTxState({ status: "confirming" });
+
+      const usdcAmount = dollarsToUsdcUnits(price);
+
+      const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
+      const platformWallet = new PublicKey(PLATFORM_WALLET_ADDRESS);
+
+      // Get or derive the associated token accounts
+      const senderAta = await getAssociatedTokenAddress(usdcMint, publicKey);
+      const recipientAta = await getAssociatedTokenAddress(
+        usdcMint,
+        platformWallet,
+      );
+
+      const transaction = new Transaction();
+
+      // Check if recipient ATA exists, create if needed
+      try {
+        await getAccount(connection, recipientAta);
+      } catch {
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey,
+            recipientAta,
+            platformWallet,
+            usdcMint,
+          ),
+        );
+      }
+
+      // Add the USDC transfer instruction
+      transaction.add(
+        createTransferInstruction(
+          senderAta,
+          recipientAta,
+          publicKey,
+          usdcAmount,
+        ),
+      );
+
+      const signature = await sendTransaction(transaction, connection);
+
+      // Wait for confirmation
+      const latestBlockhash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction(
+        {
+          signature,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        },
+        "confirmed",
+      );
+
+      setTxState({ status: "success", signature });
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Transaction failed";
+      setTxState({ status: "error", message });
+    }
+  }, [publicKey, sendTransaction, connection, price]);
+
   if (!isOpen) return null;
+
+  const walletName = wallet?.adapter?.name ?? "";
 
   return (
     <div
@@ -76,102 +204,235 @@ export function SubscribeModal({
           </svg>
         </button>
 
-        {/* Creator Info */}
-        <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#00AFF0] to-[#0077B6]">
-            <span className="text-2xl font-bold text-white">
-              {creatorName.charAt(0)}
-            </span>
-          </div>
-          <h3 className="text-lg font-bold text-white">{creatorName}</h3>
-          <p className="text-sm text-white/40">@{creatorUsername}</p>
-        </div>
-
-        {/* Subscription Tier */}
-        <div className="mb-5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-center">
-          <p className="text-sm text-white/60">Monthly subscription</p>
-          <p className="mt-0.5 text-xl font-bold text-white">
-            ${price.toFixed(2)}
-            <span className="text-sm font-normal text-white/40">/mo</span>
-          </p>
-        </div>
-
-        {/* Payment Options */}
-        <div className="mb-5 space-y-3">
-          {/* Pay with Wallet */}
-          <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-[#00AFF0]/30 bg-[#00AFF0]/5 p-4 transition-colors hover:bg-[#00AFF0]/10">
-            <input
-              type="radio"
-              name="payment-method"
-              defaultChecked
-              className="sr-only"
-            />
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#00AFF0]/20">
+        {/* Success State */}
+        {txState.status === "success" && (
+          <div className="flex flex-col items-center py-4 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
               <svg
-                className="h-5 w-5 text-[#00AFF0]"
+                className="h-8 w-8 text-green-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={1.5}
+                strokeWidth={2}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 110-6h.008a2.244 2.244 0 011.547.645l.746.746M21 12a2.25 2.25 0 01-2.25 2.25H15a3 3 0 100 6h.008c.58 0 1.135-.224 1.547-.645l.746-.746M21 12H3m18 0a2.25 2.25 0 00-2.25-2.25H15"
+                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white">
-                Pay with Wallet
-              </p>
-              <p className="text-xs text-white/40">
-                Connect wallet to pay with USDC
-              </p>
-            </div>
-            <div className="ml-auto h-4 w-4 flex-shrink-0 rounded-full border-2 border-[#00AFF0] bg-[#00AFF0]/30" />
-          </label>
-
-          {/* Pay with Card (Coming Soon) */}
-          <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 opacity-50">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/5">
-              <svg
-                className="h-5 w-5 text-white/30"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
+            <h3 className="text-lg font-bold text-white">
+              Subscription Active!
+            </h3>
+            <p className="mt-1 text-sm text-white/50">
+              You are now subscribed to @{creatorUsername}
+            </p>
+            <div className="mt-4 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+              <p className="text-xs text-white/40">Transaction</p>
+              <a
+                href={`https://explorer.solana.com/tx/${txState.signature}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-0.5 inline-block font-mono text-xs text-[#00AFF0] hover:underline"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"
-                />
-              </svg>
+                {truncateSignature(txState.signature)}
+              </a>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white/50">
-                Pay with Card
-              </p>
-              <p className="text-xs text-white/30">Coming soon</p>
-            </div>
-            <div className="ml-auto h-4 w-4 flex-shrink-0 rounded-full border-2 border-white/10" />
+            <button
+              onClick={onClose}
+              className="mt-5 w-full rounded-lg bg-[#00AFF0] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6]"
+            >
+              Done
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* Subscribe Button */}
-        <button
-          onClick={onClose}
-          className="w-full rounded-lg bg-[#00AFF0] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] active:scale-[0.98]"
-        >
-          Subscribe
-        </button>
+        {/* Normal / Error / Confirming States */}
+        {txState.status !== "success" && (
+          <>
+            {/* Creator Info */}
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#00AFF0] to-[#0077B6]">
+                <span className="text-2xl font-bold text-white">
+                  {creatorName.charAt(0)}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white">{creatorName}</h3>
+              <p className="text-sm text-white/40">@{creatorUsername}</p>
+            </div>
 
-        {/* Disclaimer */}
-        <p className="mt-3 text-center text-xs text-white/30">
-          Cancel anytime. You&apos;ll be charged monthly.
-        </p>
+            {/* Subscription Tier */}
+            <div className="mb-5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-center">
+              <p className="text-sm text-white/60">Monthly subscription</p>
+              <p className="mt-0.5 text-xl font-bold text-white">
+                ${price.toFixed(2)}
+                <span className="text-sm font-normal text-white/40">/mo</span>
+              </p>
+              <p className="mt-0.5 text-xs text-white/30">Paid in USDC on Solana</p>
+            </div>
+
+            {/* Payment Options */}
+            <div className="mb-5 space-y-3">
+              {/* Pay with Wallet */}
+              <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-[#00AFF0]/30 bg-[#00AFF0]/5 p-4 transition-colors hover:bg-[#00AFF0]/10">
+                <input
+                  type="radio"
+                  name="payment-method"
+                  defaultChecked
+                  className="sr-only"
+                />
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#00AFF0]/20">
+                  <svg
+                    className="h-5 w-5 text-[#00AFF0]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 110-6h.008a2.244 2.244 0 011.547.645l.746.746M21 12a2.25 2.25 0 01-2.25 2.25H15a3 3 0 100 6h.008c.58 0 1.135-.224 1.547-.645l.746-.746M21 12H3m18 0a2.25 2.25 0 00-2.25-2.25H15"
+                    />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">
+                    Pay with Wallet
+                  </p>
+                  <p className="text-xs text-white/40">
+                    {connected
+                      ? `${walletName} - ${truncateAddress(publicKey?.toBase58() ?? "")}`
+                      : "Connect wallet to pay with USDC"}
+                  </p>
+                </div>
+                <div className="ml-auto h-4 w-4 flex-shrink-0 rounded-full border-2 border-[#00AFF0] bg-[#00AFF0]/30" />
+              </label>
+
+              {/* Pay with Card (Coming Soon) */}
+              <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 opacity-50">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/5">
+                  <svg
+                    className="h-5 w-5 text-white/30"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"
+                    />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white/50">
+                    Pay with Card
+                  </p>
+                  <p className="text-xs text-white/30">Coming soon</p>
+                </div>
+                <div className="ml-auto h-4 w-4 flex-shrink-0 rounded-full border-2 border-white/10" />
+              </div>
+            </div>
+
+            {/* Wallet Status & Action */}
+            {connected ? (
+              <div className="space-y-3">
+                {/* Connected wallet info */}
+                <div className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-400" />
+                    <span className="text-xs text-white/60">
+                      {walletName}
+                    </span>
+                  </div>
+                  <span className="font-mono text-xs text-white/40">
+                    {truncateAddress(publicKey?.toBase58() ?? "")}
+                  </span>
+                </div>
+
+                {/* Error message */}
+                {txState.status === "error" && (
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3">
+                    <p className="text-xs font-medium text-red-400">
+                      Transaction Failed
+                    </p>
+                    <p className="mt-0.5 text-xs text-red-400/70">
+                      {txState.message}
+                    </p>
+                  </div>
+                )}
+
+                {/* Subscribe button */}
+                <button
+                  onClick={handleSubscribe}
+                  disabled={txState.status === "confirming"}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#00AFF0] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {txState.status === "confirming" ? (
+                    <>
+                      <Spinner />
+                      <span>Confirming Transaction...</span>
+                    </>
+                  ) : txState.status === "error" ? (
+                    <span>Retry Payment</span>
+                  ) : (
+                    <span>Subscribe for ${price.toFixed(2)} USDC</span>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Phantom not installed hint */}
+                <button
+                  onClick={handleConnectWallet}
+                  className="w-full rounded-lg bg-[#00AFF0] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] active:scale-[0.98]"
+                >
+                  Connect Wallet
+                </button>
+                <p className="text-center text-xs text-white/30">
+                  Don&apos;t have a wallet?{" "}
+                  <a
+                    href="https://phantom.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#00AFF0] hover:underline"
+                  >
+                    Get Phantom
+                  </a>
+                </p>
+              </div>
+            )}
+
+            {/* Disclaimer */}
+            <p className="mt-3 text-center text-xs text-white/30">
+              Cancel anytime. You&apos;ll be charged monthly.
+            </p>
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
+    </svg>
   );
 }

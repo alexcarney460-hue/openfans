@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
+import { useWallet } from "@solana/wallet-adapter-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import WalletConnectButton from "@/components/WalletConnectButton"
@@ -64,11 +65,24 @@ export default function OnboardingPage() {
     categories: [],
   })
 
-  // Step 3: Wallet
+  // Step 3: Wallet — synced from the real Solana adapter
+  const { publicKey: solanaPublicKey, connected: solanaConnected } = useWallet()
   const [wallet, setWallet] = useState<WalletData>({
     connected: false,
     address: "",
   })
+
+  // Keep local wallet state in sync with the real adapter
+  useEffect(() => {
+    if (solanaConnected && solanaPublicKey) {
+      setWallet({
+        connected: true,
+        address: solanaPublicKey.toBase58(),
+      })
+    } else {
+      setWallet({ connected: false, address: "" })
+    }
+  }, [solanaConnected, solanaPublicKey])
 
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
   const [subErrors, setSubErrors] = useState<Record<string, string>>({})

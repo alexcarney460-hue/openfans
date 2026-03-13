@@ -72,3 +72,77 @@
     display: none;
   }
 }
+
+/* Solana wallet adapter modal — dark theme overrides */
+.wallet-adapter-modal-wrapper {
+  background-color: #111111 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.75rem !important;
+}
+
+.wallet-adapter-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.wallet-adapter-modal-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.wallet-adapter-modal-content {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.wallet-adapter-modal-list {
+  margin: 0 !important;
+}
+
+.wallet-adapter-modal-list li {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+  transition: background-color 0.15s, border-color 0.15s !important;
+}
+
+.wallet-adapter-modal-list li:hover {
+  background-color: rgba(0, 175, 240, 0.08) !important;
+  border-color: rgba(0, 175, 240, 0.3) !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+.wallet-adapter-modal-button-close {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  transition: background-color 0.15s, color 0.15s !important;
+}
+
+.wallet-adapter-modal-button-close:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.wallet-adapter-modal-middle {
+  background-color: transparent !important;
+}
+
+.wallet-adapter-modal-middle-button {
+  background-color: #00AFF0 !important;
+  color: #ffffff !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  transition: background-color 0.15s !important;
+}
+
+.wallet-adapter-modal-middle-button:hover {
+  background-color: #009ad6 !important;
+}
+
+.wallet-adapter-collapse {
+  background-color: transparent !important;
+}

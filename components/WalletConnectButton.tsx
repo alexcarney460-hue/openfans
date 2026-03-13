@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useState, useCallback } from "react"
-import { cn } from "@/lib/utils"
+import { useCallback, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { cn } from "@/lib/utils";
 
 interface WalletConnectButtonProps {
-  className?: string
-  onConnect?: (address: string) => void
-  onDisconnect?: () => void
+  className?: string;
+  onConnect?: (address: string) => void;
+  onDisconnect?: () => void;
 }
 
-const MOCK_ADDRESS = "7xKXp2R9mNkE4vFw8qJdH6bYtL3mFp"
-
 function truncateAddress(address: string): string {
-  return `${address.slice(0, 4)}...${address.slice(-4)}`
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
 export default function WalletConnectButton({
@@ -20,29 +20,32 @@ export default function WalletConnectButton({
   onConnect,
   onDisconnect,
 }: WalletConnectButtonProps) {
-  const [isConnected, setIsConnected] = useState(false)
-  const [address, setAddress] = useState("")
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
+  const { publicKey, wallet, disconnect, connecting, connected } = useWallet();
+  const { setVisible } = useWalletModal();
+  const [showMenu, setShowMenu] = useState(false);
 
-  const handleConnect = useCallback(async () => {
-    setIsConnecting(true)
-    // Simulate wallet connection delay
-    await new Promise((resolve) => setTimeout(resolve, 1200))
-    setAddress(MOCK_ADDRESS)
-    setIsConnected(true)
-    setIsConnecting(false)
-    onConnect?.(MOCK_ADDRESS)
-  }, [onConnect])
+  const handleConnect = useCallback(() => {
+    setVisible(true);
+  }, [setVisible]);
 
-  const handleDisconnect = useCallback(() => {
-    setAddress("")
-    setIsConnected(false)
-    setShowMenu(false)
-    onDisconnect?.()
-  }, [onDisconnect])
+  const handleDisconnect = useCallback(async () => {
+    await disconnect();
+    setShowMenu(false);
+    onDisconnect?.();
+  }, [disconnect, onDisconnect]);
 
-  if (isConnected) {
+  // Notify parent when wallet connects
+  const address = publicKey?.toBase58() ?? "";
+  if (connected && address && onConnect) {
+    // Fire onConnect callback (parent should guard against repeated calls)
+    onConnect(address);
+  }
+
+  const walletName = wallet?.adapter?.name ?? "";
+  const isPhantom = walletName.toLowerCase().includes("phantom");
+  const isSolflare = walletName.toLowerCase().includes("solflare");
+
+  if (connected && publicKey) {
     return (
       <div className={cn("relative", className)}>
         <button
@@ -50,16 +53,21 @@ export default function WalletConnectButton({
           onClick={() => setShowMenu((prev) => !prev)}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#00AFF0]/30 bg-[#00AFF0]/10 px-4 py-2.5 text-sm font-medium text-[#00AFF0] transition-colors hover:bg-[#00AFF0]/20"
         >
-          <PhantomLogo />
+          {isPhantom && <PhantomLogo />}
+          {isSolflare && <SolflareLogo />}
+          {!isPhantom && !isSolflare && <WalletIcon />}
           <span>{truncateAddress(address)}</span>
+          <span className="ml-1 rounded bg-[#00AFF0]/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#00AFF0]">
+            Connected
+          </span>
           <svg
             width="12"
             height="12"
             viewBox="0 0 12 12"
             fill="none"
             className={cn(
-              "transition-transform",
-              showMenu ? "rotate-180" : ""
+              "ml-1 transition-transform",
+              showMenu ? "rotate-180" : "",
             )}
           >
             <path
@@ -73,6 +81,10 @@ export default function WalletConnectButton({
         </button>
         {showMenu && (
           <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-white/10 bg-[#141414] shadow-xl">
+            <div className="border-b border-white/5 px-4 py-2.5">
+              <p className="text-xs text-white/40">Connected with {walletName}</p>
+              <p className="mt-0.5 font-mono text-xs text-white/60">{address}</p>
+            </div>
             <button
               type="button"
               onClick={handleDisconnect}
@@ -83,21 +95,21 @@ export default function WalletConnectButton({
           </div>
         )}
       </div>
-    )
+    );
   }
 
   return (
     <button
       type="button"
       onClick={handleConnect}
-      disabled={isConnecting}
+      disabled={connecting}
       className={cn(
         "flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#141414] px-4 py-2.5 text-sm font-medium text-white transition-all hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/10 disabled:cursor-not-allowed disabled:opacity-60",
-        className
+        className,
       )}
     >
       <PhantomLogo />
-      {isConnecting ? (
+      {connecting ? (
         <>
           <Spinner />
           <span>Connecting...</span>
@@ -106,7 +118,7 @@ export default function WalletConnectButton({
         <span>Connect Wallet</span>
       )}
     </button>
-  )
+  );
 }
 
 function PhantomLogo() {
@@ -130,16 +142,44 @@ function PhantomLogo() {
         </linearGradient>
       </defs>
     </svg>
-  )
+  );
+}
+
+function SolflareLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 128 128" fill="none">
+      <circle cx="64" cy="64" r="64" fill="#FC6B32" />
+      <path
+        d="M64 28L84 64L64 100L44 64L64 28Z"
+        fill="white"
+        fillOpacity="0.9"
+      />
+    </svg>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 110-6h.008a2.244 2.244 0 011.547.645l.746.746M21 12a2.25 2.25 0 01-2.25 2.25H15a3 3 0 100 6h.008c.58 0 1.135-.224 1.547-.645l.746-.746M21 12H3m18 0a2.25 2.25 0 00-2.25-2.25H15"
+      />
+    </svg>
+  );
 }
 
 function Spinner() {
   return (
-    <svg
-      className="h-4 w-4 animate-spin"
-      viewBox="0 0 24 24"
-      fill="none"
-    >
+    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
       <circle
         className="opacity-25"
         cx="12"
@@ -154,5 +194,5 @@ function Spinner() {
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
       />
     </svg>
-  )
+  );
 }
