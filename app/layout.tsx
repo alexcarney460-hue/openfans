@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   description:
     "The creator platform that pays more. Keep 95% of your earnings, get paid instantly in crypto. No restrictions. No gatekeepers.",
   metadataBase: new URL("https://openfans.online"),
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "OpenFans — The Creator Platform That Pays More",
     description:
