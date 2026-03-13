@@ -35,6 +35,7 @@ interface SubscribeModalProps {
   readonly onClose: () => void;
   readonly creatorName: string;
   readonly creatorUsername: string;
+  readonly creatorId?: string;
   readonly price: number;
 }
 
@@ -59,6 +60,7 @@ export function SubscribeModal({
   onClose,
   creatorName,
   creatorUsername,
+  creatorId,
   price,
 }: SubscribeModalProps) {
   const { publicKey, sendTransaction, connected, wallet } = useWallet();
@@ -156,6 +158,24 @@ export function SubscribeModal({
         },
         "confirmed",
       );
+
+      // Record subscription in database
+      if (creatorId) {
+        try {
+          await fetch("/api/subscriptions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              creator_id: creatorId,
+              tier: "basic",
+              payment_tx: signature,
+            }),
+          });
+        } catch {
+          // Subscription was paid on-chain even if DB recording fails
+          console.error("Failed to record subscription in database");
+        }
+      }
 
       setTxState({ status: "success", signature });
     } catch (err: unknown) {

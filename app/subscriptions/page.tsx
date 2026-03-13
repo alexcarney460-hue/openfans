@@ -1,81 +1,131 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Crown, Star, Zap, X } from "lucide-react";
+import { Crown, Star, Zap, LogIn } from "lucide-react";
 
-const MOCK_SUBSCRIPTIONS = [
-  {
-    id: "1",
-    creator: "AlphaTrader",
-    avatar: "A",
-    tier: "VIP",
-    tierIcon: Crown,
-    price: "$49.99",
-    renewalDate: "Apr 15, 2026",
-    status: "active" as const,
-  },
-  {
-    id: "2",
-    creator: "CryptoArtist",
-    avatar: "C",
-    tier: "Premium",
-    tierIcon: Star,
-    price: "$19.99",
-    renewalDate: "Mar 18, 2026",
-    status: "expiring" as const,
-  },
-  {
-    id: "3",
-    creator: "DeFi_Guru",
-    avatar: "D",
-    tier: "Basic",
-    tierIcon: Zap,
-    price: "$9.99",
-    renewalDate: "May 1, 2026",
-    status: "active" as const,
-  },
-  {
-    id: "4",
-    creator: "NFT_Whale",
-    avatar: "N",
-    tier: "Premium",
-    tierIcon: Star,
-    price: "$19.99",
-    renewalDate: "Feb 28, 2026",
-    status: "expired" as const,
-  },
-] as const;
+interface ApiSubscription {
+  readonly id: number;
+  readonly creator_id: string;
+  readonly tier: string;
+  readonly price_usdc: number;
+  readonly status: string;
+  readonly started_at: string;
+  readonly expires_at: string;
+  readonly created_at: string;
+  readonly creator_username: string;
+  readonly creator_display_name: string;
+  readonly creator_avatar_url: string | null;
+}
 
-function statusColor(status: "active" | "expiring" | "expired") {
-  switch (status) {
-    case "active":
-      return "bg-emerald-500";
-    case "expiring":
-      return "bg-amber-500";
-    case "expired":
-      return "bg-red-500";
+function tierIcon(tier: string) {
+  switch (tier) {
+    case "vip":
+      return Crown;
+    case "premium":
+      return Star;
+    default:
+      return Zap;
   }
 }
 
-function statusLabel(status: "active" | "expiring" | "expired") {
+function statusColor(status: string) {
+  switch (status) {
+    case "active":
+      return "bg-emerald-500";
+    case "expired":
+      return "bg-red-500";
+    case "cancelled":
+      return "bg-gray-500";
+    default:
+      return "bg-gray-500";
+  }
+}
+
+function statusLabel(status: string) {
   switch (status) {
     case "active":
       return "Active";
-    case "expiring":
-      return "Expiring Soon";
     case "expired":
       return "Expired";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return status;
   }
 }
 
 export default function SubscriptionsPage() {
-  const [subscriptions] = useState<typeof MOCK_SUBSCRIPTIONS[number][]>([...MOCK_SUBSCRIPTIONS]);
+  const [subscriptions, setSubscriptions] = useState<ApiSubscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notLoggedIn, setNotLoggedIn] = useState(false);
+
+  useEffect(() => {
+    async function fetchSubscriptions() {
+      try {
+        const res = await fetch("/api/subscriptions");
+        if (res.status === 401) {
+          setNotLoggedIn(true);
+          return;
+        }
+        if (!res.ok) return;
+        const json = await res.json();
+        setSubscriptions(json.data ?? []);
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSubscriptions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-gray-50">
+        <SiteHeader />
+        <main className="flex-1 pt-14">
+          <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+            <p className="text-gray-400">Loading subscriptions...</p>
+          </div>
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
+
+  if (notLoggedIn) {
+    return (
+      <div className="flex min-h-screen flex-col bg-gray-50">
+        <SiteHeader />
+        <main className="flex-1 pt-14">
+          <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white py-20 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
+                <LogIn className="h-8 w-8 text-gray-300" />
+              </div>
+              <p className="text-lg font-medium text-gray-500">
+                Log in to view your subscriptions
+              </p>
+              <p className="mt-1 text-sm text-gray-400">
+                You need to be signed in to manage your subscriptions.
+              </p>
+              <Button asChild className="mt-6 bg-[#00AFF0] hover:bg-[#009dd8]">
+                <Link href="/login">Log In</Link>
+              </Button>
+            </div>
+          </div>
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
+
   const isEmpty = subscriptions.length === 0;
 
   return (
@@ -111,20 +161,36 @@ export default function SubscriptionsPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {subscriptions.map((sub) => {
-                const TierIcon = sub.tierIcon;
+                const TierIcon = tierIcon(sub.tier);
+                const priceFormatted = `$${((sub.price_usdc ?? 0) / 100).toFixed(2)}`;
+                const expiresDate = sub.expires_at
+                  ? new Date(sub.expires_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "";
                 return (
                   <Card key={sub.id} className="border-gray-200 bg-white">
                     <CardContent className="p-5">
                       <div className="flex items-start gap-4">
                         {/* Avatar */}
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#00AFF0] text-lg font-bold text-white">
-                          {sub.avatar}
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#00AFF0] text-lg font-bold text-white overflow-hidden">
+                          {sub.creator_avatar_url ? (
+                            <img
+                              src={sub.creator_avatar_url}
+                              alt={sub.creator_display_name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            sub.creator_display_name?.charAt(0) ?? "?"
+                          )}
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <h3 className="text-sm font-semibold text-gray-900 truncate">
-                              {sub.creator}
+                              {sub.creator_display_name}
                             </h3>
                             <Badge className="shrink-0 bg-[#00AFF0]/15 text-[#00AFF0] text-[10px] border-0">
                               <TierIcon className="mr-1 h-3 w-3" />
@@ -141,11 +207,11 @@ export default function SubscriptionsPage() {
 
                           <div className="mt-3 flex items-center justify-between">
                             <div>
-                              <p className="text-lg font-bold text-gray-900">{sub.price}</p>
+                              <p className="text-lg font-bold text-gray-900">{priceFormatted}</p>
                               <p className="text-[10px] text-gray-400">
                                 {sub.status === "expired"
-                                  ? `Expired ${sub.renewalDate}`
-                                  : `Renews ${sub.renewalDate}`}
+                                  ? `Expired ${expiresDate}`
+                                  : `Renews ${expiresDate}`}
                               </p>
                             </div>
                             <Button

@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, X, Image as ImageIcon, Film } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,8 @@ export default function NewPostPage() {
   const router = useRouter();
   const [form, setForm] = useState<PostFormState>(INITIAL_STATE);
   const [isDragging, setIsDragging] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const updateField = useCallback(
     <K extends keyof PostFormState>(field: K, value: PostFormState[K]) => {
@@ -113,10 +115,37 @@ export default function NewPostPage() {
     }));
   }, []);
 
-  const handlePublish = useCallback(() => {
-    // UI-only for now -- no actual upload logic
-    router.push("/dashboard/posts");
-  }, [router]);
+  const handlePublish = useCallback(async () => {
+    setPublishing(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.title.trim() || "Untitled",
+          body: form.body.trim() || null,
+          media_type: "text",
+          tier: form.tier,
+          is_free: form.tier === "free",
+          media_urls: [],
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(json.error ?? "Failed to create post.");
+        return;
+      }
+
+      router.push("/dashboard/posts");
+    } catch {
+      setError("Failed to create post. Please try again.");
+    } finally {
+      setPublishing(false);
+    }
+  }, [form.title, form.body, form.tier, router]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -129,6 +158,12 @@ export default function NewPostPage() {
           Share content with your subscribers.
         </p>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       <Card className="border-gray-200 bg-white">
         <CardContent className="space-y-6 p-6">
@@ -273,9 +308,9 @@ export default function NewPostPage() {
             <Button
               onClick={handlePublish}
               className="bg-[#00AFF0] hover:bg-[#009dd8] px-8"
-              disabled={!form.body.trim()}
+              disabled={!form.body.trim() || publishing}
             >
-              Publish
+              {publishing ? "Publishing..." : "Publish"}
             </Button>
           </div>
         </CardContent>

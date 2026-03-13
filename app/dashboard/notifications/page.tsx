@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
   DollarSign,
@@ -20,107 +20,6 @@ interface Notification {
   readonly userName: string;
 }
 
-const initialNotifications: readonly Notification[] = [
-  {
-    id: "n-1",
-    type: "subscription",
-    text: "subscribed to you",
-    timestamp: "5 min ago",
-    read: false,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=aria&backgroundColor=00AFF0",
-    userName: "Aria Velasquez",
-  },
-  {
-    id: "n-2",
-    type: "tip",
-    text: "tipped you $25.00",
-    timestamp: "12 min ago",
-    read: false,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=jordan&backgroundColor=00AFF0",
-    userName: "Jordan Blake",
-  },
-  {
-    id: "n-3",
-    type: "message",
-    text: "sent you a message",
-    timestamp: "1 hr ago",
-    read: false,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=mika&backgroundColor=00AFF0",
-    userName: "Mika Tanaka",
-  },
-  {
-    id: "n-4",
-    type: "payout",
-    text: "Payout of $142.50 completed",
-    timestamp: "3 hrs ago",
-    read: true,
-    avatar: "",
-    userName: "OpenFans",
-  },
-  {
-    id: "n-5",
-    type: "subscription",
-    text: "subscribed to you",
-    timestamp: "5 hrs ago",
-    read: true,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=dex&backgroundColor=00AFF0",
-    userName: "Dex Monroe",
-  },
-  {
-    id: "n-6",
-    type: "tip",
-    text: "tipped you $10.00",
-    timestamp: "Yesterday",
-    read: true,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=luna&backgroundColor=00AFF0",
-    userName: "Luna Chen",
-  },
-  {
-    id: "n-7",
-    type: "message",
-    text: "sent you a message",
-    timestamp: "Yesterday",
-    read: true,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=kai&backgroundColor=00AFF0",
-    userName: "Kai Reeves",
-  },
-  {
-    id: "n-8",
-    type: "payout",
-    text: "Payout of $89.00 completed",
-    timestamp: "2 days ago",
-    read: true,
-    avatar: "",
-    userName: "OpenFans",
-  },
-  {
-    id: "n-9",
-    type: "subscription",
-    text: "subscribed to you",
-    timestamp: "3 days ago",
-    read: true,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=nova&backgroundColor=00AFF0",
-    userName: "Nova Sinclair",
-  },
-  {
-    id: "n-10",
-    type: "tip",
-    text: "tipped you $50.00",
-    timestamp: "4 days ago",
-    read: true,
-    avatar:
-      "https://api.dicebear.com/9.x/notionists/svg?seed=rio&backgroundColor=00AFF0",
-    userName: "Rio Castillo",
-  },
-];
-
 const ICON_MAP = {
   subscription: UserPlus,
   tip: DollarSign,
@@ -135,9 +34,23 @@ const ICON_COLOR_MAP = {
   payout: "text-[#f59e0b] bg-[#f59e0b]/10",
 } as const;
 
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+    </div>
+  );
+}
+
 export default function NotificationsPage() {
-  const [notifications, setNotifications] =
-    useState<readonly Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<readonly Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // No notifications API/table exists yet - show empty state
+    setNotifications([]);
+    setLoading(false);
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -152,6 +65,8 @@ export default function NotificationsPage() {
       prev.map((n) => (n.id === id && !n.read ? { ...n, read: true } : n))
     );
   }, []);
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <main className="min-h-[calc(100vh-57px)] bg-gray-50">
@@ -179,73 +94,73 @@ export default function NotificationsPage() {
         </div>
 
         {/* Notification List */}
-        <div className="space-y-1" role="list" aria-label="Notifications">
-          {notifications.map((notification) => {
-            const IconComponent = ICON_MAP[notification.type];
-            const iconColors = ICON_COLOR_MAP[notification.type];
+        {notifications.length > 0 ? (
+          <div className="space-y-1" role="list" aria-label="Notifications">
+            {notifications.map((notification) => {
+              const IconComponent = ICON_MAP[notification.type];
+              const iconColors = ICON_COLOR_MAP[notification.type];
 
-            return (
-              <button
-                key={notification.id}
-                onClick={() => handleMarkRead(notification.id)}
-                role="listitem"
-                className={`
-                  flex w-full items-start gap-3.5 rounded-xl px-4 py-3.5 text-left transition-colors
-                  ${
-                    notification.read
-                      ? "hover:bg-gray-50"
-                      : "bg-[#00AFF0]/[0.04] hover:bg-[#00AFF0]/[0.07]"
-                  }
-                `}
-              >
-                {/* Icon or Avatar */}
-                {notification.type === "payout" ? (
-                  <div
-                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${iconColors}`}
-                  >
-                    <IconComponent className="h-5 w-5" />
-                  </div>
-                ) : (
-                  <div className="relative flex-shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={notification.avatar}
-                      alt={notification.userName}
-                      className="h-10 w-10 rounded-full bg-gray-100"
-                    />
+              return (
+                <button
+                  key={notification.id}
+                  onClick={() => handleMarkRead(notification.id)}
+                  role="listitem"
+                  className={`
+                    flex w-full items-start gap-3.5 rounded-xl px-4 py-3.5 text-left transition-colors
+                    ${
+                      notification.read
+                        ? "hover:bg-gray-50"
+                        : "bg-[#00AFF0]/[0.04] hover:bg-[#00AFF0]/[0.07]"
+                    }
+                  `}
+                >
+                  {/* Icon or Avatar */}
+                  {notification.type === "payout" ? (
                     <div
-                      className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-50 ${iconColors}`}
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${iconColors}`}
                     >
-                      <IconComponent className="h-2.5 w-2.5" />
+                      <IconComponent className="h-5 w-5" />
                     </div>
+                  ) : (
+                    <div className="relative flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={notification.avatar}
+                        alt={notification.userName}
+                        className="h-10 w-10 rounded-full bg-gray-100"
+                      />
+                      <div
+                        className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-50 ${iconColors}`}
+                      >
+                        <IconComponent className="h-2.5 w-2.5" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-gray-600">
+                      <span
+                        className={`font-medium ${notification.read ? "text-gray-600" : "text-gray-900"}`}
+                      >
+                        {notification.userName}
+                      </span>{" "}
+                      {notification.text}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {notification.timestamp}
+                    </p>
                   </div>
-                )}
 
-                {/* Content */}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-gray-600">
-                    <span
-                      className={`font-medium ${notification.read ? "text-gray-600" : "text-gray-900"}`}
-                    >
-                      {notification.userName}
-                    </span>{" "}
-                    {notification.text}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-400">
-                    {notification.timestamp}
-                  </p>
-                </div>
-
-                {/* Unread indicator */}
-                {!notification.read && (
-                  <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#00AFF0]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {notifications.length === 0 && (
+                  {/* Unread indicator */}
+                  {!notification.read && (
+                    <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#00AFF0]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 border border-gray-200">
               <Bell className="h-8 w-8 text-gray-400" />

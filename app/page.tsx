@@ -2,12 +2,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { CreatorCard } from "@/components/CreatorCard";
-import { getAllCreators } from "@/lib/mock-data";
+import { HomepageCreators } from "@/components/HomepageCreators";
 import { DollarSign, Zap, Shield } from "lucide-react";
 
 // -------------------------------------------------------------------
-// Value props — short, punchy, no jargon
+// Value props -- short, punchy, no jargon
 // -------------------------------------------------------------------
 const VALUE_PROPS = [
   {
@@ -49,8 +48,6 @@ const AVATAR_GRADIENTS = [
 // Page Component
 // -------------------------------------------------------------------
 export default function LandingPage() {
-  const creators = getAllCreators();
-
   return (
     <div className="flex min-h-dvh flex-col bg-white">
       <SiteHeader />
@@ -170,11 +167,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {creators.map((creator) => (
-                <CreatorCard key={creator.username} creator={creator} />
-              ))}
-            </div>
+            <HomepageCreators />
 
             <div className="mt-10 text-center">
               <Link href="/explore">

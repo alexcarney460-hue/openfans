@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Wallet,
   ArrowUpRight,
@@ -19,87 +19,22 @@ import { cn } from "@/lib/utils";
 
 // -- Types --
 
-interface Transaction {
-  readonly id: string;
-  readonly date: string;
-  readonly type: "subscription" | "tip" | "payout";
-  readonly description: string;
-  readonly amount: string;
-  readonly status: "completed" | "pending" | "failed";
+interface EarningsSummary {
+  total_earnings_usdc: number;
+  this_month_earnings_usdc: number;
+  pending_payout_usdc: number;
+  total_paid_out_usdc: number;
 }
 
-// -- Mock data --
-
-const MOCK_WALLET_DISPLAY = "7xKXt...4Fv9n" as const;
-const MOCK_WALLET_FULL = "7xKXtRbFz3dVkP9mQh2NwYsJ6cLuA8gEo1fXp4Fv9n" as const;
-const MOCK_BALANCE = "14,630.00" as const;
-
-const MOCK_TRANSACTIONS: readonly Transaction[] = [
-  {
-    id: "tx-1",
-    date: "2026-03-12",
-    type: "subscription",
-    description: "Premium subscription - alex_web3",
-    amount: "+$19.99",
-    status: "completed",
-  },
-  {
-    id: "tx-2",
-    date: "2026-03-12",
-    type: "tip",
-    description: "Tip from crypto_fan",
-    amount: "+$5.00",
-    status: "completed",
-  },
-  {
-    id: "tx-3",
-    date: "2026-03-11",
-    type: "payout",
-    description: "Withdrawal to Solana wallet",
-    amount: "-$2,500.00",
-    status: "completed",
-  },
-  {
-    id: "tx-4",
-    date: "2026-03-11",
-    type: "subscription",
-    description: "Basic subscription - sol_holder",
-    amount: "+$9.99",
-    status: "completed",
-  },
-  {
-    id: "tx-5",
-    date: "2026-03-10",
-    type: "tip",
-    description: "Tip from defi_degen",
-    amount: "+$25.00",
-    status: "completed",
-  },
-  {
-    id: "tx-6",
-    date: "2026-03-10",
-    type: "subscription",
-    description: "VIP subscription - whale_watcher",
-    amount: "+$49.99",
-    status: "completed",
-  },
-  {
-    id: "tx-7",
-    date: "2026-03-09",
-    type: "payout",
-    description: "Withdrawal to Solana wallet",
-    amount: "-$1,000.00",
-    status: "pending",
-  },
-  {
-    id: "tx-8",
-    date: "2026-03-08",
-    type: "subscription",
-    description: "Premium subscription - nft_collector",
-    amount: "+$19.99",
-    status: "failed",
-  },
-] as const;
+interface Transaction {
+  readonly id: string | number;
+  readonly created_at: string;
+  readonly type: "subscription" | "tip" | "payout";
+  readonly from_username: string | null;
+  readonly amount_usdc: number;
+  readonly tier: string | null;
+  readonly payment_tx: string | null;
+}
 
 // -- Helpers --
 
@@ -107,12 +42,6 @@ const TYPE_STYLES: Record<Transaction["type"], { bg: string; icon: typeof ArrowU
   subscription: { bg: "bg-[#00AFF0]/15 text-[#00AFF0]", icon: ArrowDownLeft },
   tip: { bg: "bg-emerald-500/15 text-emerald-400", icon: ArrowDownLeft },
   payout: { bg: "bg-amber-500/15 text-amber-400", icon: ArrowUpRight },
-};
-
-const STATUS_CONFIG: Record<Transaction["status"], { icon: typeof CheckCircle2; color: string; label: string }> = {
-  completed: { icon: CheckCircle2, color: "text-emerald-400", label: "Completed" },
-  pending: { icon: Clock, color: "text-amber-400", label: "Pending" },
-  failed: { icon: XCircle, color: "text-red-400", label: "Failed" },
 };
 
 function formatDate(dateStr: string): string {
@@ -123,33 +52,42 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function formatUsdc(cents: number): string {
+  return `$${(Math.abs(cents) / 100).toFixed(2)}`;
+}
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+    </div>
+  );
+}
+
 export default function EarningsPage() {
-  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<EarningsSummary | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const handleCopyAddress = async () => {
-    try {
-      await navigator.clipboard.writeText(MOCK_WALLET_FULL);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const textArea = document.createElement("textarea");
-      textArea.value = MOCK_WALLET_FULL;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  useEffect(() => {
+    fetch("/api/earnings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) {
+          setSummary(json.data);
+        }
+        if (json.transactions) {
+          setTransactions(json.transactions);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
-  const handleViewOnExplorer = () => {
-    window.open(
-      `https://explorer.solana.com/address/${MOCK_WALLET_FULL}`,
-      "_blank"
-    );
-  };
+  if (loading) return <LoadingSpinner />;
+
+  const totalEarnings = summary?.total_earnings_usdc ?? 0;
+  const pendingPayout = summary?.pending_payout_usdc ?? 0;
 
   return (
     <div className="space-y-6">
@@ -169,16 +107,19 @@ export default function EarningsPage() {
         <Card className="border-gray-200 bg-white">
           <CardContent className="p-6">
             <p className="text-sm font-medium text-muted-foreground">
-              Available Balance
+              Total Earnings
             </p>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-[#00AFF0] text-4xl font-bold tracking-tight">
-                ${MOCK_BALANCE}
+                {formatUsdc(totalEarnings)}
               </span>
               <span className="text-sm font-medium text-muted-foreground">
                 USDC
               </span>
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              This month: {formatUsdc(summary?.this_month_earnings_usdc ?? 0)}
+            </p>
             <Button className="mt-4 w-full bg-[#00AFF0] hover:bg-[#009dd8]">
               <Wallet className="mr-2 h-4 w-4" />
               Withdraw to Wallet
@@ -186,50 +127,23 @@ export default function EarningsPage() {
           </CardContent>
         </Card>
 
-        {/* Connected wallet */}
+        {/* Pending payout */}
         <Card className="border-gray-200 bg-white">
           <CardContent className="p-6">
             <p className="text-sm font-medium text-muted-foreground">
-              Connected Wallet
+              Available for Payout
             </p>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00AFF0]/20">
-                <Wallet className="h-4 w-4 text-[#00AFF0]" />
-              </div>
-              <span className="font-mono text-lg font-semibold text-foreground">
-                {MOCK_WALLET_DISPLAY}
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-emerald-400 text-4xl font-bold tracking-tight">
+                {formatUsdc(pendingPayout)}
+              </span>
+              <span className="text-sm font-medium text-muted-foreground">
+                USDC
               </span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Solana Network</p>
-            <div className="mt-4 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-gray-200 text-xs"
-                onClick={handleCopyAddress}
-              >
-                {copied ? (
-                  <>
-                    <Check className="mr-1.5 h-3 w-3 text-emerald-400" />
-                    <span className="text-emerald-400">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-1.5 h-3 w-3" />
-                    Copy Address
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-gray-200 text-xs"
-                onClick={handleViewOnExplorer}
-              >
-                <ExternalLink className="mr-1.5 h-3 w-3" />
-                View on Explorer
-              </Button>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Total paid out: {formatUsdc(summary?.total_paid_out_usdc ?? 0)}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -248,73 +162,93 @@ export default function EarningsPage() {
             <div className="col-span-1">Type</div>
             <div className="col-span-5">Description</div>
             <div className="col-span-2 text-right">Amount</div>
-            <div className="col-span-2 text-right">Status</div>
+            <div className="col-span-2 text-right">Tx</div>
           </div>
 
           {/* Table rows */}
           <div className="divide-y divide-gray-200">
-            {MOCK_TRANSACTIONS.map((tx) => {
-              const typeConfig = TYPE_STYLES[tx.type];
-              const statusConfig = STATUS_CONFIG[tx.status];
-              const StatusIcon = statusConfig.icon;
-              const TypeIcon = typeConfig.icon;
-              const isIncoming = tx.type !== "payout";
+            {transactions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Wallet className="mb-3 h-10 w-10 opacity-40" />
+                <p className="text-sm">No transactions yet.</p>
+              </div>
+            ) : (
+              transactions.map((tx) => {
+                const typeConfig = TYPE_STYLES[tx.type] ?? TYPE_STYLES.subscription;
+                const TypeIcon = typeConfig.icon;
+                const isIncoming = tx.type !== "payout";
 
-              return (
-                <div
-                  key={tx.id}
-                  className="flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-gray-50 md:grid md:grid-cols-12 md:items-center md:gap-4"
-                >
-                  {/* Date */}
-                  <div className="col-span-2 text-sm text-muted-foreground">
-                    {formatDate(tx.date)}
-                  </div>
+                const description =
+                  tx.type === "payout"
+                    ? "Withdrawal to Solana wallet"
+                    : tx.type === "tip"
+                      ? `Tip from ${tx.from_username ?? "unknown"}`
+                      : `${tx.tier ? tx.tier.charAt(0).toUpperCase() + tx.tier.slice(1) + " subscription" : "Subscription"} - ${tx.from_username ?? "unknown"}`;
 
-                  {/* Type */}
-                  <div className="col-span-1">
-                    <div
-                      className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-full",
-                        typeConfig.bg
+                return (
+                  <div
+                    key={`${tx.type}-${tx.id}`}
+                    className="flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-gray-50 md:grid md:grid-cols-12 md:items-center md:gap-4"
+                  >
+                    {/* Date */}
+                    <div className="col-span-2 text-sm text-muted-foreground">
+                      {formatDate(tx.created_at)}
+                    </div>
+
+                    {/* Type */}
+                    <div className="col-span-1">
+                      <div
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-full",
+                          typeConfig.bg
+                        )}
+                      >
+                        <TypeIcon className="h-3.5 w-3.5" />
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="col-span-5">
+                      <p className="text-sm text-foreground">{description}</p>
+                      <Badge
+                        variant="secondary"
+                        className="mt-1 border-0 text-[10px] font-medium capitalize md:hidden"
+                      >
+                        {tx.type}
+                      </Badge>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="col-span-2 text-right">
+                      <span
+                        className={cn(
+                          "text-sm font-semibold",
+                          isIncoming ? "text-emerald-400" : "text-foreground"
+                        )}
+                      >
+                        {isIncoming ? "+" : "-"}{formatUsdc(tx.amount_usdc)}
+                      </span>
+                    </div>
+
+                    {/* Tx link */}
+                    <div className="col-span-2 text-right">
+                      {tx.payment_tx ? (
+                        <a
+                          href={`https://explorer.solana.com/tx/${tx.payment_tx}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#00AFF0] hover:underline"
+                        >
+                          {tx.payment_tx.slice(0, 4)}...{tx.payment_tx.slice(-4)}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">--</span>
                       )}
-                    >
-                      <TypeIcon className="h-3.5 w-3.5" />
                     </div>
                   </div>
-
-                  {/* Description */}
-                  <div className="col-span-5">
-                    <p className="text-sm text-foreground">{tx.description}</p>
-                    <Badge
-                      variant="secondary"
-                      className="mt-1 border-0 text-[10px] font-medium capitalize md:hidden"
-                    >
-                      {tx.type}
-                    </Badge>
-                  </div>
-
-                  {/* Amount */}
-                  <div className="col-span-2 text-right">
-                    <span
-                      className={cn(
-                        "text-sm font-semibold",
-                        isIncoming ? "text-emerald-400" : "text-foreground"
-                      )}
-                    >
-                      {tx.amount}
-                    </span>
-                  </div>
-
-                  {/* Status */}
-                  <div className="col-span-2 flex items-center justify-end gap-1.5">
-                    <StatusIcon className={cn("h-3.5 w-3.5", statusConfig.color)} />
-                    <span className={cn("text-xs font-medium", statusConfig.color)}>
-                      {statusConfig.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </CardContent>
       </Card>

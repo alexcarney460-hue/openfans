@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   DollarSign,
@@ -13,70 +13,35 @@ import {
   Share2,
 } from "lucide-react";
 
-// ─── Mock data (replaced by API when connected) ────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-const MOCK_AFFILIATE = {
-  referral_code: "alexfitness-j8k2m4",
-  referral_link: "https://openfans.online/signup?ref=alexfitness-j8k2m4",
-  commission_rate: 10,
-  total_referrals: 12,
-  total_earnings_usdc: 4850, // $48.50
-  pending_earnings_usdc: 1200, // $12.00
-};
+interface AffiliateData {
+  referral_code: string;
+  referral_link: string;
+  commission_rate: number;
+  total_referrals: number;
+  total_earnings_usdc: number;
+  pending_earnings_usdc: number;
+  is_active: boolean;
+}
 
-const MOCK_REFERRALS = [
-  {
-    id: 1,
-    username: "sarah_creates",
-    display_name: "Sarah Creates",
-    status: "active" as const,
-    created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-    converted_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-  {
-    id: 2,
-    username: "fitmark",
-    display_name: "Mark Fitness",
-    status: "active" as const,
-    created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
-    converted_at: new Date(Date.now() - 86400000 * 8).toISOString(),
-  },
-  {
-    id: 3,
-    username: "newcreator",
-    display_name: "New Creator",
-    status: "pending" as const,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    converted_at: null,
-  },
-];
+interface Referral {
+  id: number;
+  username: string;
+  display_name: string;
+  status: "pending" | "active" | "expired";
+  created_at: string;
+  converted_at: string | null;
+}
 
-const MOCK_COMMISSIONS = [
-  {
-    id: 1,
-    source_type: "subscription",
-    source_amount_usdc: 999,
-    commission_amount_usdc: 100,
-    status: "paid" as const,
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: 2,
-    source_type: "subscription",
-    source_amount_usdc: 1999,
-    commission_amount_usdc: 200,
-    status: "pending" as const,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: 3,
-    source_type: "tip",
-    source_amount_usdc: 5000,
-    commission_amount_usdc: 500,
-    status: "paid" as const,
-    created_at: new Date(Date.now() - 43200000).toISOString(),
-  },
-];
+interface Commission {
+  id: number;
+  source_type: "subscription" | "tip";
+  source_amount_usdc: number;
+  commission_amount_usdc: number;
+  status: "pending" | "paid" | "cancelled";
+  created_at: string;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -92,15 +57,39 @@ function formatDate(iso: string): string {
   });
 }
 
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+    </div>
+  );
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function AffiliatePage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"referrals" | "commissions">("referrals");
+  const [loading, setLoading] = useState(true);
+  const [affiliate, setAffiliate] = useState<AffiliateData | null>(null);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [commissions, setCommissions] = useState<Commission[]>([]);
 
-  const affiliate = MOCK_AFFILIATE;
-  const referrals = MOCK_REFERRALS;
-  const commissions = MOCK_COMMISSIONS;
+  useEffect(() => {
+    fetch("/api/affiliate")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) {
+          setAffiliate(json.data.affiliate);
+          setReferrals(json.data.referrals ?? []);
+          setCommissions(json.data.commissions ?? []);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <LoadingSpinner />;
 
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -108,13 +97,15 @@ export default function AffiliatePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const commissionRate = affiliate?.commission_rate ?? 10;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Affiliate Program</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Earn {affiliate.commission_rate}% commission on every subscription from people you refer
+          Earn {commissionRate}% commission on every subscription from people you refer
         </p>
       </div>
 
@@ -128,7 +119,7 @@ export default function AffiliatePage() {
             <div>
               <p className="text-xs font-medium text-gray-400">Total Referrals</p>
               <p className="text-2xl font-bold text-gray-900">
-                {affiliate.total_referrals}
+                {affiliate?.total_referrals ?? 0}
               </p>
             </div>
           </div>
@@ -142,7 +133,7 @@ export default function AffiliatePage() {
             <div>
               <p className="text-xs font-medium text-gray-400">Total Earned</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatUsdc(affiliate.total_earnings_usdc)}
+                {formatUsdc(affiliate?.total_earnings_usdc ?? 0)}
               </p>
             </div>
           </div>
@@ -156,7 +147,7 @@ export default function AffiliatePage() {
             <div>
               <p className="text-xs font-medium text-gray-400">Pending</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatUsdc(affiliate.pending_earnings_usdc)}
+                {formatUsdc(affiliate?.pending_earnings_usdc ?? 0)}
               </p>
             </div>
           </div>
@@ -170,7 +161,7 @@ export default function AffiliatePage() {
             <div>
               <p className="text-xs font-medium text-gray-400">Commission Rate</p>
               <p className="text-2xl font-bold text-gray-900">
-                {affiliate.commission_rate}%
+                {commissionRate}%
               </p>
             </div>
           </div>
@@ -185,10 +176,10 @@ export default function AffiliatePage() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
-            <code className="text-sm text-gray-700">{affiliate.referral_link}</code>
+            <code className="text-sm text-gray-700">{affiliate?.referral_link ?? ""}</code>
           </div>
           <button
-            onClick={() => handleCopy(affiliate.referral_link)}
+            onClick={() => handleCopy(affiliate?.referral_link ?? "")}
             className="flex items-center gap-2 rounded-lg bg-[#00AFF0] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6]"
           >
             {copied ? (
@@ -208,7 +199,7 @@ export default function AffiliatePage() {
           <button
             onClick={() =>
               window.open(
-                `https://wa.me/?text=${encodeURIComponent(`Join me on OpenFans! ${affiliate.referral_link}`)}`,
+                `https://wa.me/?text=${encodeURIComponent(`Join me on OpenFans! ${affiliate?.referral_link ?? ""}`)}`,
                 "_blank",
               )
             }
@@ -220,7 +211,7 @@ export default function AffiliatePage() {
           <button
             onClick={() =>
               window.open(
-                `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out OpenFans — the creator platform that pays more! ${affiliate.referral_link}`)}`,
+                `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out OpenFans — the creator platform that pays more! ${affiliate?.referral_link ?? ""}`)}`,
                 "_blank",
               )
             }
@@ -230,11 +221,11 @@ export default function AffiliatePage() {
             Twitter
           </button>
           <button
-            onClick={() => handleCopy(affiliate.referral_code)}
+            onClick={() => handleCopy(affiliate?.referral_code ?? "")}
             className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
           >
             <Gift className="h-3 w-3" />
-            Code: {affiliate.referral_code}
+            Code: {affiliate?.referral_code ?? ""}
           </button>
         </div>
       </div>
@@ -272,7 +263,7 @@ export default function AffiliatePage() {
             <div>
               <p className="text-sm font-medium text-gray-900">You earn commission</p>
               <p className="text-xs text-gray-500">
-                Earn {affiliate.commission_rate}% of every subscription payment your referrals make
+                Earn {commissionRate}% of every subscription payment your referrals make
               </p>
             </div>
           </div>

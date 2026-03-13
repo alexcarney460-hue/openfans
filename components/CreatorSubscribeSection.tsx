@@ -5,12 +5,14 @@ import { SubscribeButton } from "@/components/SubscribeButton";
 import { SubscribeModal } from "@/components/SubscribeModal";
 
 interface CreatorSubscribeSectionProps {
+  readonly creatorId?: string;
   readonly creatorName: string;
   readonly creatorUsername: string;
   readonly subscriptionPrice: number;
 }
 
 export function CreatorSubscribeSection({
+  creatorId,
   creatorName,
   creatorUsername,
   subscriptionPrice,
@@ -27,6 +29,7 @@ export function CreatorSubscribeSection({
       <SubscribeModal
         isOpen={showSubscribeModal}
         onClose={() => setShowSubscribeModal(false)}
+        creatorId={creatorId}
         creatorName={creatorName}
         creatorUsername={creatorUsername}
         price={subscriptionPrice}

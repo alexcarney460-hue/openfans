@@ -32,9 +32,17 @@ export function CreatorCard({ creator, className }: CreatorCardProps) {
         {/* Avatar overlapping the banner */}
         <Link href={`/${creator.username}`} className="-mt-9 mb-2 block">
           <div className="inline-block h-[72px] w-[72px] overflow-hidden rounded-full border-[3px] border-white">
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-100 text-lg font-bold text-gray-900">
-              {creator.displayName.charAt(0)}
-            </div>
+            {creator.avatarUrl && creator.avatarUrl !== "" ? (
+              <img
+                src={creator.avatarUrl}
+                alt={creator.displayName}
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-100 text-lg font-bold text-gray-900">
+                {creator.displayName.charAt(0)}
+              </div>
+            )}
           </div>
         </Link>
 

@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   BadgeCheck,
@@ -7,54 +9,115 @@ import {
   Users,
   Heart,
   ArrowLeft,
+  Lock,
 } from "lucide-react";
-import { getCreator, getAllCreators, formatNumber } from "@/lib/mock-data";
-import { PostCard } from "@/components/PostCard";
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 
-interface PageProps {
-  params: { username: string };
+function formatNumber(num: number): string {
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toString();
 }
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
-  const creator = getCreator(params.username);
-  if (!creator) {
-    return { title: "Creator Not Found | OpenFans" };
+function timeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+interface ApiCreatorData {
+  readonly id: string;
+  readonly username: string;
+  readonly display_name: string;
+  readonly bio: string | null;
+  readonly avatar_url: string | null;
+  readonly banner_url: string | null;
+  readonly is_verified: boolean;
+  readonly created_at: string;
+  readonly profile_id: number;
+  readonly subscription_price_usdc: number;
+  readonly total_subscribers: number;
+  readonly categories: string[];
+  readonly is_featured: boolean;
+  readonly subscriber_count: number;
+  readonly post_count: number;
+  readonly recent_posts: readonly ApiPost[];
+}
+
+interface ApiPost {
+  readonly id: number;
+  readonly creator_id: string;
+  readonly title: string | null;
+  readonly body: string | null;
+  readonly media_urls: string[];
+  readonly media_type: string;
+  readonly is_free: boolean;
+  readonly tier: string;
+  readonly likes_count: number;
+  readonly comments_count: number;
+  readonly created_at: string;
+  readonly is_locked?: boolean;
+}
+
+export default function CreatorProfilePage() {
+  const params = useParams<{ username: string }>();
+  const [creator, setCreator] = useState<ApiCreatorData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    async function fetchCreator() {
+      try {
+        const res = await fetch(`/api/creators/${params.username}`);
+        if (res.status === 404) {
+          setNotFound(true);
+          return;
+        }
+        if (!res.ok) {
+          setNotFound(true);
+          return;
+        }
+        const json = await res.json();
+        setCreator(json.data);
+      } catch {
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCreator();
+  }, [params.username]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-gray-400">Loading profile...</p>
+      </div>
+    );
   }
 
-  return {
-    title: `${creator.displayName} (@${creator.username}) | OpenFans`,
-    description: creator.bio,
-    openGraph: {
-      title: `${creator.displayName} on OpenFans`,
-      description: creator.bio,
-      type: "profile",
-      url: `https://openfans.online/${creator.username}`,
-      siteName: "OpenFans",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${creator.displayName} on OpenFans`,
-      description: creator.bio,
-    },
-  };
-}
-
-export async function generateStaticParams() {
-  const creators = getAllCreators();
-  return creators.map((creator) => ({
-    username: creator.username,
-  }));
-}
-
-export default function CreatorProfilePage({ params }: PageProps) {
-  const creator = getCreator(params.username);
-
-  if (!creator) {
-    notFound();
+  if (notFound || !creator) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 gap-4">
+        <p className="text-lg font-medium text-gray-600">Creator not found</p>
+        <Link href="/explore" className="text-sm text-[#00AFF0] hover:underline">
+          Browse creators
+        </Link>
+      </div>
+    );
   }
+
+  const subscriptionPrice = (creator.subscription_price_usdc ?? 0) / 100;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,14 +133,14 @@ export default function CreatorProfilePage({ params }: PageProps) {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <h1 className="truncate text-sm font-bold text-gray-900">
-              {creator.displayName}
+              {creator.display_name}
             </h1>
-            {creator.isVerified && (
+            {creator.is_verified && (
               <BadgeCheck className="h-4 w-4 flex-shrink-0 fill-[#00AFF0] text-white" />
             )}
           </div>
           <p className="text-xs text-gray-400">
-            {formatNumber(creator.stats.posts)} posts
+            {formatNumber(creator.post_count)} posts
           </p>
         </div>
       </nav>
@@ -93,15 +156,24 @@ export default function CreatorProfilePage({ params }: PageProps) {
         {/* Avatar */}
         <div className="-mt-16 mb-4 flex items-end justify-between sm:-mt-20">
           <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-gray-50 sm:h-32 sm:w-32">
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-3xl font-bold text-gray-600 sm:text-4xl">
-              {creator.displayName.charAt(0)}
-            </div>
+            {creator.avatar_url ? (
+              <img
+                src={creator.avatar_url}
+                alt={creator.display_name}
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-3xl font-bold text-gray-600 sm:text-4xl">
+                {creator.display_name.charAt(0)}
+              </div>
+            )}
           </div>
           <div className="pb-1">
             <CreatorSubscribeSection
-              creatorName={creator.displayName}
+              creatorId={creator.id}
+              creatorName={creator.display_name}
               creatorUsername={creator.username}
-              subscriptionPrice={creator.subscriptionPrice}
+              subscriptionPrice={subscriptionPrice}
             />
           </div>
         </div>
@@ -110,9 +182,9 @@ export default function CreatorProfilePage({ params }: PageProps) {
         <div className="mb-4">
           <div className="mb-1 flex items-center gap-2">
             <h2 className="text-2xl font-bold text-gray-900">
-              {creator.displayName}
+              {creator.display_name}
             </h2>
-            {creator.isVerified && (
+            {creator.is_verified && (
               <BadgeCheck className="h-5 w-5 fill-[#00AFF0] text-white" />
             )}
           </div>
@@ -127,37 +199,32 @@ export default function CreatorProfilePage({ params }: PageProps) {
           <div className="flex items-center gap-1.5 text-sm">
             <FileText className="h-4 w-4 text-gray-300" />
             <span className="font-semibold text-gray-900">
-              {formatNumber(creator.stats.posts)}
+              {formatNumber(creator.post_count)}
             </span>
             <span className="text-gray-400">posts</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Users className="h-4 w-4 text-gray-300" />
             <span className="font-semibold text-gray-900">
-              {formatNumber(creator.stats.subscribers)}
+              {formatNumber(creator.subscriber_count)}
             </span>
             <span className="text-gray-400">subscribers</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <Heart className="h-4 w-4 text-gray-300" />
-            <span className="font-semibold text-gray-900">
-              {formatNumber(creator.stats.likes)}
-            </span>
-            <span className="text-gray-400">likes</span>
           </div>
         </div>
 
         {/* Categories */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {creator.categories.map((category) => (
-            <span
-              key={category}
-              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-500"
-            >
-              {category}
-            </span>
-          ))}
-        </div>
+        {creator.categories && creator.categories.length > 0 && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            {creator.categories.map((category) => (
+              <span
+                key={category}
+                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-500"
+              >
+                {category}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Divider */}
         <div className="mb-6 border-t border-gray-200" />
@@ -165,9 +232,60 @@ export default function CreatorProfilePage({ params }: PageProps) {
         {/* Content Feed */}
         <section aria-label="Posts feed">
           <div className="space-y-4 pb-16">
-            {creator.posts.map((post) => (
-              <PostCard key={post.id} post={post} isSubscribed={false} />
-            ))}
+            {creator.recent_posts.length === 0 ? (
+              <p className="py-10 text-center text-sm text-gray-400">
+                No posts yet.
+              </p>
+            ) : (
+              creator.recent_posts.map((post) => (
+                <article
+                  key={post.id}
+                  className="rounded-xl border border-gray-200 bg-white transition-colors hover:border-gray-300"
+                >
+                  <div className="flex items-center gap-3 p-4 pb-3">
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+                      {creator.avatar_url ? (
+                        <img
+                          src={creator.avatar_url}
+                          alt={creator.display_name}
+                          className="h-full w-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-600">
+                          {creator.display_name.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="truncate text-sm font-semibold text-gray-900">
+                        {creator.display_name}
+                      </span>
+                      <p className="text-xs text-gray-400">{timeAgo(post.created_at)}</p>
+                    </div>
+                    {!post.is_free && post.tier !== "free" && (
+                      <span className="flex items-center gap-1 rounded-full bg-[#00AFF0]/10 px-2.5 py-1 text-xs font-medium text-[#00AFF0]">
+                        <Lock className="h-3 w-3" />
+                        {post.tier}
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-4 pb-3">
+                    {post.title && (
+                      <p className="mb-1 text-sm font-semibold text-gray-900">{post.title}</p>
+                    )}
+                    <p className="text-sm leading-relaxed text-gray-600">
+                      {post.body ?? ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-6 border-t border-gray-200 px-4 py-3">
+                    <span className="flex items-center gap-1.5 text-gray-400">
+                      <Heart className="h-4 w-4" />
+                      <span className="text-xs">{formatNumber(post.likes_count)}</span>
+                    </span>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </section>
       </div>

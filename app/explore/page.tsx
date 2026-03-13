@@ -1,45 +1,87 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SearchBar } from "@/components/SearchBar";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { CreatorCard } from "@/components/CreatorCard";
-import {
-  EXPLORE_CREATORS,
-  CATEGORIES,
-  type CreatorCategory,
-} from "./mock-data";
+import { CATEGORIES, type CreatorCategory } from "./mock-data";
+
+interface ApiCreator {
+  readonly id: string;
+  readonly username: string;
+  readonly display_name: string;
+  readonly bio: string | null;
+  readonly avatar_url: string | null;
+  readonly banner_url: string | null;
+  readonly is_verified: boolean;
+  readonly wallet_address: string | null;
+  readonly created_at: string;
+  readonly profile_id: number;
+  readonly subscription_price_usdc: number;
+  readonly total_subscribers: number;
+  readonly categories: string[];
+  readonly is_featured: boolean;
+}
+
+function mapApiCreator(c: ApiCreator) {
+  return {
+    username: c.username,
+    displayName: c.display_name,
+    bio: c.bio ?? "",
+    avatarUrl: c.avatar_url ?? "",
+    bannerUrl: c.banner_url ?? "",
+    isVerified: c.is_verified,
+    categories: c.categories ?? [],
+    subscriptionPrice: (c.subscription_price_usdc ?? 0) / 100,
+    stats: {
+      posts: 0,
+      subscribers: c.total_subscribers ?? 0,
+      likes: 0,
+    },
+    posts: [] as never[],
+  };
+}
 
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<CreatorCategory>("All");
+  const [creators, setCreators] = useState<ReturnType<typeof mapApiCreator>[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredCreators = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
-    return EXPLORE_CREATORS.filter((creator) => {
-      const matchesCategory =
-        activeCategory === "All" ||
-        creator.primaryCategory === activeCategory ||
-        creator.categories.includes(activeCategory);
-      const matchesSearch =
-        query === "" ||
-        creator.displayName.toLowerCase().includes(query) ||
-        creator.username.toLowerCase().includes(query) ||
-        creator.bio.toLowerCase().includes(query) ||
-        creator.categories.some((c) => c.toLowerCase().includes(query));
-      return matchesCategory && matchesSearch;
-    });
-  }, [searchQuery, activeCategory]);
+  const fetchCreators = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (activeCategory !== "All") {
+        params.set("category", activeCategory);
+      }
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+      }
+      params.set("limit", "40");
+      const res = await fetch(`/api/creators?${params.toString()}`);
+      if (!res.ok) {
+        setCreators([]);
+        return;
+      }
+      const json = await res.json();
+      const mapped = (json.data ?? []).map(mapApiCreator);
+      setCreators(mapped);
+    } catch {
+      setCreators([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeCategory, searchQuery]);
 
-  const sortedCreators = useMemo(() => {
-    return [...filteredCreators].sort((a, b) => {
-      if (a.isFeatured && !b.isFeatured) return -1;
-      if (!a.isFeatured && b.isFeatured) return 1;
-      return b.stats.subscribers - a.stats.subscribers;
-    });
-  }, [filteredCreators]);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchCreators();
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [fetchCreators]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -64,13 +106,19 @@ export default function ExplorePage() {
           </div>
         </div>
 
-        {/* Creator grid */}
-        {sortedCreators.length > 0 ? (
+        {/* Loading state */}
+        {loading ? (
+          <section className="py-24">
+            <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+              <p className="text-lg text-gray-400">Loading creators...</p>
+            </div>
+          </section>
+        ) : creators.length > 0 ? (
           <section className="py-8">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {sortedCreators.map((creator) => (
-                  <CreatorCard key={creator.id} creator={creator} />
+                {creators.map((creator) => (
+                  <CreatorCard key={creator.username} creator={creator} />
                 ))}
               </div>
             </div>

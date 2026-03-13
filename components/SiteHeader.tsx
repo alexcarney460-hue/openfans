@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -12,6 +13,20 @@ const NAV_LINKS = [
 
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsLoggedIn(!!user);
+      } catch {
+        setIsLoggedIn(false);
+      }
+    }
+    checkAuth();
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-xl">
@@ -38,18 +53,29 @@ export function SiteHeader() {
 
         {/* Desktop Actions */}
         <div className="hidden items-center gap-4 md:flex">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
-          >
-            Log In
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded-full bg-[#00AFF0] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Sign Up
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="rounded-full bg-[#00AFF0] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
+              >
+                Log In
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-full bg-[#00AFF0] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Hamburger */}
@@ -79,20 +105,32 @@ export function SiteHeader() {
               </Link>
             ))}
             <hr className="my-2 border-gray-200" />
-            <Link
-              href="/login"
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-              onClick={() => setMobileOpen(false)}
-            >
-              Log In
-            </Link>
-            <Link
-              href="/signup"
-              className="mt-1 block rounded-full bg-[#00AFF0] px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              onClick={() => setMobileOpen(false)}
-            >
-              Sign Up
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="mt-1 block rounded-full bg-[#00AFF0] px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                onClick={() => setMobileOpen(false)}
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Log In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="mt-1 block rounded-full bg-[#00AFF0] px-5 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       )}

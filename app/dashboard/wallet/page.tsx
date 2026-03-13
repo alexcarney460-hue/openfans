@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -35,52 +35,16 @@ interface WalletTransaction {
   created_at: string;
 }
 
-// ─── Mock data (replaced by API calls when connected to Supabase) ───────────
-
-const MOCK_BALANCE = 4999; // $49.99
-const MOCK_MINIMUM = 1999; // $19.99
-const MOCK_TRANSACTIONS: WalletTransaction[] = [
-  {
-    id: 1,
-    type: "deposit",
-    amount_usdc: 5000,
-    balance_after: 5000,
-    description: "USDC deposit from wallet",
-    reference_id: "5xKj...m9Qz",
-    status: "completed",
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: 2,
-    type: "subscription_charge",
-    amount_usdc: -999,
-    balance_after: 4001,
-    description: "Monthly subscription — @jessica_fit",
-    reference_id: null,
-    status: "completed",
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: 3,
-    type: "tip_sent",
-    amount_usdc: -500,
-    balance_after: 3501,
-    description: "Tip to @chef_marco",
-    reference_id: null,
-    status: "completed",
-    created_at: new Date(Date.now() - 43200000).toISOString(),
-  },
-  {
-    id: 4,
-    type: "subscription_received",
-    amount_usdc: 1498,
-    balance_after: 4999,
-    description: "Subscription from @crypto_dan (95%)",
-    reference_id: null,
-    status: "completed",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-];
+interface WalletData {
+  wallet: {
+    id: number;
+    balance_usdc: number;
+    minimum_balance_usdc: number;
+    available_for_withdrawal: number;
+    created_at: string;
+  };
+  transactions: WalletTransaction[];
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -117,17 +81,48 @@ const STATUS_ICON = {
   failed: <AlertCircle className="h-3.5 w-3.5 text-red-500" />,
 };
 
+// ─── Loading Spinner ────────────────────────────────────────────────────────
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+    </div>
+  );
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function WalletPage() {
   const [activeTab, setActiveTab] = useState<"all" | "deposits" | "charges">("all");
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
 
-  const balance = MOCK_BALANCE;
-  const minimum = MOCK_MINIMUM;
-  const available = balance - minimum;
-  const transactions = MOCK_TRANSACTIONS;
+  const fetchWallet = useCallback(() => {
+    setLoading(true);
+    fetch("/api/wallet")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) {
+          setWalletData(json.data);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchWallet();
+  }, [fetchWallet]);
+
+  if (loading) return <LoadingSpinner />;
+
+  const balance = walletData?.wallet.balance_usdc ?? 0;
+  const minimum = walletData?.wallet.minimum_balance_usdc ?? 0;
+  const available = walletData?.wallet.available_for_withdrawal ?? 0;
+  const transactions = walletData?.transactions ?? [];
 
   const filteredTxns = transactions.filter((tx) => {
     if (activeTab === "all") return true;
@@ -317,7 +312,7 @@ export default function WalletPage() {
 
       {/* Deposit Modal Placeholder */}
       {showDepositModal && (
-        <DepositModal onClose={() => setShowDepositModal(false)} />
+        <DepositModal onClose={() => setShowDepositModal(false)} onSuccess={fetchWallet} />
       )}
 
       {/* Withdraw Modal Placeholder */}
@@ -325,6 +320,7 @@ export default function WalletPage() {
         <WithdrawModal
           available={available}
           onClose={() => setShowWithdrawModal(false)}
+          onSuccess={fetchWallet}
         />
       )}
     </div>
@@ -333,10 +329,11 @@ export default function WalletPage() {
 
 // ─── Deposit Modal ──────────────────────────────────────────────────────────
 
-function DepositModal({ onClose }: { readonly onClose: () => void }) {
+function DepositModal({ onClose, onSuccess }: { readonly onClose: () => void; readonly onSuccess: () => void }) {
   const [amount, setAmount] = useState("");
   const PLATFORM_WALLET = "4e8YpUSns8RoVrPfVayhX4BWQSqecmjFUh1jxx77niQt";
   const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const presets = [10, 25, 50, 100];
 
@@ -344,6 +341,28 @@ function DepositModal({ onClose }: { readonly onClose: () => void }) {
     await navigator.clipboard.writeText(PLATFORM_WALLET);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDeposit = async () => {
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) return;
+
+    setSubmitting(true);
+    try {
+      await fetch("/api/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deposit",
+          amount_usdc: Math.round(parsedAmount * 100),
+          payment_tx: `manual-deposit-${Date.now()}`,
+        }),
+      });
+      onSuccess();
+      onClose();
+    } catch {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -436,10 +455,11 @@ function DepositModal({ onClose }: { readonly onClose: () => void }) {
         </p>
 
         <button
-          onClick={onClose}
-          className="w-full rounded-lg bg-[#00AFF0] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6]"
+          onClick={handleDeposit}
+          disabled={submitting || !amount || parseFloat(amount) <= 0}
+          className="w-full rounded-lg bg-[#00AFF0] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Done
+          {submitting ? "Processing..." : "Confirm Deposit"}
         </button>
       </div>
     </div>
@@ -451,12 +471,38 @@ function DepositModal({ onClose }: { readonly onClose: () => void }) {
 function WithdrawModal({
   available,
   onClose,
+  onSuccess,
 }: {
   readonly available: number;
   readonly onClose: () => void;
+  readonly onSuccess: () => void;
 }) {
   const [amount, setAmount] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleWithdraw = async () => {
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0 || !walletAddress) return;
+
+    setSubmitting(true);
+    try {
+      await fetch("/api/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "withdraw",
+          amount_usdc: Math.round(parsedAmount * 100),
+          payment_tx: `withdrawal-${Date.now()}`,
+          wallet_address: walletAddress,
+        }),
+      });
+      onSuccess();
+      onClose();
+    } catch {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -533,10 +579,11 @@ function WithdrawModal({
         </div>
 
         <button
-          disabled={!walletAddress || !amount || parseFloat(amount) <= 0}
+          onClick={handleWithdraw}
+          disabled={submitting || !walletAddress || !amount || parseFloat(amount) <= 0}
           className="w-full rounded-lg bg-[#00AFF0] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Request Withdrawal
+          {submitting ? "Processing..." : "Request Withdrawal"}
         </button>
       </div>
     </div>

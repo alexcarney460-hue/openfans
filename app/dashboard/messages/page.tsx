@@ -6,20 +6,97 @@ import ConversationList from "@/components/ConversationList";
 import MessageBubble from "@/components/MessageBubble";
 import MessageInput from "@/components/MessageInput";
 import {
-  conversations as initialConversations,
   CURRENT_USER,
   type Conversation,
   type Message,
 } from "./mock-data";
 
-export default function MessagesPage() {
-  const [conversations, setConversations] = useState<readonly Conversation[]>(
-    initialConversations
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+    </div>
   );
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | null
-  >(null);
+}
+
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHrs = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHrs < 24) return `${diffHrs} hr ago`;
+  if (diffDays === 1) return "Yesterday";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+interface ApiConversation {
+  readonly id: number;
+  readonly sender_id: string;
+  readonly receiver_id: string;
+  readonly body: string;
+  readonly media_url: string | null;
+  readonly is_read: boolean;
+  readonly created_at: string;
+  readonly partner_id: string;
+  readonly partner_username: string;
+  readonly partner_display_name: string;
+  readonly partner_avatar_url: string | null;
+}
+
+interface ApiMessage {
+  readonly id: number;
+  readonly sender_id: string;
+  readonly receiver_id: string;
+  readonly body: string;
+  readonly media_url: string | null;
+  readonly is_paid: boolean;
+  readonly price_usdc: number | null;
+  readonly is_read: boolean;
+  readonly created_at: string;
+}
+
+export default function MessagesPage() {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string>(CURRENT_USER);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch conversation list
+  useEffect(() => {
+    fetch("/api/messages")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data && Array.isArray(json.data)) {
+          const apiConvs = json.data as ApiConversation[];
+          // Determine current user id from the first conversation
+          if (apiConvs.length > 0) {
+            const first = apiConvs[0];
+            const userId = first.sender_id === first.partner_id ? first.receiver_id : first.sender_id;
+            setCurrentUserId(userId);
+          }
+
+          const mapped: Conversation[] = apiConvs.map((c) => ({
+            id: c.partner_id,
+            userId: c.partner_id,
+            userName: c.partner_display_name || c.partner_username,
+            userAvatar: c.partner_avatar_url || `https://api.dicebear.com/9.x/notionists/svg?seed=${c.partner_username}&backgroundColor=00AFF0`,
+            lastMessage: c.body,
+            lastMessageTime: formatTimestamp(c.created_at),
+            unreadCount: c.is_read ? 0 : 1,
+            messages: [],
+          }));
+          setConversations(mapped);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeConversationId) ?? null,
@@ -34,8 +111,38 @@ export default function MessagesPage() {
     scrollToBottom();
   }, [activeConversation?.messages.length, scrollToBottom]);
 
+  // When a conversation is selected, fetch its messages
   const handleSelectConversation = useCallback((conversationId: string) => {
     setActiveConversationId(conversationId);
+
+    fetch(`/api/messages?with=${conversationId}&limit=50`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data && Array.isArray(json.data)) {
+          const apiMessages = json.data as ApiMessage[];
+          const mapped: Message[] = apiMessages
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .map((m) => ({
+              id: `msg-${m.id}`,
+              senderId: m.sender_id,
+              text: m.body,
+              timestamp: formatTimestamp(m.created_at),
+              mediaUrl: m.media_url ?? undefined,
+              tipAmount: m.price_usdc ? m.price_usdc / 100 : undefined,
+            }));
+
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.id === conversationId
+                ? { ...conv, messages: mapped }
+                : conv
+            )
+          );
+        }
+      })
+      .catch(() => {
+        // Silently fail - conversation stays with empty messages
+      });
   }, []);
 
   const handleBackToList = useCallback(() => {
@@ -46,9 +153,10 @@ export default function MessagesPage() {
     (text: string, tipAmount?: number) => {
       if (!activeConversationId) return;
 
+      // Optimistically add message to UI
       const newMessage: Message = {
         id: `msg-${Date.now()}`,
-        senderId: CURRENT_USER,
+        senderId: currentUserId,
         text,
         timestamp: "Just now",
         tipAmount,
@@ -66,9 +174,25 @@ export default function MessagesPage() {
             : conv
         )
       );
+
+      // Send to API
+      fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiver_id: activeConversationId,
+          body: text,
+          is_paid: tipAmount != null && tipAmount > 0,
+          price_usdc: tipAmount ? Math.round(tipAmount * 100) : undefined,
+        }),
+      }).catch(() => {
+        // Message send failed - could show error toast
+      });
     },
-    [activeConversationId]
+    [activeConversationId, currentUserId]
   );
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <main className="flex h-[calc(100vh-57px)] overflow-hidden bg-gray-50">
@@ -131,7 +255,7 @@ export default function MessagesPage() {
                 <MessageBubble
                   key={message.id}
                   message={message}
-                  isSent={message.senderId === CURRENT_USER}
+                  isSent={message.senderId === currentUserId}
                 />
               ))}
               <div ref={messagesEndRef} />

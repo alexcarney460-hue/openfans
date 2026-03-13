@@ -1,130 +1,156 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   DollarSign,
   Users,
-  FileText,
   Coins,
   PenSquare,
   User,
   Wallet,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-// -- Mock data --
+// -- Types --
 
-const STATS = [
-  {
-    label: "Total Earnings",
-    value: "$12,450.00",
-    subtext: "USDC",
-    change: "+12.5%",
-    changeDir: "up" as const,
-    icon: DollarSign,
-    gradient: "from-[#00AFF0]/20 to-[#00AFF0]/5",
-    iconColor: "text-[#00AFF0]",
-  },
-  {
-    label: "Active Subscribers",
-    value: "1,284",
-    subtext: "across all tiers",
-    change: "+8.2%",
-    changeDir: "up" as const,
-    icon: Users,
-    gradient: "from-[#00AFF0]/20 to-[#00AFF0]/5",
-    iconColor: "text-[#00AFF0]",
-  },
-  {
-    label: "Total Posts",
-    value: "89",
-    subtext: "12 this month",
-    change: "+3",
-    changeDir: "up" as const,
-    icon: FileText,
-    gradient: "from-blue-500/20 to-blue-500/5",
-    iconColor: "text-blue-400",
-  },
-  {
-    label: "Total Tips",
-    value: "$2,180.00",
-    subtext: "USDC",
-    change: "-2.1%",
-    changeDir: "down" as const,
-    icon: Coins,
-    gradient: "from-amber-500/20 to-amber-500/5",
-    iconColor: "text-amber-400",
-  },
-] as const;
+interface EarningsSummary {
+  total_earnings_usdc: number;
+  this_month_earnings_usdc: number;
+  pending_payout_usdc: number;
+  total_paid_out_usdc: number;
+}
 
-const RECENT_ACTIVITY = [
-  {
-    id: "1",
-    type: "subscription" as const,
-    user: "alex_web3",
-    detail: "subscribed to Premium tier",
-    amount: "$19.99",
-    time: "2 min ago",
-  },
-  {
-    id: "2",
-    type: "tip" as const,
-    user: "crypto_fan",
-    detail: "tipped on your latest post",
-    amount: "$5.00",
-    time: "15 min ago",
-  },
-  {
-    id: "3",
-    type: "subscription" as const,
-    user: "sol_holder",
-    detail: "subscribed to Basic tier",
-    amount: "$9.99",
-    time: "1 hr ago",
-  },
-  {
-    id: "4",
-    type: "message" as const,
-    user: "nft_collector",
-    detail: "sent you a message",
-    amount: null,
-    time: "2 hrs ago",
-  },
-  {
-    id: "5",
-    type: "tip" as const,
-    user: "defi_degen",
-    detail: "tipped on photo set",
-    amount: "$25.00",
-    time: "3 hrs ago",
-  },
-  {
-    id: "6",
-    type: "subscription" as const,
-    user: "whale_watcher",
-    detail: "subscribed to VIP tier",
-    amount: "$49.99",
-    time: "5 hrs ago",
-  },
-] as const;
+interface RecentTransaction {
+  id: string | number;
+  type: "subscription" | "tip" | "payout";
+  from_username: string | null;
+  amount_usdc: number;
+  tier: string | null;
+  created_at: string;
+}
+
+// -- Helpers --
+
+function formatUsdc(cents: number): string {
+  return `$${(Math.abs(cents) / 100).toFixed(2)}`;
+}
+
+function formatTimeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  const hrs = Math.floor(diffMs / 3600000);
+  const days = Math.floor(diffMs / 86400000);
+
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  if (hrs < 24) return `${hrs} hr ago`;
+  if (days === 1) return "Yesterday";
+  return `${days} days ago`;
+}
 
 function activityBadgeVariant(type: string) {
   switch (type) {
     case "subscription":
-      return "default";
+      return "default" as const;
     case "tip":
-      return "secondary";
-    case "message":
-      return "outline";
+      return "secondary" as const;
     default:
-      return "secondary";
+      return "outline" as const;
   }
 }
 
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<EarningsSummary | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentTransaction[]>([]);
+  const [subscriberCount, setSubscriberCount] = useState(0);
+  const [username, setUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [earningsRes, subscribersRes, meRes] = await Promise.allSettled([
+          fetch("/api/earnings").then((r) => r.json()),
+          fetch("/api/subscribers").then((r) => r.json()),
+          fetch("/api/me").then((r) => r.json()),
+        ]);
+
+        if (earningsRes.status === "fulfilled" && earningsRes.value.data) {
+          setSummary(earningsRes.value.data);
+          if (earningsRes.value.transactions) {
+            setRecentActivity(earningsRes.value.transactions.slice(0, 6));
+          }
+        }
+
+        if (subscribersRes.status === "fulfilled" && subscribersRes.value.data) {
+          setSubscriberCount(subscribersRes.value.data.length);
+        }
+
+        if (meRes.status === "fulfilled" && meRes.value.data) {
+          setUsername(meRes.value.data.username ?? null);
+        }
+      } catch {
+        // Silently handle errors
+      }
+      setLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) return <LoadingSpinner />;
+
+  const totalEarnings = summary?.total_earnings_usdc ?? 0;
+  const thisMonthEarnings = summary?.this_month_earnings_usdc ?? 0;
+  const pendingPayout = summary?.pending_payout_usdc ?? 0;
+
+  const stats = [
+    {
+      label: "Total Earnings",
+      value: formatUsdc(totalEarnings),
+      subtext: "USDC",
+      icon: DollarSign,
+      gradient: "from-[#00AFF0]/20 to-[#00AFF0]/5",
+      iconColor: "text-[#00AFF0]",
+    },
+    {
+      label: "Active Subscribers",
+      value: subscriberCount.toLocaleString(),
+      subtext: "across all tiers",
+      icon: Users,
+      gradient: "from-[#00AFF0]/20 to-[#00AFF0]/5",
+      iconColor: "text-[#00AFF0]",
+    },
+    {
+      label: "This Month",
+      value: formatUsdc(thisMonthEarnings),
+      subtext: "USDC this month",
+      icon: TrendingUp,
+      gradient: "from-blue-500/20 to-blue-500/5",
+      iconColor: "text-blue-400",
+    },
+    {
+      label: "Pending Payout",
+      value: formatUsdc(pendingPayout),
+      subtext: "USDC available",
+      icon: Coins,
+      gradient: "from-amber-500/20 to-amber-500/5",
+      iconColor: "text-amber-400",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -139,9 +165,8 @@ export default function DashboardPage() {
 
       {/* Stats grid */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {STATS.map((stat) => {
+        {stats.map((stat) => {
           const Icon = stat.icon;
-          const isUp = stat.changeDir === "up";
           return (
             <Card key={stat.label} className="border-gray-200 bg-white">
               <CardContent className="p-5">
@@ -150,18 +175,6 @@ export default function DashboardPage() {
                     className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${stat.gradient}`}
                   >
                     <Icon className={`h-5 w-5 ${stat.iconColor}`} />
-                  </div>
-                  <div
-                    className={`flex items-center gap-0.5 text-xs font-medium ${
-                      isUp ? "text-emerald-400" : "text-red-400"
-                    }`}
-                  >
-                    {isUp ? (
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    ) : (
-                      <ArrowDownRight className="h-3.5 w-3.5" />
-                    )}
-                    {stat.change}
                   </div>
                 </div>
                 <div className="mt-3">
@@ -189,9 +202,8 @@ export default function DashboardPage() {
             New Post
           </Link>
         </Button>
-        {/* TODO: replace "/alexfitness" with the real username from auth context */}
         <Button asChild variant="outline" className="border-gray-200">
-          <Link href="/alexfitness">
+          <Link href={username ? `/${username}` : "/dashboard"}>
             <User className="mr-2 h-4 w-4" />
             View Profile
           </Link>
@@ -212,10 +224,12 @@ export default function DashboardPage() {
               <CardTitle className="text-base font-semibold">
                 Earnings Overview
               </CardTitle>
-              <div className="flex items-center gap-1 text-xs text-emerald-400">
-                <TrendingUp className="h-3.5 w-3.5" />
-                +18% this month
-              </div>
+              {thisMonthEarnings > 0 && (
+                <div className="flex items-center gap-1 text-xs text-emerald-400">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  {formatUsdc(thisMonthEarnings)} this month
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -256,46 +270,64 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {RECENT_ACTIVITY.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50"
-                >
-                  {/* Avatar placeholder */}
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-muted-foreground">
-                    {item.user.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium text-foreground">
-                        {item.user}
-                      </span>
-                      <Badge
-                        variant={activityBadgeVariant(item.type)}
-                        className="shrink-0 text-[10px]"
-                      >
-                        {item.type}
-                      </Badge>
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.detail}
-                    </p>
-                    <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-                      <span>{item.time}</span>
-                      {item.amount && (
-                        <>
-                          <span>--</span>
-                          <span className="font-medium text-emerald-400">
-                            {item.amount}
+            {recentActivity.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <DollarSign className="mb-2 h-8 w-8 opacity-40" />
+                <p className="text-sm">No recent activity</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentActivity.map((item) => {
+                  const detail =
+                    item.type === "payout"
+                      ? "Withdrawal to wallet"
+                      : item.type === "tip"
+                        ? "tipped on your content"
+                        : `subscribed${item.tier ? ` to ${item.tier} tier` : ""}`;
+
+                  return (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      className="flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50"
+                    >
+                      {/* Avatar placeholder */}
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-muted-foreground">
+                        {item.from_username
+                          ? item.from_username.charAt(0).toUpperCase()
+                          : "$"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-medium text-foreground">
+                            {item.from_username ?? "System"}
                           </span>
-                        </>
-                      )}
+                          <Badge
+                            variant={activityBadgeVariant(item.type)}
+                            className="shrink-0 text-[10px]"
+                          >
+                            {item.type}
+                          </Badge>
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {detail}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span>{formatTimeAgo(item.created_at)}</span>
+                          {item.amount_usdc && item.type !== "payout" && (
+                            <>
+                              <span>--</span>
+                              <span className="font-medium text-emerald-400">
+                                {formatUsdc(item.amount_usdc)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

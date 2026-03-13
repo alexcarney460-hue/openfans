@@ -62,6 +62,7 @@ export async function GET(request: Request) {
             email: user.email!,
             username: emailPrefix,
             display_name: displayName,
+            avatar_url: user.user_metadata?.picture ?? user.user_metadata?.avatar_url ?? null,
             role: ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? '') ? 'admin' : 'subscriber',
           })
         }

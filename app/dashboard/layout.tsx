@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
@@ -22,6 +23,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logout } from "@/app/auth/actions";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -47,6 +49,28 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [currentUser, setCurrentUser] = useState<{
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    email: string;
+  } | null>(null);
+
+  // Fetch current user profile on mount
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const res = await fetch("/api/me");
+        if (res.ok) {
+          const json = await res.json();
+          setCurrentUser(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    }
+    loadUser();
+  }, []);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -207,13 +231,23 @@ export default function DashboardLayout({
             {/* User avatar with dropdown */}
             <div className="relative" ref={userMenuRef}>
               <button
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00AFF0] text-sm font-bold text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00AFF0] text-sm font-bold text-white overflow-hidden"
                 aria-label="User menu"
                 aria-expanded={userMenuOpen}
                 aria-haspopup="true"
                 onClick={() => setUserMenuOpen((prev) => !prev)}
               >
-                C
+                {currentUser?.avatar_url ? (
+                  <Image
+                    src={currentUser.avatar_url}
+                    alt={currentUser.display_name ?? "User"}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  (currentUser?.display_name?.[0] ?? currentUser?.username?.[0] ?? "U").toUpperCase()
+                )}
               </button>
               {userMenuOpen && (
                 <div
@@ -226,8 +260,9 @@ export default function DashboardLayout({
                     role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
-                      // TODO: use real username from auth context
-                      router.push("/alexfitness");
+                      if (currentUser?.username) {
+                        router.push(`/${currentUser.username}`);
+                      }
                     }}
                   >
                     <User className="h-4 w-4" />
@@ -250,8 +285,7 @@ export default function DashboardLayout({
                     role="menuitem"
                     onClick={() => {
                       setUserMenuOpen(false);
-                      // TODO: implement actual sign out logic
-                      router.push("/");
+                      logout();
                     }}
                   >
                     <LogOut className="h-4 w-4" />

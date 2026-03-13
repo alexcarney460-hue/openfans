@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,9 +47,14 @@ function ToggleSwitch({ enabled, onToggle, id, label, description }: ToggleSwitc
 }
 
 export default function SettingsPage() {
-  const [displayName, setDisplayName] = useState("CryptoCreator");
-  const [username, setUsername] = useState("cryptocreator");
-  const [bio, setBio] = useState("Web3 content creator sharing alpha and insights.");
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [pushNotifs, setPushNotifs] = useState(false);
@@ -59,6 +64,71 @@ export default function SettingsPage() {
   const [allowMessages, setAllowMessages] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/me");
+        if (!res.ok) {
+          setLoading(false);
+          return;
+        }
+        const json = await res.json();
+        const user = json.data;
+        if (user) {
+          setDisplayName(user.display_name ?? "");
+          setUsername(user.username ?? "");
+          setBio(user.bio ?? "");
+          setEmail(user.email ?? "");
+          setAvatarUrl(user.avatar_url ?? null);
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          display_name: displayName,
+          username,
+          bio,
+        }),
+      });
+
+      if (res.ok) {
+        setSaveMessage("Settings saved successfully.");
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setSaveMessage(json.error ?? "Failed to save settings.");
+      }
+    } catch {
+      setSaveMessage("Failed to save settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -70,6 +140,16 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {saveMessage && (
+        <div className={`rounded-lg border px-4 py-3 text-sm ${
+          saveMessage.includes("success")
+            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+            : "border-red-200 bg-red-50 text-red-600"
+        }`}>
+          {saveMessage}
+        </div>
+      )}
+
       {/* Profile Settings */}
       <Card className="border-gray-200 bg-white">
         <CardContent className="p-6">
@@ -78,9 +158,17 @@ export default function SettingsPage() {
           {/* Avatar upload */}
           <div className="mb-6 flex items-center gap-4">
             <div className="relative">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#00AFF0] text-2xl font-bold text-white">
-                C
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="h-20 w-20 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#00AFF0] text-2xl font-bold text-white">
+                  {displayName.charAt(0) || "?"}
+                </div>
+              )}
               <button
                 type="button"
                 className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 text-muted-foreground hover:text-foreground transition-colors"
@@ -148,7 +236,7 @@ export default function SettingsPage() {
               <Input
                 id="email"
                 type="email"
-                value="creator@example.com"
+                value={email}
                 readOnly
                 className="mt-1.5 border-gray-200 bg-gray-50 text-muted-foreground cursor-not-allowed"
               />
@@ -236,8 +324,12 @@ export default function SettingsPage() {
 
       {/* Save button */}
       <div className="flex justify-end">
-        <Button className="bg-[#00AFF0] hover:bg-[#009dd8] px-8">
-          Save Changes
+        <Button
+          className="bg-[#00AFF0] hover:bg-[#009dd8] px-8"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
 

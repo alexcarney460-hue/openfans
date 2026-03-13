@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Users, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -13,98 +12,15 @@ import { cn } from "@/lib/utils";
 type Tier = "basic" | "premium" | "vip";
 
 interface Subscriber {
-  readonly id: string;
+  readonly id: number;
+  readonly subscriber_id: string;
   readonly username: string;
-  readonly avatar: string | null;
+  readonly display_name: string;
+  readonly avatar_url: string | null;
   readonly tier: Tier;
-  readonly subscribedSince: string;
   readonly status: "active" | "expired" | "cancelled";
+  readonly started_at: string;
 }
-
-// -- Mock data --
-
-const MOCK_SUBSCRIBERS: readonly Subscriber[] = [
-  {
-    id: "1",
-    username: "alex_web3",
-    avatar: null,
-    tier: "premium",
-    subscribedSince: "2026-01-15",
-    status: "active",
-  },
-  {
-    id: "2",
-    username: "crypto_fan",
-    avatar: null,
-    tier: "basic",
-    subscribedSince: "2026-02-03",
-    status: "active",
-  },
-  {
-    id: "3",
-    username: "sol_holder",
-    avatar: null,
-    tier: "basic",
-    subscribedSince: "2026-02-20",
-    status: "active",
-  },
-  {
-    id: "4",
-    username: "nft_collector",
-    avatar: null,
-    tier: "vip",
-    subscribedSince: "2025-12-01",
-    status: "active",
-  },
-  {
-    id: "5",
-    username: "defi_degen",
-    avatar: null,
-    tier: "premium",
-    subscribedSince: "2026-01-28",
-    status: "active",
-  },
-  {
-    id: "6",
-    username: "whale_watcher",
-    avatar: null,
-    tier: "vip",
-    subscribedSince: "2025-11-10",
-    status: "active",
-  },
-  {
-    id: "7",
-    username: "moon_hodler",
-    avatar: null,
-    tier: "basic",
-    subscribedSince: "2026-03-01",
-    status: "active",
-  },
-  {
-    id: "8",
-    username: "token_trader",
-    avatar: null,
-    tier: "premium",
-    subscribedSince: "2025-10-22",
-    status: "cancelled",
-  },
-  {
-    id: "9",
-    username: "chain_explorer",
-    avatar: null,
-    tier: "basic",
-    subscribedSince: "2026-01-05",
-    status: "expired",
-  },
-  {
-    id: "10",
-    username: "block_builder",
-    avatar: null,
-    tier: "vip",
-    subscribedSince: "2025-09-15",
-    status: "active",
-  },
-] as const;
 
 // -- Helpers --
 
@@ -123,7 +39,7 @@ const TIER_BADGE_STYLES: Record<Tier, string> = {
   vip: "bg-amber-500/15 text-amber-400",
 };
 
-const STATUS_STYLES: Record<Subscriber["status"], string> = {
+const STATUS_STYLES: Record<string, string> = {
   active: "text-emerald-400",
   expired: "text-amber-400",
   cancelled: "text-red-400",
@@ -141,27 +57,52 @@ function getInitials(username: string): string {
   return username.charAt(0).toUpperCase();
 }
 
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
+    </div>
+  );
+}
+
 export default function SubscribersPage() {
   const [filter, setFilter] = useState<TierFilter>("all");
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+
+  useEffect(() => {
+    fetch("/api/subscribers")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data) {
+          setSubscribers(json.data);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const filteredSubscribers = useMemo(() => {
-    return MOCK_SUBSCRIBERS.filter((sub) => {
+    return subscribers.filter((sub) => {
       const matchesTier = filter === "all" || sub.tier === filter;
       const matchesSearch =
         search === "" ||
-        sub.username.toLowerCase().includes(search.toLowerCase());
+        sub.username.toLowerCase().includes(search.toLowerCase()) ||
+        sub.display_name.toLowerCase().includes(search.toLowerCase());
       return matchesTier && matchesSearch;
     });
-  }, [filter, search]);
+  }, [filter, search, subscribers]);
 
   const tierCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: MOCK_SUBSCRIBERS.length };
-    for (const sub of MOCK_SUBSCRIBERS) {
+    const counts: Record<string, number> = { all: subscribers.length };
+    for (const sub of subscribers) {
       counts[sub.tier] = (counts[sub.tier] ?? 0) + 1;
     }
     return counts;
-  }, []);
+  }, [subscribers]);
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="space-y-6">
@@ -245,11 +186,16 @@ export default function SubscribersPage() {
                   {/* Subscriber info */}
                   <div className="col-span-4 flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00AFF0]/20 text-sm font-bold text-[#00AFF0]">
-                      {getInitials(sub.username)}
+                      {getInitials(sub.display_name || sub.username)}
                     </div>
-                    <span className="text-sm font-medium text-foreground">
-                      @{sub.username}
-                    </span>
+                    <div>
+                      <span className="text-sm font-medium text-foreground">
+                        @{sub.username}
+                      </span>
+                      {sub.display_name && (
+                        <p className="text-xs text-muted-foreground">{sub.display_name}</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Tier */}
@@ -266,7 +212,7 @@ export default function SubscribersPage() {
 
                   {/* Subscribed since */}
                   <div className="col-span-3 text-sm text-muted-foreground">
-                    {formatDate(sub.subscribedSince)}
+                    {formatDate(sub.started_at)}
                   </div>
 
                   {/* Status */}
@@ -284,7 +230,7 @@ export default function SubscribersPage() {
                     <span
                       className={cn(
                         "text-xs font-medium capitalize",
-                        STATUS_STYLES[sub.status]
+                        STATUS_STYLES[sub.status] ?? "text-gray-400"
                       )}
                     >
                       {sub.status}
