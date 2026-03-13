@@ -12,6 +12,7 @@ import {
   Users,
   DollarSign,
   Wallet,
+  Gift,
   Settings,
   Bell,
   Menu,
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/subscribers", label: "Subscribers", icon: Users },
   { href: "/dashboard/earnings", label: "Earnings", icon: DollarSign },
   { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
+  { href: "/dashboard/affiliate", label: "Affiliates", icon: Gift },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ] as const;

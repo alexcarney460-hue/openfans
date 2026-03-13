@@ -250,3 +250,79 @@ export const walletTransactionsTable = pgTable('wallet_transactions', {
 
 export type InsertWalletTransaction = typeof walletTransactionsTable.$inferInsert;
 export type SelectWalletTransaction = typeof walletTransactionsTable.$inferSelect;
+
+// ─── Affiliates ─────────────────────────────────────────────────────────────
+// Referral program: each user gets a unique referral code. When a new user
+// signs up via a referral link, the referrer earns commission on the
+// referred user's subscription payments.
+
+export const affiliatesTable = pgTable('affiliates', {
+  id: serial('id').primaryKey(),
+  user_id: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  referral_code: text('referral_code').notNull().unique(),
+  commission_rate: integer('commission_rate').notNull().default(10), // percentage (e.g. 10 = 10%)
+  total_referrals: integer('total_referrals').notNull().default(0),
+  total_earnings_usdc: integer('total_earnings_usdc').notNull().default(0), // cents
+  pending_earnings_usdc: integer('pending_earnings_usdc').notNull().default(0), // cents
+  is_active: boolean('is_active').notNull().default(true),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type InsertAffiliate = typeof affiliatesTable.$inferInsert;
+export type SelectAffiliate = typeof affiliatesTable.$inferSelect;
+
+// ─── Referrals ──────────────────────────────────────────────────────────────
+// Tracks which user referred which other user.
+
+export const referralsTable = pgTable('referrals', {
+  id: serial('id').primaryKey(),
+  referrer_id: text('referrer_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  referred_user_id: text('referred_user_id')
+    .notNull()
+    .unique()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  referral_code: text('referral_code').notNull(),
+  status: text('status', { enum: ['pending', 'active', 'expired'] })
+    .notNull()
+    .default('pending'),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  converted_at: timestamp('converted_at', { withTimezone: true }),
+});
+
+export type InsertReferral = typeof referralsTable.$inferInsert;
+export type SelectReferral = typeof referralsTable.$inferSelect;
+
+// ─── Affiliate Commissions ──────────────────────────────────────────────────
+// Ledger of commission earnings from referred users' payments.
+
+export const affiliateCommissionsTable = pgTable('affiliate_commissions', {
+  id: serial('id').primaryKey(),
+  affiliate_id: integer('affiliate_id')
+    .notNull()
+    .references(() => affiliatesTable.id, { onDelete: 'cascade' }),
+  referral_id: integer('referral_id')
+    .notNull()
+    .references(() => referralsTable.id, { onDelete: 'cascade' }),
+  source_type: text('source_type', { enum: ['subscription', 'tip'] }).notNull(),
+  source_amount_usdc: integer('source_amount_usdc').notNull(), // cents — original payment
+  commission_amount_usdc: integer('commission_amount_usdc').notNull(), // cents — earned commission
+  status: text('status', { enum: ['pending', 'paid', 'cancelled'] })
+    .notNull()
+    .default('pending'),
+  paid_at: timestamp('paid_at', { withTimezone: true }),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type InsertAffiliateCommission = typeof affiliateCommissionsTable.$inferInsert;
+export type SelectAffiliateCommission = typeof affiliateCommissionsTable.$inferSelect;
