@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 import { TipModal } from "@/components/TipModal";
+import { PPVUnlockModal } from "@/components/PPVUnlockModal";
 
 function formatNumber(num: number): string {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
@@ -69,14 +70,19 @@ interface ApiPost {
   readonly comments_count: number;
   readonly created_at: string;
   readonly is_locked?: boolean;
+  readonly is_ppv?: boolean;
+  readonly ppv_price_usdc?: number | null;
+  readonly has_purchased?: boolean;
 }
 
 export default function CreatorProfilePage() {
   const params = useParams<{ username: string }>();
   const [creator, setCreator] = useState<ApiCreatorData | null>(null);
+  const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
+  const [ppvTarget, setPpvTarget] = useState<ApiPost | null>(null);
 
   useEffect(() => {
     async function fetchCreator() {
@@ -92,6 +98,15 @@ export default function CreatorProfilePage() {
         }
         const json = await res.json();
         setCreator(json.data);
+
+        // Fetch full post feed with PPV access info
+        const postsRes = await fetch(
+          `/api/posts?creator_id=${json.data.id}&limit=50`,
+        );
+        if (postsRes.ok) {
+          const postsJson = await postsRes.json();
+          setPosts(postsJson.data ?? []);
+        }
       } catch {
         setNotFound(true);
       } finally {
@@ -100,6 +115,17 @@ export default function CreatorProfilePage() {
     }
     fetchCreator();
   }, [params.username]);
+
+  const handlePpvUnlocked = (unlockedPost: Record<string, unknown>) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === unlockedPost.id
+          ? ({ ...p, ...unlockedPost, is_locked: false, has_purchased: true } as ApiPost)
+          : p,
+      ),
+    );
+    setPpvTarget(null);
+  };
 
   if (loading) {
     return (
@@ -243,59 +269,110 @@ export default function CreatorProfilePage() {
         {/* Content Feed */}
         <section aria-label="Posts feed">
           <div className="space-y-4 pb-16">
-            {creator.recent_posts.length === 0 ? (
+            {posts.length === 0 ? (
               <p className="py-10 text-center text-sm text-gray-400">
                 No posts yet.
               </p>
             ) : (
-              creator.recent_posts.map((post) => (
-                <article
-                  key={post.id}
-                  className="rounded-xl border border-gray-200 bg-white transition-colors hover:border-gray-300"
-                >
-                  <div className="flex items-center gap-3 p-4 pb-3">
-                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200">
-                      {creator.avatar_url ? (
-                        <img
-                          src={creator.avatar_url}
-                          alt={creator.display_name}
-                          className="h-full w-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-sm font-semibold text-gray-600">
-                          {creator.display_name.charAt(0)}
+              posts.map((post) => {
+                const isLocked = post.is_locked === true;
+                const isPpv = post.is_ppv === true;
+                const canUnlockViaPpv = isLocked && isPpv && !post.has_purchased;
+                const ppvPriceDollars =
+                  post.ppv_price_usdc != null ? (post.ppv_price_usdc / 100).toFixed(2) : null;
+
+                return (
+                  <article
+                    key={post.id}
+                    className="rounded-xl border border-gray-200 bg-white transition-colors hover:border-gray-300"
+                  >
+                    <div className="flex items-center gap-3 p-4 pb-3">
+                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+                        {creator.avatar_url ? (
+                          <img
+                            src={creator.avatar_url}
+                            alt={creator.display_name}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-sm font-semibold text-gray-600">
+                            {creator.display_name.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="truncate text-sm font-semibold text-gray-900">
+                          {creator.display_name}
                         </span>
+                        <p className="text-xs text-gray-400">{timeAgo(post.created_at)}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {!post.is_free && post.tier !== "free" && (
+                          <span className="flex items-center gap-1 rounded-full bg-[#00AFF0]/10 px-2.5 py-1 text-xs font-medium text-[#00AFF0]">
+                            <Lock className="h-3 w-3" />
+                            {post.tier}
+                          </span>
+                        )}
+                        {isPpv && (
+                          <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">
+                            <DollarSign className="h-3 w-3" />
+                            PPV
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {isLocked ? (
+                      <div className="relative px-4 pb-3">
+                        {/* Blurred placeholder content */}
+                        <div className="select-none blur-sm" aria-hidden="true">
+                          <p className="mb-1 text-sm font-semibold text-gray-900">
+                            {post.title ?? "Exclusive Content"}
+                          </p>
+                          <p className="text-sm leading-relaxed text-gray-600">
+                            This content is locked. Subscribe or purchase to view.
+                          </p>
+                        </div>
+                        {/* Overlay with unlock option */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px]">
+                          <Lock className="mb-2 h-6 w-6 text-gray-300" />
+                          {canUnlockViaPpv ? (
+                            <button
+                              onClick={() => setPpvTarget(post)}
+                              className="rounded-lg bg-[#00AFF0] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] active:scale-[0.98]"
+                            >
+                              Unlock for ${ppvPriceDollars} USDC
+                            </button>
+                          ) : (
+                            <p className="text-xs text-gray-400">
+                              Subscribe to unlock
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-4 pb-3">
+                        {post.title && (
+                          <p className="mb-1 text-sm font-semibold text-gray-900">{post.title}</p>
+                        )}
+                        <p className="text-sm leading-relaxed text-gray-600">
+                          {post.body ?? ""}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-6 border-t border-gray-200 px-4 py-3">
+                      <span className="flex items-center gap-1.5 text-gray-400">
+                        <Heart className="h-4 w-4" />
+                        <span className="text-xs">{formatNumber(post.likes_count)}</span>
+                      </span>
+                      {isPpv && ppvPriceDollars && !isLocked && post.has_purchased && (
+                        <span className="ml-auto text-xs text-green-500">Purchased</span>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="truncate text-sm font-semibold text-gray-900">
-                        {creator.display_name}
-                      </span>
-                      <p className="text-xs text-gray-400">{timeAgo(post.created_at)}</p>
-                    </div>
-                    {!post.is_free && post.tier !== "free" && (
-                      <span className="flex items-center gap-1 rounded-full bg-[#00AFF0]/10 px-2.5 py-1 text-xs font-medium text-[#00AFF0]">
-                        <Lock className="h-3 w-3" />
-                        {post.tier}
-                      </span>
-                    )}
-                  </div>
-                  <div className="px-4 pb-3">
-                    {post.title && (
-                      <p className="mb-1 text-sm font-semibold text-gray-900">{post.title}</p>
-                    )}
-                    <p className="text-sm leading-relaxed text-gray-600">
-                      {post.body ?? ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-6 border-t border-gray-200 px-4 py-3">
-                    <span className="flex items-center gap-1.5 text-gray-400">
-                      <Heart className="h-4 w-4" />
-                      <span className="text-xs">{formatNumber(post.likes_count)}</span>
-                    </span>
-                  </div>
-                </article>
-              ))
+                  </article>
+                );
+              })
             )}
           </div>
         </section>
@@ -309,6 +386,18 @@ export default function CreatorProfilePage() {
           creatorName={creator.display_name}
           creatorUsername={creator.username}
           creatorId={creator.id}
+        />
+      )}
+
+      {/* PPV Unlock Modal */}
+      {ppvTarget && ppvTarget.ppv_price_usdc != null && (
+        <PPVUnlockModal
+          isOpen={ppvTarget !== null}
+          onClose={() => setPpvTarget(null)}
+          onUnlocked={handlePpvUnlocked}
+          postId={ppvTarget.id}
+          postTitle={ppvTarget.title}
+          priceUsdc={ppvTarget.ppv_price_usdc}
         />
       )}
     </div>

@@ -81,6 +81,7 @@ export const postsTable = pgTable('posts', {
     .default('basic'),
   likes_count: integer('likes_count').notNull().default(0),
   comments_count: integer('comments_count').notNull().default(0),
+  ppv_price_usdc: integer('ppv_price_usdc'), // cents — null = not PPV, number = one-time unlock price
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -88,6 +89,27 @@ export const postsTable = pgTable('posts', {
 
 export type InsertPost = typeof postsTable.$inferInsert;
 export type SelectPost = typeof postsTable.$inferSelect;
+
+// ─── PPV Purchases ──────────────────────────────────────────────────────────
+// One-time pay-per-view unlock records. A user purchases access to a single post.
+
+export const ppvPurchasesTable = pgTable('ppv_purchases', {
+  id: serial('id').primaryKey(),
+  post_id: integer('post_id')
+    .notNull()
+    .references(() => postsTable.id, { onDelete: 'cascade' }),
+  buyer_id: text('buyer_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  amount_usdc: integer('amount_usdc').notNull(), // cents
+  payment_tx: text('payment_tx').notNull(), // Solana transaction signature
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type InsertPpvPurchase = typeof ppvPurchasesTable.$inferInsert;
+export type SelectPpvPurchase = typeof ppvPurchasesTable.$inferSelect;
 
 // ─── Subscriptions ───────────────────────────────────────────────────────────
 
@@ -233,6 +255,8 @@ export const walletTransactionsTable = pgTable('wallet_transactions', {
       'tip_received',
       'refund',
       'platform_fee',
+      'ppv_charge',
+      'ppv_received',
     ],
   }).notNull(),
   amount_usdc: integer('amount_usdc').notNull(), // cents — positive for credits, negative for debits
@@ -341,6 +365,7 @@ export const notificationsTable = pgTable('notifications', {
       'new_message',
       'subscription_expiring',
       'payout_completed',
+      'ppv_purchase',
     ],
   }).notNull(),
   title: text('title').notNull(),

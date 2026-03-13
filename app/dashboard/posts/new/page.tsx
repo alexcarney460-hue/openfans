@@ -24,6 +24,8 @@ interface PostFormState {
   readonly title: string;
   readonly body: string;
   readonly tier: Tier;
+  readonly ppvEnabled: boolean;
+  readonly ppvPrice: string; // dollar string e.g. "5.00"
 }
 
 type Tier = "free" | "basic" | "premium" | "vip";
@@ -46,6 +48,8 @@ const INITIAL_STATE: PostFormState = {
   title: "",
   body: "",
   tier: "free",
+  ppvEnabled: false,
+  ppvPrice: "",
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -221,6 +225,17 @@ export default function NewPostPage() {
       else if (hasVideo) mediaType = "video";
       else if (hasImage) mediaType = "image";
 
+      // Calculate PPV price in cents if enabled
+      let ppvPriceCents: number | undefined;
+      if (form.ppvEnabled && form.ppvPrice) {
+        const parsed = parseFloat(form.ppvPrice);
+        if (isNaN(parsed) || parsed < 1) {
+          setError("PPV price must be at least $1.00");
+          return;
+        }
+        ppvPriceCents = Math.round(parsed * 100);
+      }
+
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -231,6 +246,7 @@ export default function NewPostPage() {
           tier: form.tier,
           is_free: form.tier === "free",
           media_urls: mediaUrls,
+          ...(ppvPriceCents !== undefined ? { ppv_price_usdc: ppvPriceCents } : {}),
         }),
       });
 
@@ -246,7 +262,7 @@ export default function NewPostPage() {
     } finally {
       setPublishing(false);
     }
-  }, [form.title, form.body, form.tier, mediaFiles, router]);
+  }, [form.title, form.body, form.tier, form.ppvEnabled, form.ppvPrice, mediaFiles, router]);
 
   const isUploading = mediaFiles.some((m) => m.uploading);
 
@@ -459,6 +475,63 @@ export default function NewPostPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* PPV Toggle */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium text-foreground">
+                  Pay-Per-View
+                </Label>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Charge a one-time fee to unlock this post
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.ppvEnabled}
+                onClick={() => updateField("ppvEnabled", !form.ppvEnabled)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0]/50 focus-visible:ring-offset-2",
+                  form.ppvEnabled ? "bg-[#00AFF0]" : "bg-gray-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                    form.ppvEnabled ? "translate-x-5" : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+            {form.ppvEnabled && (
+              <div className="rounded-lg border border-[#00AFF0]/20 bg-[#00AFF0]/5 p-4">
+                <Label htmlFor="ppv-price" className="mb-1.5 block text-xs font-medium text-gray-500">
+                  Price (USDC)
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                    $
+                  </span>
+                  <Input
+                    id="ppv-price"
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    placeholder="5.00"
+                    value={form.ppvPrice}
+                    onChange={(e) => updateField("ppvPrice", e.target.value)}
+                    className="border-gray-200 bg-white pl-7 text-foreground placeholder:text-muted-foreground focus-visible:ring-[#00AFF0]/50"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Minimum $1.00. Subscribers at the required tier get access free.
+                  Others can buy individually.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Publish */}

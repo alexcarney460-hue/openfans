@@ -1,11 +1,16 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const alt = "OpenFans — Own Your Content, Own Your Money";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
+  const logoData = await readFile(join(process.cwd(), "public/logo.png"));
+  const logoBase64 = `data:image/png;base64,${logoData.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -14,6 +19,8 @@ export default async function Image() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           background: "linear-gradient(135deg, #00AFF0 0%, #0077B6 50%, #005A8C 100%)",
           position: "relative",
           overflow: "hidden",
@@ -42,181 +49,63 @@ export default async function Image() {
             background: "rgba(255,255,255,0.05)",
           }}
         />
-        <div
-          style={{
-            position: "absolute",
-            top: 200,
-            right: 200,
-            width: 200,
-            height: 200,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.04)",
-          }}
+
+        {/* Logo */}
+        <img
+          src={logoBase64}
+          width={600}
+          height={170}
+          style={{ objectFit: "contain" }}
         />
 
-        {/* Content */}
+        {/* Tagline */}
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
-            padding: "60px 80px",
-            position: "relative",
+            fontSize: 36,
+            fontWeight: 700,
+            color: "white",
+            textAlign: "center",
+            marginTop: 32,
+            maxWidth: 800,
+            lineHeight: 1.3,
           }}
         >
-          {/* Logo text */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginBottom: 32,
-            }}
-          >
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: 16,
-                background: "rgba(255,255,255,0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: 20,
-                fontSize: 36,
-                fontWeight: 800,
-                color: "white",
-              }}
-            >
-              OF
-            </div>
-            <span
-              style={{
-                fontSize: 48,
-                fontWeight: 800,
-                color: "white",
-                letterSpacing: "-1px",
-              }}
-            >
-              OpenFans
-            </span>
-          </div>
-
-          {/* Headline */}
-          <div
-            style={{
-              fontSize: 56,
-              fontWeight: 800,
-              color: "white",
-              textAlign: "center",
-              lineHeight: 1.15,
-              maxWidth: 900,
-              letterSpacing: "-1px",
-            }}
-          >
-            The creator platform that pays more.
-          </div>
-
-          {/* Subheadline */}
-          <div
-            style={{
-              fontSize: 24,
-              color: "rgba(255,255,255,0.8)",
-              textAlign: "center",
-              marginTop: 24,
-              maxWidth: 700,
-              lineHeight: 1.5,
-            }}
-          >
-            Keep 95% of your earnings. Get paid instantly in crypto. No restrictions. No gatekeepers.
-          </div>
-
-          {/* CTA pill */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginTop: 40,
-              background: "white",
-              borderRadius: 50,
-              padding: "16px 40px",
-              gap: 12,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#00AFF0",
-              }}
-            >
-              Join Now — openfans.online
-            </span>
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#00AFF0"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </div>
+          The creator platform that pays more.
         </div>
 
-        {/* Bottom bar */}
+        {/* Subtext */}
+        <div
+          style={{
+            fontSize: 20,
+            color: "rgba(255,255,255,0.8)",
+            textAlign: "center",
+            marginTop: 16,
+            maxWidth: 600,
+          }}
+        >
+          Keep 95% of your earnings. Get paid instantly in crypto.
+        </div>
+
+        {/* CTA pill */}
         <div
           style={{
             display: "flex",
-            justifyContent: "center",
-            gap: 48,
-            padding: "20px 80px",
-            background: "rgba(0,0,0,0.15)",
+            alignItems: "center",
+            marginTop: 32,
+            background: "white",
+            borderRadius: 50,
+            padding: "12px 36px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#34D399",
-              }}
-            />
-            <span style={{ fontSize: 16, color: "rgba(255,255,255,0.8)" }}>
-              10,000+ Creators
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#FBBF24",
-              }}
-            />
-            <span style={{ fontSize: 16, color: "rgba(255,255,255,0.8)" }}>
-              $2.4M+ Earned This Month
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#F472B6",
-              }}
-            />
-            <span style={{ fontSize: 16, color: "rgba(255,255,255,0.8)" }}>
-              Powered by Solana
-            </span>
-          </div>
+          <span
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: "#00AFF0",
+            }}
+          >
+            openfans.online
+          </span>
         </div>
       </div>
     ),

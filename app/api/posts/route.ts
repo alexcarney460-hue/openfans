@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { postsTable, usersTable, subscriptionsTable } from "@/utils/db/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { postsTable, usersTable, subscriptionsTable, ppvPurchasesTable } from "@/utils/db/schema";
+import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
 const VALID_TIERS = ["free", "basic", "premium", "vip"] as const;
@@ -35,6 +35,9 @@ function redactPaidPost(post: Record<string, unknown>) {
     likes_count: post.likes_count,
     comments_count: post.comments_count,
     created_at: post.created_at,
+    ppv_price_usdc: post.ppv_price_usdc ?? null,
+    is_ppv: (post.ppv_price_usdc ?? null) !== null,
+    has_purchased: post.has_purchased ?? false,
     // body and media_urls intentionally omitted
     body: null,
     media_urls: [],
@@ -118,15 +121,52 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Look up PPV purchases for the current user (if authenticated)
+    const ppvPostIds = posts
+      .filter((p) => p.ppv_price_usdc !== null)
+      .map((p) => p.id);
+
+    const purchasedPostIds = new Set<number>();
+    if (user && ppvPostIds.length > 0) {
+      const purchases = await db
+        .select({ post_id: ppvPurchasesTable.post_id })
+        .from(ppvPurchasesTable)
+        .where(
+          and(
+            eq(ppvPurchasesTable.buyer_id, user.id),
+            inArray(ppvPurchasesTable.post_id, ppvPostIds),
+          ),
+        );
+      for (const p of purchases) {
+        purchasedPostIds.add(p.post_id);
+      }
+    }
+
     // Filter post content based on access level
     const filteredPosts = posts.map((post) => {
       const postTierLevel = TIER_HIERARCHY[post.tier] ?? 0;
-      // Free posts or posts the user has access to: return full content
-      if (post.is_free || post.tier === "free" || userTierLevel >= postTierLevel) {
-        return { ...post, is_locked: false };
+      const isPpv = post.ppv_price_usdc !== null;
+      const hasPurchased = purchasedPostIds.has(post.id);
+
+      // Determine if user has access:
+      //   1) Free post
+      //   2) User's subscription tier >= post tier
+      //   3) PPV post that the user has purchased
+      const hasSubscriptionAccess =
+        post.is_free || post.tier === "free" || userTierLevel >= postTierLevel;
+      const hasAccess = hasSubscriptionAccess || (isPpv && hasPurchased);
+
+      const ppvFields = {
+        is_ppv: isPpv,
+        ppv_price_usdc: post.ppv_price_usdc,
+        has_purchased: hasPurchased,
+      };
+
+      if (hasAccess) {
+        return { ...post, ...ppvFields, is_locked: false };
       }
       // Paid post the user cannot access: strip body and media_urls
-      return redactPaidPost(post);
+      return redactPaidPost({ ...post, has_purchased: hasPurchased });
     });
 
     return NextResponse.json({
@@ -186,7 +226,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, body: postBody, media_urls, media_type, tier, is_free } = body;
+    const { title, body: postBody, media_urls, media_type, tier, is_free, ppv_price_usdc } = body;
 
     // Validate required fields
     if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -215,6 +255,24 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    // Validate ppv_price_usdc if provided
+    let validatedPpvPrice: number | null = null;
+    if (ppv_price_usdc !== undefined && ppv_price_usdc !== null) {
+      if (typeof ppv_price_usdc !== "number" || !Number.isInteger(ppv_price_usdc)) {
+        return NextResponse.json(
+          { error: "ppv_price_usdc must be an integer (cents)", code: "INVALID_PPV_PRICE" },
+          { status: 400 },
+        );
+      }
+      if (ppv_price_usdc < 100) {
+        return NextResponse.json(
+          { error: "PPV price must be at least $1.00 (100 cents)", code: "PPV_PRICE_TOO_LOW" },
+          { status: 400 },
+        );
+      }
+      validatedPpvPrice = ppv_price_usdc;
     }
 
     // Validate media_urls is an array of strings if provided
@@ -247,6 +305,7 @@ export async function POST(request: NextRequest) {
         media_type: media_type as MediaType,
         tier: postTier,
         is_free: is_free === true,
+        ppv_price_usdc: validatedPpvPrice,
       })
       .returning();
 
