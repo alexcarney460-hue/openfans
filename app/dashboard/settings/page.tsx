@@ -66,6 +66,7 @@ export default function SettingsPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function fetchUser() {
@@ -422,8 +423,25 @@ export default function SettingsPage() {
                 <Button
                   size="sm"
                   className="bg-red-600 hover:bg-red-700 text-white"
+                  disabled={deleting}
+                  onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      const res = await fetch("/api/me", { method: "DELETE" });
+                      if (res.ok) {
+                        window.location.href = "/";
+                      } else {
+                        const json = await res.json();
+                        alert(json.error || "Failed to delete account");
+                        setDeleting(false);
+                      }
+                    } catch {
+                      alert("Failed to delete account");
+                      setDeleting(false);
+                    }
+                  }}
                 >
-                  Yes, Delete My Account
+                  {deleting ? "Deleting..." : "Yes, Delete My Account"}
                 </Button>
               </div>
             </div>

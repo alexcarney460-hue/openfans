@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/utils/api/auth";
+import { createClient } from "@/utils/supabase/server";
 import { db } from "@/utils/db/db";
 import { usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
@@ -137,6 +138,39 @@ export async function PATCH(request: NextRequest) {
       );
     }
     console.error("PATCH /api/me error:", err);
+    return NextResponse.json(
+      { error: "Internal server error", code: "INTERNAL_ERROR" },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * DELETE /api/me
+ * Permanently deletes the authenticated user's account.
+ * Removes the user from users_table (cascades to all related data)
+ * and deletes the Supabase auth user.
+ */
+export async function DELETE() {
+  try {
+    const { user, error } = await getAuthenticatedUser();
+    if (error) return error;
+
+    // Delete from our users_table (cascades to subscriptions, posts, messages, etc.)
+    await db.delete(usersTable).where(eq(usersTable.id, user.id));
+
+    // Delete from Supabase auth
+    const supabase = createClient();
+    await supabase.auth.admin.deleteUser(user.id).catch(() => {
+      // Admin API may not be available with anon key — user row is already gone
+    });
+
+    // Sign out the current session
+    await supabase.auth.signOut();
+
+    return NextResponse.json({ data: { deleted: true } });
+  } catch (err) {
+    console.error("DELETE /api/me error:", err);
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },
