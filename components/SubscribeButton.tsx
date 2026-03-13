@@ -8,6 +8,7 @@ interface SubscribeButtonProps {
   readonly size?: "sm" | "default" | "lg";
   readonly className?: string;
   readonly onClick?: () => void;
+  readonly onSubscribe?: () => void;
 }
 
 export function SubscribeButton({
@@ -16,6 +17,7 @@ export function SubscribeButton({
   size = "default",
   className,
   onClick,
+  onSubscribe,
 }: SubscribeButtonProps) {
   const sizeClasses = {
     sm: "h-8 px-4 text-xs",
@@ -40,7 +42,7 @@ export function SubscribeButton({
 
   return (
     <button
-      onClick={onClick}
+      onClick={onSubscribe ?? onClick}
       className={cn(
         "inline-flex items-center justify-center rounded-full font-medium text-white transition-all active:scale-[0.97]",
         "bg-[#00AFF0] hover:bg-[#009ad6] shadow-sm",

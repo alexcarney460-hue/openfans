@@ -4,19 +4,16 @@ import Link from "next/link";
 import {
   ArrowLeft,
   BadgeCheck,
-  Heart,
-  MessageCircle,
-  Share2,
   Lock,
-  Send,
 } from "lucide-react";
 import {
   getCreator,
   getPost,
-  formatNumber,
   timeAgo,
+  formatNumber,
 } from "@/lib/mock-data";
 import { SubscribeButton } from "@/components/SubscribeButton";
+import { PostInteractions } from "@/components/PostInteractions";
 
 interface PageProps {
   params: { username: string; postId: string };
@@ -184,95 +181,14 @@ export default function SinglePostPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Actions Bar */}
-        <div className="mb-6 flex items-center gap-6 border-b border-t border-white/5 py-3">
-          <button
-            className="flex items-center gap-2 text-white/40 transition-colors hover:text-[#00AFF0]"
-            aria-label={`Like this post. ${formatNumber(post.stats.likes)} likes`}
-          >
-            <Heart className="h-5 w-5" />
-            <span className="text-sm">{formatNumber(post.stats.likes)}</span>
-          </button>
-          <div
-            className="flex items-center gap-2 text-white/40"
-            aria-label={`${formatNumber(post.stats.comments)} comments`}
-          >
-            <MessageCircle className="h-5 w-5" />
-            <span className="text-sm">
-              {formatNumber(post.stats.comments)}
-            </span>
-          </div>
-          <button
-            className="ml-auto text-white/40 transition-colors hover:text-white/60"
-            aria-label="Share this post"
-          >
-            <Share2 className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Comments Section */}
-        <section aria-label="Comments">
-          <h2 className="mb-4 text-sm font-semibold text-white">
-            Comments ({post.stats.comments})
-          </h2>
-
-          {/* Comment Input */}
-          <div className="mb-6 flex items-center gap-3">
-            <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white/10">
-              <div className="flex h-full w-full items-center justify-center text-xs text-white/40">
-                ?
-              </div>
-            </div>
-            <div className="flex flex-1 items-center rounded-full border border-white/10 bg-white/5 px-4 py-2">
-              <input
-                type="text"
-                placeholder="Add a comment..."
-                className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
-                aria-label="Write a comment"
-                disabled={isLocked}
-              />
-              <button
-                className="ml-2 text-[#00AFF0] transition-colors hover:text-[#33C1F5] disabled:text-white/20"
-                aria-label="Submit comment"
-                disabled={isLocked}
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Comment List */}
-          {post.comments.length > 0 ? (
-            <div className="space-y-4">
-              {post.comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-[#00AFF0]/20">
-                    <div className="flex h-full w-full items-center justify-center text-xs font-medium text-white/60">
-                      {comment.displayName.charAt(0)}
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-0.5 flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white">
-                        {comment.displayName}
-                      </span>
-                      <span className="text-xs text-white/30">
-                        {timeAgo(comment.createdAt)}
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-white/60">
-                      {comment.text}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-white/30">
-              No comments yet. Be the first to comment.
-            </p>
-          )}
-        </section>
+        {/* Interactive actions and comments (client component) */}
+        <PostInteractions
+          initialLikes={post.stats.likes}
+          initialCommentCount={post.stats.comments}
+          initialComments={post.comments}
+          isLocked={isLocked}
+          postUrl={`/${creator.username}/post/${post.id}`}
+        />
       </div>
     </div>
   );

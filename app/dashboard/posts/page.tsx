@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   PenSquare,
@@ -112,7 +113,8 @@ function formatDate(dateStr: string): string {
 }
 
 export default function PostsPage() {
-  const [posts] = useState<readonly Post[]>(MOCK_POSTS);
+  const router = useRouter();
+  const [posts, setPosts] = useState<Post[]>([...MOCK_POSTS]);
 
   return (
     <div className="space-y-6">
@@ -219,6 +221,7 @@ export default function PostsPage() {
                     size="sm"
                     className="h-8 text-muted-foreground hover:text-foreground"
                     aria-label={`Edit ${post.title}`}
+                    onClick={() => router.push("/dashboard/posts/new")}
                   >
                     <Edit className="mr-1.5 h-3.5 w-3.5" />
                     Edit
@@ -228,6 +231,16 @@ export default function PostsPage() {
                     size="sm"
                     className="h-8 text-muted-foreground hover:text-red-400"
                     aria-label={`Delete ${post.title}`}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        `Are you sure you want to delete "${post.title}"?`
+                      );
+                      if (confirmed) {
+                        setPosts((prev) =>
+                          prev.filter((p) => p.id !== post.id)
+                        );
+                      }
+                    }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>

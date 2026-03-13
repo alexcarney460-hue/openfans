@@ -189,8 +189,9 @@ export default function DashboardPage() {
             New Post
           </Link>
         </Button>
+        {/* TODO: replace "/alexfitness" with the real username from auth context */}
         <Button asChild variant="outline" className="border-white/[0.08]">
-          <Link href="/dashboard/settings">
+          <Link href="/alexfitness">
             <User className="mr-2 h-4 w-4" />
             View Profile
           </Link>

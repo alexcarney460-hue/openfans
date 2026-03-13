@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { getCreator, getAllCreators, formatNumber } from "@/lib/mock-data";
 import { PostCard } from "@/components/PostCard";
-import { SubscribeButton } from "@/components/SubscribeButton";
+import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 
 interface PageProps {
   params: { username: string };
@@ -98,9 +98,10 @@ export default function CreatorProfilePage({ params }: PageProps) {
             </div>
           </div>
           <div className="pb-1">
-            <SubscribeButton
-              price={creator.subscriptionPrice}
-              size="default"
+            <CreatorSubscribeSection
+              creatorName={creator.displayName}
+              creatorUsername={creator.username}
+              subscriptionPrice={creator.subscriptionPrice}
             />
           </div>
         </div>

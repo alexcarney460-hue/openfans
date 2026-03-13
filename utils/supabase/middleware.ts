@@ -10,6 +10,13 @@ const PUBLIC_PATHS = [
   "/forgot-password",
   "/explore",
   "/webhook",
+  "/pricing",
+  "/terms",
+  "/privacy",
+  "/help",
+  "/contact",
+  "/subscriptions",
+  "/transactions",
 ];
 
 // API routes that allow public GET access

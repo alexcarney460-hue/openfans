@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -186,7 +185,9 @@ export default function OnboardingPage() {
         <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-8 shadow-2xl shadow-[#00AFF0]/5">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
-            <Image src="/logo.png" alt="OpenFans" width={48} height={48} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00AFF0]">
+              <span className="text-lg font-bold text-white">OF</span>
+            </div>
           </div>
 
           {/* Progress Bar */}

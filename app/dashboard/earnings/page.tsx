@@ -1,9 +1,13 @@
+"use client";
+
+import { useState } from "react";
 import {
   Wallet,
   ArrowUpRight,
   ArrowDownLeft,
   ExternalLink,
   Copy,
+  Check,
   CheckCircle2,
   Clock,
   XCircle,
@@ -26,7 +30,8 @@ interface Transaction {
 
 // -- Mock data --
 
-const MOCK_WALLET = "7xKXt...4Fv9n" as const;
+const MOCK_WALLET_DISPLAY = "7xKXt...4Fv9n" as const;
+const MOCK_WALLET_FULL = "7xKXtRbFz3dVkP9mQh2NwYsJ6cLuA8gEo1fXp4Fv9n" as const;
 const MOCK_BALANCE = "14,630.00" as const;
 
 const MOCK_TRANSACTIONS: readonly Transaction[] = [
@@ -119,6 +124,33 @@ function formatDate(dateStr: string): string {
 }
 
 export default function EarningsPage() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(MOCK_WALLET_FULL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = MOCK_WALLET_FULL;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleViewOnExplorer = () => {
+    window.open(
+      `https://explorer.solana.com/address/${MOCK_WALLET_FULL}`,
+      "_blank"
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -165,7 +197,7 @@ export default function EarningsPage() {
                 <Wallet className="h-4 w-4 text-[#00AFF0]" />
               </div>
               <span className="font-mono text-lg font-semibold text-foreground">
-                {MOCK_WALLET}
+                {MOCK_WALLET_DISPLAY}
               </span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">Solana Network</p>
@@ -174,14 +206,25 @@ export default function EarningsPage() {
                 variant="outline"
                 size="sm"
                 className="border-white/[0.08] text-xs"
+                onClick={handleCopyAddress}
               >
-                <Copy className="mr-1.5 h-3 w-3" />
-                Copy Address
+                {copied ? (
+                  <>
+                    <Check className="mr-1.5 h-3 w-3 text-emerald-400" />
+                    <span className="text-emerald-400">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="mr-1.5 h-3 w-3" />
+                    Copy Address
+                  </>
+                )}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="border-white/[0.08] text-xs"
+                onClick={handleViewOnExplorer}
               >
                 <ExternalLink className="mr-1.5 h-3 w-3" />
                 View on Explorer

@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import SignupForm from "@/components/SignupForm"
 import ProviderSigninBlock from "@/components/ProviderSigninBlock"
 import WalletConnectButton from "@/components/WalletConnectButton"
@@ -12,13 +11,9 @@ export default function Signup() {
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/">
-              <Image
-                src="/logo.png"
-                alt="OpenFans"
-                width={48}
-                height={48}
-                className="transition-transform hover:scale-105"
-              />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00AFF0] transition-transform hover:scale-105">
+                <span className="text-lg font-bold text-white">OF</span>
+              </div>
             </Link>
           </div>
 

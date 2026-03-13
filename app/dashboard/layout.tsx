@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -16,6 +16,8 @@ import {
   Menu,
   X,
   ChevronLeft,
+  User,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +28,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
   { href: "/dashboard/subscribers", label: "Subscribers", icon: Users },
   { href: "/dashboard/earnings", label: "Earnings", icon: DollarSign },
+  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -35,8 +38,25 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -168,23 +188,74 @@ export default function DashboardLayout({
 
           <div className="flex items-center gap-3">
             {/* Notifications */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative text-muted-foreground hover:text-foreground"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#00AFF0]" />
-            </Button>
+            <Link href="/dashboard/notifications">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-muted-foreground hover:text-foreground"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#00AFF0]" />
+              </Button>
+            </Link>
 
-            {/* User avatar */}
-            <button
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00AFF0] text-sm font-bold text-white"
-              aria-label="User menu"
-            >
-              C
-            </button>
+            {/* User avatar with dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00AFF0] text-sm font-bold text-white"
+                aria-label="User menu"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+                onClick={() => setUserMenuOpen((prev) => !prev)}
+              >
+                C
+              </button>
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-white/[0.08] bg-[#1a1a1a] py-1 shadow-xl"
+                  role="menu"
+                  aria-label="User menu"
+                >
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      // TODO: use real username from auth context
+                      router.push("/alexfitness");
+                    }}
+                  >
+                    <User className="h-4 w-4" />
+                    My Profile
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      router.push("/dashboard/settings");
+                    }}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </button>
+                  <div className="my-1 border-t border-white/[0.06]" />
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-white/[0.04]"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      // TODO: implement actual sign out logic
+                      router.push("/");
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
