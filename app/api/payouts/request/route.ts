@@ -13,6 +13,9 @@ import { getAuthenticatedUser } from "@/utils/api/auth";
 import { isValidAmount, isValidSolanaAddress } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
+/** Minimum payout amount in cents. Prevents tiny withdrawals that waste SOL gas fees. */
+const MINIMUM_PAYOUT_CENTS = 500; // $5.00
+
 /**
  * POST /api/payouts/request
  * Creator requests a withdrawal / payout from their internal wallet.
@@ -56,6 +59,17 @@ export async function POST(request: NextRequest) {
           error:
             "amount_usdc must be a positive integer not exceeding 1000000 (i.e. $10,000)",
           code: "INVALID_AMOUNT",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Enforce minimum payout to avoid wasting SOL gas fees on tiny withdrawals
+    if (amount_usdc < MINIMUM_PAYOUT_CENTS) {
+      return NextResponse.json(
+        {
+          error: `Minimum payout is $${(MINIMUM_PAYOUT_CENTS / 100).toFixed(2)}`,
+          code: "BELOW_MINIMUM",
         },
         { status: 400 },
       );

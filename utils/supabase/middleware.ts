@@ -27,6 +27,7 @@ const PUBLIC_PATHS = [
   "/refund-policy",
   "/error",
   "/ref",
+  "/suspended",
 ];
 
 // API routes that allow public GET access

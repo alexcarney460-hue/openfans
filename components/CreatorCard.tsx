@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeCheck, Users, FileText } from "lucide-react";
+import { BadgeCheck, Users, FileText, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Creator } from "@/lib/mock-data";
 import { formatNumber } from "@/lib/mock-data";
@@ -10,16 +10,26 @@ import { SubscribeButton } from "./SubscribeButton";
 interface CreatorCardProps {
   readonly creator: Creator;
   readonly className?: string;
+  readonly isTrending?: boolean;
 }
 
-export function CreatorCard({ creator, className }: CreatorCardProps) {
+export function CreatorCard({ creator, className, isTrending = false }: CreatorCardProps) {
   return (
     <div
       className={cn(
-        "group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md sm:hover:scale-[1.02]",
+        "group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md sm:hover:scale-[1.02]",
+        isTrending && "ring-2 ring-[#00AFF0]/30",
         className,
       )}
     >
+      {/* Trending badge */}
+      {isTrending && (
+        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full bg-[#00AFF0] px-2.5 py-1 text-[10px] font-semibold text-white shadow-md sm:text-xs">
+          <TrendingUp className="h-3 w-3" />
+          Trending
+        </div>
+      )}
+
       {/* Banner */}
       <Link href={`/${creator.username}`} className="block">
         <div className="relative h-24 overflow-hidden sm:h-36">
@@ -27,7 +37,7 @@ export function CreatorCard({ creator, className }: CreatorCardProps) {
             <img
               src={creator.bannerUrl}
               alt=""
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />
           ) : (
@@ -73,6 +83,20 @@ export function CreatorCard({ creator, className }: CreatorCardProps) {
             {creator.bio}
           </p>
         </Link>
+
+        {/* Category tags */}
+        {creator.categories.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
+            {creator.categories.slice(0, 3).map((cat) => (
+              <span
+                key={cat}
+                className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 sm:text-[11px]"
+              >
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mt-2 flex items-center gap-2.5 text-[11px] text-gray-400 sm:mt-3 sm:gap-3 sm:text-xs">

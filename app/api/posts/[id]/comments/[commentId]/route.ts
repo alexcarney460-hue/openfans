@@ -73,14 +73,15 @@ export async function DELETE(
       }
     }
 
-    // Delete the comment
-    await db.delete(commentsTable).where(eq(commentsTable.id, commentId));
+    // Delete the comment and decrement count atomically in a transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(commentsTable).where(eq(commentsTable.id, commentId));
 
-    // Atomically decrement comments_count (floor at 0)
-    await db
-      .update(postsTable)
-      .set({ comments_count: sql`GREATEST(${postsTable.comments_count} - 1, 0)` })
-      .where(eq(postsTable.id, postId));
+      await tx
+        .update(postsTable)
+        .set({ comments_count: sql`GREATEST(${postsTable.comments_count} - 1, 0)` })
+        .where(eq(postsTable.id, postId));
+    });
 
     return NextResponse.json(
       { data: { deleted: true, id: commentId } },

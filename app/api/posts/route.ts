@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import { postsTable, usersTable, subscriptionsTable, ppvPurchasesTable, creatorProfilesTable } from "@/utils/db/schema";
-import { eq, desc, sql, and, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, inArray, ne } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { isValidStorageUrl } from "@/utils/validation";
 
@@ -86,10 +86,36 @@ export async function GET(request: NextRequest) {
     );
     const offset = (page - 1) * limit;
 
+    // Determine the user's subscription tier for this creator (if authenticated)
+    let userTierLevel = 0; // default: free-tier access only
+    const { user } = await getAuthenticatedUser();
+
+    // Creator viewing own posts sees everything (including scheduled/hidden);
+    // admins also see hidden posts; other users only see published, non-hidden posts.
+    const isOwnProfile = user?.id === creatorId;
+
+    let isAdmin = false;
+    if (user && !isOwnProfile) {
+      const adminCheck = await db
+        .select({ role: usersTable.role })
+        .from(usersTable)
+        .where(eq(usersTable.id, user.id))
+        .limit(1);
+      isAdmin = adminCheck.length > 0 && adminCheck[0].role === "admin";
+    }
+
+    const postsWhereClause = isOwnProfile || isAdmin
+      ? eq(postsTable.creator_id, creatorId)
+      : and(
+          eq(postsTable.creator_id, creatorId),
+          eq(postsTable.is_published, true),
+          eq(postsTable.is_hidden, false),
+        );
+
     const posts = await db
       .select()
       .from(postsTable)
-      .where(eq(postsTable.creator_id, creatorId))
+      .where(postsWhereClause)
       .orderBy(desc(postsTable.created_at))
       .limit(limit)
       .offset(offset);
@@ -97,13 +123,9 @@ export async function GET(request: NextRequest) {
     const countResult = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(postsTable)
-      .where(eq(postsTable.creator_id, creatorId));
+      .where(postsWhereClause);
 
     const total = countResult[0]?.count ?? 0;
-
-    // Determine the user's subscription tier for this creator (if authenticated)
-    let userTierLevel = 0; // default: free-tier access only
-    const { user } = await getAuthenticatedUser();
 
     if (user) {
       // Creator always has full access to their own posts
@@ -253,7 +275,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, body: postBody, media_urls, media_type, tier, is_free, ppv_price_usdc } = body;
+    const { title, body: postBody, media_urls, media_type, tier, is_free, ppv_price_usdc, scheduled_at } = body;
 
     // Validate required fields
     if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -340,6 +362,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate and handle scheduled_at
+    let validatedScheduledAt: Date | null = null;
+    let isPublished = true;
+    if (scheduled_at !== undefined && scheduled_at !== null) {
+      const parsedDate = new Date(scheduled_at);
+      if (isNaN(parsedDate.getTime())) {
+        return NextResponse.json(
+          { error: "scheduled_at must be a valid ISO date string", code: "INVALID_SCHEDULED_AT" },
+          { status: 400 },
+        );
+      }
+      if (parsedDate > new Date()) {
+        // Future date: mark as unpublished and save schedule
+        validatedScheduledAt = parsedDate;
+        isPublished = false;
+      }
+      // If date is in the past or now, publish immediately (isPublished stays true)
+    }
+
     const newPost = await db
       .insert(postsTable)
       .values({
@@ -351,6 +392,8 @@ export async function POST(request: NextRequest) {
         tier: postTier,
         is_free: is_free === true,
         ppv_price_usdc: validatedPpvPrice,
+        scheduled_at: validatedScheduledAt,
+        is_published: isPublished,
       })
       .returning();
 

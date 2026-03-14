@@ -15,7 +15,8 @@ import { isValidStorageUrl, isValidSolanaAddress } from "@/utils/validation";
  */
 export async function GET() {
   try {
-    const { user, error } = await getAuthenticatedUser();
+    // Allow suspended users to read their own profile (needed for /suspended page)
+    const { user, error } = await getAuthenticatedUser({ allowSuspended: true });
     if (error) return error;
 
     const rows = await db
@@ -29,6 +30,8 @@ export async function GET() {
         bio: usersTable.bio,
         banner_url: usersTable.banner_url,
         wallet_address: usersTable.wallet_address,
+        is_suspended: usersTable.is_suspended,
+        suspension_reason: usersTable.suspension_reason,
       })
       .from(usersTable)
       .where(eq(usersTable.id, user.id))

@@ -1,12 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { CreatorCategory } from "@/app/explore/mock-data";
 
 interface CategoryFilterProps {
-  readonly categories: readonly CreatorCategory[];
-  readonly activeCategory: CreatorCategory;
-  readonly onSelect: (category: CreatorCategory) => void;
+  readonly categories: readonly string[];
+  readonly activeCategory: string;
+  readonly onSelect: (category: string) => void;
 }
 
 export function CategoryFilter({
@@ -31,7 +30,7 @@ export function CategoryFilter({
             className={cn(
               "shrink-0 rounded-full px-5 py-2 text-sm font-medium transition-all",
               isActive
-                ? "bg-[#00AFF0] text-white"
+                ? "bg-[#00AFF0] text-white shadow-sm"
                 : "border border-gray-200 bg-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
             )}
           >

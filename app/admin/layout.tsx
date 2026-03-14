@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Users,
+  UserCog,
   DollarSign,
   Shield,
+  Flag,
   Menu,
   X,
   ChevronLeft,
@@ -23,7 +25,9 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Analytics", icon: BarChart3 },
   { href: "/admin/payouts", label: "Payouts", icon: Wallet },
   { href: "/admin/creators", label: "Creators", icon: Users },
+  { href: "/admin/users", label: "Users", icon: UserCog },
   { href: "/admin/verification", label: "Verification", icon: Shield },
+  { href: "/admin/moderation", label: "Moderation", icon: Flag },
 ] as const;
 
 export default function AdminLayout({

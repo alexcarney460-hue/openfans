@@ -5,10 +5,17 @@ import { usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
 
 /**
- * Extracts the authenticated user from the Supabase session.
- * Returns the user object on success, or a 401 NextResponse on failure.
+ * Extracts the authenticated user from the Supabase session and checks
+ * suspension status in the database.
+ *
+ * @param opts.allowSuspended - If true, skip the suspension check (used by
+ *   routes that suspended users need access to, e.g. GET /api/me).
+ *
+ * Returns the user object on success, or a 401/403 NextResponse on failure.
  */
-export async function getAuthenticatedUser(): Promise<
+export async function getAuthenticatedUser(
+  opts?: { allowSuspended?: boolean },
+): Promise<
   | { user: { id: string; email?: string }; error: null }
   | { user: null; error: NextResponse }
 > {
@@ -26,6 +33,25 @@ export async function getAuthenticatedUser(): Promise<
         { status: 401 },
       ),
     };
+  }
+
+  // Check suspension status unless explicitly opted out
+  if (!opts?.allowSuspended) {
+    const dbUser = await db
+      .select({ is_suspended: usersTable.is_suspended })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .limit(1);
+
+    if (dbUser.length > 0 && dbUser[0].is_suspended) {
+      return {
+        user: null,
+        error: NextResponse.json(
+          { error: "Your account has been suspended", code: "ACCOUNT_SUSPENDED" },
+          { status: 403 },
+        ),
+      };
+    }
   }
 
   return { user: { id: user.id, email: user.email }, error: null };

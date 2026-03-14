@@ -26,6 +26,7 @@ import {
   Heart,
   Share2,
   ShieldCheck,
+  Bookmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -46,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", labelKey: "dash.home", icon: LayoutDashboard },
   { href: "/explore", labelKey: "dash.explore", icon: Compass, fanOnly: true },
   { href: "/dashboard/subscriptions", labelKey: "dash.subscriptions", icon: Heart, fanOnly: true },
+  { href: "/dashboard/bookmarks", labelKey: "dash.bookmarks", icon: Bookmark },
   { href: "/dashboard/posts", labelKey: "dash.posts", icon: FileText, creatorOnly: true },
   { href: "/dashboard/posts/new", labelKey: "dash.newPost", icon: PenSquare, creatorOnly: true },
   { href: "/dashboard/messages", labelKey: "dash.messages", icon: MessageSquare },

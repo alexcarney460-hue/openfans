@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Heart, MessageCircle, Share2, Send, Eye, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Send, Eye, Trash2, Bookmark, Flag, X } from "lucide-react";
 import { formatNumber, timeAgo } from "@/lib/mock-data";
 
 interface ApiComment {
@@ -41,7 +41,14 @@ export function PostInteractions({
   const [shareFeedback, setShareFeedback] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportFeedback, setReportFeedback] = useState<string | null>(null);
   const hasFetchedRef = useRef(false);
 
   // Fetch initial like status and comments
@@ -59,6 +66,18 @@ export function PostInteractions({
       })
       .catch(() => {
         // Not logged in or error — default to not liked
+      });
+
+    // Check if user has bookmarked this post
+    fetch(`/api/posts/${postId}/bookmark`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.bookmarked === "boolean") {
+          setBookmarked(data.bookmarked);
+        }
+      })
+      .catch(() => {
+        // Not logged in or error — default to not bookmarked
       });
 
     // Fetch comments
@@ -105,6 +124,29 @@ export function PostInteractions({
       setLikeLoading(false);
     }
   }, [liked, likeCount, likeLoading, postId]);
+
+  const handleToggleBookmark = useCallback(async () => {
+    if (bookmarkLoading) return;
+
+    // Optimistic update
+    const wasBookmarked = bookmarked;
+    setBookmarked(!wasBookmarked);
+    setBookmarkLoading(true);
+
+    try {
+      const res = await fetch(`/api/posts/${postId}/bookmark`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setBookmarked(data.bookmarked);
+      } else {
+        setBookmarked(wasBookmarked);
+      }
+    } catch {
+      setBookmarked(wasBookmarked);
+    } finally {
+      setBookmarkLoading(false);
+    }
+  }, [bookmarked, bookmarkLoading, postId]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -181,8 +223,127 @@ export function PostInteractions({
     [handleSubmitComment],
   );
 
+  const handleSubmitReport = useCallback(async () => {
+    if (!reportReason || reportSubmitting) return;
+
+    setReportSubmitting(true);
+    setReportFeedback(null);
+
+    try {
+      const res = await fetch(`/api/posts/${postId}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: reportReason,
+          description: reportDescription.trim() || undefined,
+        }),
+      });
+
+      if (res.ok || res.status === 201) {
+        setReportFeedback("Report submitted. Thank you.");
+        setTimeout(() => {
+          setReportModalOpen(false);
+          setReportReason("");
+          setReportDescription("");
+          setReportFeedback(null);
+        }, 2000);
+      } else {
+        const data = await res.json().catch(() => ({ error: "Failed to submit report" }));
+        setReportFeedback(data.error ?? "Failed to submit report.");
+      }
+    } catch {
+      setReportFeedback("Failed to submit report.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [postId, reportReason, reportDescription, reportSubmitting]);
+
+  const REPORT_REASONS = [
+    { value: "spam", label: "Spam" },
+    { value: "illegal", label: "Illegal Content" },
+    { value: "underage", label: "Underage Content" },
+    { value: "harassment", label: "Harassment" },
+    { value: "copyright", label: "Copyright Violation" },
+    { value: "other", label: "Other" },
+  ] as const;
+
   return (
     <>
+      {/* Report Modal */}
+      {reportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setReportModalOpen(false)}>
+          <div
+            className="mx-4 w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Report Post</h3>
+              <button
+                onClick={() => {
+                  setReportModalOpen(false);
+                  setReportReason("");
+                  setReportDescription("");
+                  setReportFeedback(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close report modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Reason</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {REPORT_REASONS.map((r) => (
+                    <button
+                      key={r.value}
+                      onClick={() => setReportReason(r.value)}
+                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        reportReason === r.value
+                          ? "border-[#00AFF0] bg-[#00AFF0]/10 text-[#00AFF0]"
+                          : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Additional details (optional)
+                </label>
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  placeholder="Provide any additional context..."
+                  rows={3}
+                  maxLength={2000}
+                  className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0]/50 focus:ring-2 focus:ring-[#00AFF0]/20 focus:outline-none resize-none"
+                />
+              </div>
+
+              {reportFeedback && (
+                <p className={`text-sm ${reportFeedback.includes("Thank you") ? "text-emerald-600" : "text-red-500"}`}>
+                  {reportFeedback}
+                </p>
+              )}
+
+              <button
+                onClick={handleSubmitReport}
+                disabled={!reportReason || reportSubmitting}
+                className="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reportSubmitting ? "Submitting..." : "Submit Report"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Actions Bar */}
       <div className="mb-6 flex items-center gap-6 border-b border-t border-gray-200 py-3">
         <button
@@ -218,7 +379,22 @@ export function PostInteractions({
           </div>
         )}
         <button
-          className="relative ml-auto text-gray-400 transition-colors hover:text-gray-600"
+          className={`ml-auto flex items-center gap-2 transition-colors ${
+            bookmarked
+              ? "text-[#00AFF0]"
+              : "text-gray-400 hover:text-[#00AFF0]"
+          }`}
+          aria-label={bookmarked ? "Remove bookmark" : "Bookmark this post"}
+          aria-pressed={bookmarked}
+          onClick={handleToggleBookmark}
+          disabled={bookmarkLoading}
+        >
+          <Bookmark
+            className={`h-5 w-5 transition-transform ${bookmarked ? "fill-current scale-110" : ""} ${bookmarkLoading ? "opacity-50" : ""}`}
+          />
+        </button>
+        <button
+          className="relative text-gray-400 transition-colors hover:text-gray-600"
           aria-label="Share this post"
           onClick={handleShare}
         >
@@ -229,6 +405,15 @@ export function PostInteractions({
             </span>
           )}
         </button>
+        {currentUserId && (
+          <button
+            className="text-gray-400 transition-colors hover:text-red-400"
+            aria-label="Report this post"
+            onClick={() => setReportModalOpen(true)}
+          >
+            <Flag className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Comments Section */}

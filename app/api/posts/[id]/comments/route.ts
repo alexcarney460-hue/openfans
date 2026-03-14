@@ -135,21 +135,24 @@ export async function POST(
       );
     }
 
-    // Insert comment
-    const inserted = await db
-      .insert(commentsTable)
-      .values({
-        user_id: user.id,
-        post_id: postId,
-        body,
-      })
-      .returning();
+    // Insert comment and increment count atomically in a transaction
+    const inserted = await db.transaction(async (tx) => {
+      const result = await tx
+        .insert(commentsTable)
+        .values({
+          user_id: user.id,
+          post_id: postId,
+          body,
+        })
+        .returning();
 
-    // Atomically increment comments_count
-    await db
-      .update(postsTable)
-      .set({ comments_count: sql`${postsTable.comments_count} + 1` })
-      .where(eq(postsTable.id, postId));
+      await tx
+        .update(postsTable)
+        .set({ comments_count: sql`${postsTable.comments_count} + 1` })
+        .where(eq(postsTable.id, postId));
+
+      return result;
+    });
 
     // Fetch user info for the response
     const userInfo = await db

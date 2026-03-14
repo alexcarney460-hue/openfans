@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { postsTable, subscriptionsTable } from "@/utils/db/schema";
+import { postsTable, subscriptionsTable, usersTable } from "@/utils/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { createClient } from "@/utils/supabase/server";
@@ -48,16 +48,36 @@ export async function GET(
 
     const post = postResults[0];
 
-    // Free posts are always accessible
-    if (post.is_free || post.tier === "free") {
-      return NextResponse.json({ data: post });
-    }
-
     // For paid posts, check authentication and subscription
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    // If the post is hidden, only the creator and admins can see it
+    if (post.is_hidden) {
+      const isOwner = user?.id === post.creator_id;
+      let isAdmin = false;
+      if (user && !isOwner) {
+        const adminCheck = await db
+          .select({ role: usersTable.role })
+          .from(usersTable)
+          .where(eq(usersTable.id, user.id))
+          .limit(1);
+        isAdmin = adminCheck.length > 0 && adminCheck[0].role === "admin";
+      }
+      if (!isOwner && !isAdmin) {
+        return NextResponse.json(
+          { error: "Post not found", code: "POST_NOT_FOUND" },
+          { status: 404 },
+        );
+      }
+    }
+
+    // Free posts are always accessible
+    if (post.is_free || post.tier === "free") {
+      return NextResponse.json({ data: post });
+    }
 
     if (!user) {
       // Return post metadata without body/media for unauthenticated users

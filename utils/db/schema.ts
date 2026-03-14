@@ -26,6 +26,9 @@ export const usersTable = pgTable('users_table', {
     .default('subscriber'),
   wallet_address: text('wallet_address'), // Solana wallet for payouts
   is_verified: boolean('is_verified').notNull().default(false),
+  is_suspended: boolean('is_suspended').notNull().default(false),
+  suspended_at: timestamp('suspended_at', { withTimezone: true }),
+  suspension_reason: text('suspension_reason'),
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -95,11 +98,15 @@ export const postsTable = pgTable('posts', {
   comments_count: integer('comments_count').notNull().default(0),
   views_count: integer('views_count').notNull().default(0),
   ppv_price_usdc: integer('ppv_price_usdc'), // cents — null = not PPV, number = one-time unlock price
+  is_hidden: boolean('is_hidden').notNull().default(false),
+  scheduled_at: timestamp('scheduled_at', { withTimezone: true }), // null = published immediately
+  is_published: boolean('is_published').notNull().default(true),
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
 }, (table) => ({
   creatorIdIdx: index('posts_creator_id_idx').on(table.creator_id),
+  isPublishedIdx: index('posts_is_published_idx').on(table.is_published),
 }));
 
 export type InsertPost = typeof postsTable.$inferInsert;
@@ -143,6 +150,7 @@ export const subscriptionsTable = pgTable('subscriptions', {
     .default('basic'),
   price_usdc: integer('price_usdc').notNull(), // cents
   payment_tx: text('payment_tx').notNull().unique(), // Solana transaction signature
+  auto_renew: boolean('auto_renew').notNull().default(true),
   status: text('status', { enum: ['active', 'expired', 'cancelled'] })
     .notNull()
     .default('active'),
@@ -394,6 +402,8 @@ export const notificationsTable = pgTable('notifications', {
       'new_tip',
       'new_message',
       'subscription_expiring',
+      'subscription_renewed',
+      'subscription_expired',
       'payout_completed',
       'ppv_purchase',
     ],
@@ -511,3 +521,54 @@ export const commentsTable = pgTable('comments', {
 
 export type InsertComment = typeof commentsTable.$inferInsert;
 export type SelectComment = typeof commentsTable.$inferSelect;
+
+// ─── Bookmarks ──────────────────────────────────────────────────────────────
+
+export const bookmarksTable = pgTable('bookmarks', {
+  id: serial('id').primaryKey(),
+  user_id: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  post_id: integer('post_id').notNull().references(() => postsTable.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueBookmark: unique().on(table.user_id, table.post_id),
+  userIdIdx: index('bookmarks_user_id_idx').on(table.user_id),
+}));
+
+export type InsertBookmark = typeof bookmarksTable.$inferInsert;
+export type SelectBookmark = typeof bookmarksTable.$inferSelect;
+
+// ─── Follows ────────────────────────────────────────────────────────────────
+
+export const followsTable = pgTable('follows', {
+  id: serial('id').primaryKey(),
+  follower_id: text('follower_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  following_id: text('following_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueFollow: unique().on(table.follower_id, table.following_id),
+  followerIdx: index('follows_follower_id_idx').on(table.follower_id),
+  followingIdx: index('follows_following_id_idx').on(table.following_id),
+}));
+
+export type InsertFollow = typeof followsTable.$inferInsert;
+export type SelectFollow = typeof followsTable.$inferSelect;
+
+// ─── Content Reports ────────────────────────────────────────────────────────
+
+export const contentReportsTable = pgTable('content_reports', {
+  id: serial('id').primaryKey(),
+  reporter_id: text('reporter_id').references(() => usersTable.id, { onDelete: 'set null' }),
+  post_id: integer('post_id').references(() => postsTable.id, { onDelete: 'cascade' }),
+  reported_user_id: text('reported_user_id').references(() => usersTable.id, { onDelete: 'cascade' }),
+  reason: text('reason', { enum: ['spam', 'illegal', 'underage', 'harassment', 'copyright', 'other'] }).notNull(),
+  description: text('description'),
+  status: text('status', { enum: ['pending', 'reviewed', 'action_taken', 'dismissed'] }).notNull().default('pending'),
+  admin_notes: text('admin_notes'),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolved_at: timestamp('resolved_at', { withTimezone: true }),
+}, (table) => ({
+  statusIdx: index('content_reports_status_idx').on(table.status),
+}));
+
+export type InsertContentReport = typeof contentReportsTable.$inferInsert;
+export type SelectContentReport = typeof contentReportsTable.$inferSelect;

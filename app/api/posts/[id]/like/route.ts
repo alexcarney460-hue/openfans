@@ -54,16 +54,18 @@ export async function POST(
       .limit(1);
 
     if (existingLike.length > 0) {
-      // Unlike: delete the like and decrement count atomically
-      await db
-        .delete(likesTable)
-        .where(eq(likesTable.id, existingLike[0].id));
+      // Unlike: delete the like and decrement count atomically in a transaction
+      const updated = await db.transaction(async (tx) => {
+        await tx
+          .delete(likesTable)
+          .where(eq(likesTable.id, existingLike[0].id));
 
-      const updated = await db
-        .update(postsTable)
-        .set({ likes_count: sql`GREATEST(${postsTable.likes_count} - 1, 0)` })
-        .where(eq(postsTable.id, postId))
-        .returning({ likes_count: postsTable.likes_count });
+        return tx
+          .update(postsTable)
+          .set({ likes_count: sql`GREATEST(${postsTable.likes_count} - 1, 0)` })
+          .where(eq(postsTable.id, postId))
+          .returning({ likes_count: postsTable.likes_count });
+      });
 
       return NextResponse.json({
         liked: false,
@@ -71,17 +73,19 @@ export async function POST(
       });
     }
 
-    // Like: insert the like and increment count atomically
-    await db.insert(likesTable).values({
-      user_id: user.id,
-      post_id: postId,
-    });
+    // Like: insert the like and increment count atomically in a transaction
+    const updated = await db.transaction(async (tx) => {
+      await tx.insert(likesTable).values({
+        user_id: user.id,
+        post_id: postId,
+      });
 
-    const updated = await db
-      .update(postsTable)
-      .set({ likes_count: sql`${postsTable.likes_count} + 1` })
-      .where(eq(postsTable.id, postId))
-      .returning({ likes_count: postsTable.likes_count });
+      return tx
+        .update(postsTable)
+        .set({ likes_count: sql`${postsTable.likes_count} + 1` })
+        .where(eq(postsTable.id, postId))
+        .returning({ likes_count: postsTable.likes_count });
+    });
 
     return NextResponse.json({
       liked: true,

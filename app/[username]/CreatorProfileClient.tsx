@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,6 +13,8 @@ import {
   DollarSign,
   Eye,
   MessageCircle,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 import { TipModal } from "@/components/TipModal";
@@ -147,6 +149,9 @@ export default function CreatorProfileClient() {
   const [notFound, setNotFound] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [ppvTarget, setPpvTarget] = useState<ApiPost | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
   const track = useTrack();
 
   // Track profile view on mount
@@ -197,6 +202,50 @@ export default function CreatorProfileClient() {
     }
     fetchCreator();
   }, [params.username]);
+
+  // Fetch follow status when creator loads
+  useEffect(() => {
+    if (!creator?.id) return;
+    fetch(`/api/users/${creator.id}/follow`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.following === "boolean") {
+          setIsFollowing(data.following);
+        }
+        if (typeof data.followers_count === "number") {
+          setFollowersCount(data.followers_count);
+        }
+      })
+      .catch(() => {
+        // Not logged in or error
+      });
+  }, [creator?.id]);
+
+  const handleToggleFollow = useCallback(async () => {
+    if (!creator?.id || followLoading) return;
+
+    const wasFollowing = isFollowing;
+    const prevCount = followersCount;
+    setIsFollowing(!wasFollowing);
+    setFollowersCount(wasFollowing ? prevCount - 1 : prevCount + 1);
+    setFollowLoading(true);
+
+    try {
+      const res = await fetch(`/api/users/${creator.id}/follow`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setIsFollowing(data.following);
+      } else {
+        setIsFollowing(wasFollowing);
+        setFollowersCount(prevCount);
+      }
+    } catch {
+      setIsFollowing(wasFollowing);
+      setFollowersCount(prevCount);
+    } finally {
+      setFollowLoading(false);
+    }
+  }, [creator?.id, isFollowing, followLoading, followersCount]);
 
   const handlePpvUnlocked = (unlockedPost: Record<string, unknown>) => {
     setPosts((prev) =>
@@ -290,6 +339,27 @@ export default function CreatorProfileClient() {
           </div>
           <div className="flex items-center gap-2 pb-1">
             <button
+              onClick={handleToggleFollow}
+              disabled={followLoading}
+              className={`flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                isFollowing
+                  ? "border-gray-300 bg-gray-50 text-gray-700 hover:border-red-300 hover:text-red-500"
+                  : "border-[#00AFF0] text-[#00AFF0] hover:bg-[#00AFF0]/10"
+              } ${followLoading ? "opacity-50" : ""}`}
+            >
+              {isFollowing ? (
+                <>
+                  <UserCheck className="h-4 w-4" />
+                  Following
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4" />
+                  Follow
+                </>
+              )}
+            </button>
+            <button
               onClick={() => setShowTipModal(true)}
               className="flex items-center gap-1.5 rounded-lg border border-[#10b981] px-4 py-2 text-sm font-semibold text-[#10b981] transition-colors hover:bg-[#10b981]/10"
             >
@@ -336,6 +406,13 @@ export default function CreatorProfileClient() {
               {formatNumber(creator.subscriber_count)}
             </span>
             <span className="text-gray-400">subscribers</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <Heart className="h-4 w-4 text-gray-300" />
+            <span className="font-semibold text-gray-900">
+              {formatNumber(followersCount)}
+            </span>
+            <span className="text-gray-400">followers</span>
           </div>
         </div>
 

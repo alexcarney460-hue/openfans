@@ -15,12 +15,15 @@ export type TranslationKey =
   | "hero.title.line1"
   | "hero.title.accent"
   | "hero.subtitle"
+  | "hero.tagline"
   | "hero.cta.earn"
   | "hero.cta.browse"
   // Social proof
   | "social.creators"
   | "social.earned"
   | "social.subscribers"
+  | "social.fees"
+  | "social.payouts"
   // Value props
   | "value.keep95.title"
   | "value.keep95.desc"
@@ -28,6 +31,37 @@ export type TranslationKey =
   | "value.instant.desc"
   | "value.noRestrictions.title"
   | "value.noRestrictions.desc"
+  // How it works
+  | "howItWorks.title"
+  | "howItWorks.creators"
+  | "howItWorks.fans"
+  | "howItWorks.creator.step1.title"
+  | "howItWorks.creator.step1.desc"
+  | "howItWorks.creator.step2.title"
+  | "howItWorks.creator.step2.desc"
+  | "howItWorks.creator.step3.title"
+  | "howItWorks.creator.step3.desc"
+  | "howItWorks.fan.step1.title"
+  | "howItWorks.fan.step1.desc"
+  | "howItWorks.fan.step2.title"
+  | "howItWorks.fan.step2.desc"
+  | "howItWorks.fan.step3.title"
+  | "howItWorks.fan.step3.desc"
+  // Feature highlights
+  | "features.title"
+  | "features.subtitle"
+  | "features.usdc.title"
+  | "features.usdc.desc"
+  | "features.lowFees.title"
+  | "features.lowFees.desc"
+  | "features.messaging.title"
+  | "features.messaging.desc"
+  | "features.analytics.title"
+  | "features.analytics.desc"
+  | "features.referral.title"
+  | "features.referral.desc"
+  | "features.kyc.title"
+  | "features.kyc.desc"
   // Creator showcase
   | "showcase.title"
   | "showcase.subtitle"
@@ -36,10 +70,15 @@ export type TranslationKey =
   | "cta.title"
   | "cta.subtitle"
   | "cta.button"
+  | "cta.creators.title"
+  | "cta.creators.button"
+  | "cta.fans.title"
+  | "cta.fans.button"
   // Dashboard sidebar
   | "dash.home"
   | "dash.explore"
   | "dash.subscriptions"
+  | "dash.bookmarks"
   | "dash.posts"
   | "dash.newPost"
   | "dash.messages"
@@ -63,9 +102,13 @@ export type TranslationKey =
   | "common.error"
   | "common.retry";
 
-type TranslationMap = Record<TranslationKey, string>;
+// English must be complete; other languages fall back to English for missing keys
+type TranslationMapComplete = Record<TranslationKey, string>;
+type TranslationMapPartial = Partial<Record<TranslationKey, string>>;
 
-const translations: Record<LanguageCode, TranslationMap> = {
+const translations: Record<LanguageCode, TranslationMapComplete | TranslationMapPartial> & {
+  en: TranslationMapComplete;
+} = {
   // -----------------------------------------------------------------------
   // English
   // -----------------------------------------------------------------------
@@ -80,11 +123,14 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "hero.title.accent": "that pays more.",
     "hero.subtitle":
       "Share exclusive content, build real community, and keep more of what you earn. Fans subscribe. You get paid. Simple.",
-    "hero.cta.earn": "Start Earning Today",
-    "hero.cta.browse": "Browse Creators",
+    "hero.tagline": "Lower fees. Crypto-native. Creator-first.",
+    "hero.cta.earn": "Join as Creator",
+    "hero.cta.browse": "Explore Creators",
     "social.creators": "creators",
     "social.earned": "earned this month",
     "social.subscribers": "subscribers",
+    "social.fees": "5-10% fees vs 20%",
+    "social.payouts": "Instant payouts",
     "value.keep95.title": "Keep up to 95%",
     "value.keep95.desc":
       "Just 5% platform fee on tips and subscriptions. The lowest in the industry.",
@@ -93,6 +139,35 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "value.noRestrictions.title": "No restrictions",
     "value.noRestrictions.desc":
       "Your content, your rules. We don't police creators.",
+    "howItWorks.title": "How it works",
+    "howItWorks.creators": "For Creators",
+    "howItWorks.fans": "For Fans",
+    "howItWorks.creator.step1.title": "Sign up & verify",
+    "howItWorks.creator.step1.desc": "Create your account and complete identity verification in minutes.",
+    "howItWorks.creator.step2.title": "Set your price & post",
+    "howItWorks.creator.step2.desc": "Choose your subscription price and start sharing exclusive content.",
+    "howItWorks.creator.step3.title": "Get paid in USDC",
+    "howItWorks.creator.step3.desc": "Receive instant payouts directly to your wallet. No holds, no delays.",
+    "howItWorks.fan.step1.title": "Connect your wallet",
+    "howItWorks.fan.step1.desc": "Link your Phantom wallet to get started in seconds.",
+    "howItWorks.fan.step2.title": "Subscribe to creators",
+    "howItWorks.fan.step2.desc": "Find and subscribe to your favorite creators with USDC.",
+    "howItWorks.fan.step3.title": "Enjoy exclusive content",
+    "howItWorks.fan.step3.desc": "Access premium posts, messages, and more from creators you love.",
+    "features.title": "Everything you need to succeed",
+    "features.subtitle": "Built for creators who want more control, more money, and more freedom.",
+    "features.usdc.title": "Instant USDC payouts",
+    "features.usdc.desc": "Get paid the moment a fan subscribes. No waiting, no middlemen.",
+    "features.lowFees.title": "5-10% fees",
+    "features.lowFees.desc": "Keep up to 95% of every dollar. OnlyFans takes 20%.",
+    "features.messaging.title": "Built-in messaging",
+    "features.messaging.desc": "Chat directly with your subscribers. Offer paid DMs for extra revenue.",
+    "features.analytics.title": "Creator analytics",
+    "features.analytics.desc": "Track your growth, revenue, and engagement with real-time dashboards.",
+    "features.referral.title": "Referral program",
+    "features.referral.desc": "Earn 5% of referred creator earnings for 12 months.",
+    "features.kyc.title": "Age verification & KYC",
+    "features.kyc.desc": "Built-in compliance keeps your platform safe and trustworthy.",
     "showcase.title": "Discover creators you will love",
     "showcase.subtitle":
       "Fitness coaches, artists, chefs, analysts, and more.",
@@ -101,9 +176,14 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "cta.subtitle":
       "Join thousands of creators who chose a platform that respects their work and their wallet.",
     "cta.button": "Start Earning Today",
+    "cta.creators.title": "Ready to start earning?",
+    "cta.creators.button": "Sign Up as Creator",
+    "cta.fans.title": "Ready to explore?",
+    "cta.fans.button": "Browse Creators",
     "dash.home": "Home",
     "dash.explore": "Explore Creators",
     "dash.subscriptions": "My Subscriptions",
+    "dash.bookmarks": "Bookmarks",
     "dash.posts": "My Posts",
     "dash.newPost": "New Post",
     "dash.messages": "Messages",
@@ -141,11 +221,14 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "hero.title.accent": "que paga mas.",
     "hero.subtitle":
       "Comparte contenido exclusivo, construye comunidad real y conserva mas de lo que ganas. Los fans se suscriben. Tu cobras. Asi de simple.",
-    "hero.cta.earn": "Empieza a ganar hoy",
+    "hero.tagline": "Menos comisiones. Cripto-nativo. Creador primero.",
+    "hero.cta.earn": "Unirse como creador",
     "hero.cta.browse": "Explorar creadores",
     "social.creators": "creadores",
     "social.earned": "ganado este mes",
     "social.subscribers": "suscriptores",
+    "social.fees": "5-10% comisiones vs 20%",
+    "social.payouts": "Pagos instantaneos",
     "value.keep95.title": "Queda con el 95%",
     "value.keep95.desc":
       "Solo un 5% de comision en propinas y suscripciones. La mas baja del sector.",
@@ -166,6 +249,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "Inicio",
     "dash.explore": "Explorar creadores",
     "dash.subscriptions": "Mis suscripciones",
+    "dash.bookmarks": "Marcadores",
     "dash.posts": "Mis publicaciones",
     "dash.newPost": "Nueva publicacion",
     "dash.messages": "Mensajes",
@@ -228,6 +312,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "Accueil",
     "dash.explore": "Explorer les createurs",
     "dash.subscriptions": "Mes abonnements",
+    "dash.bookmarks": "Signets",
     "dash.posts": "Mes publications",
     "dash.newPost": "Nouvelle publication",
     "dash.messages": "Messages",
@@ -290,6 +375,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "Inicio",
     "dash.explore": "Explorar criadores",
     "dash.subscriptions": "Minhas assinaturas",
+    "dash.bookmarks": "Favoritos",
     "dash.posts": "Minhas publicacoes",
     "dash.newPost": "Nova publicacao",
     "dash.messages": "Mensagens",
@@ -352,6 +438,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "Startseite",
     "dash.explore": "Creators entdecken",
     "dash.subscriptions": "Meine Abonnements",
+    "dash.bookmarks": "Lesezeichen",
     "dash.posts": "Meine Beitrage",
     "dash.newPost": "Neuer Beitrag",
     "dash.messages": "Nachrichten",
@@ -414,6 +501,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "\u30DB\u30FC\u30E0",
     "dash.explore": "\u30AF\u30EA\u30A8\u30A4\u30BF\u30FC\u3092\u63A2\u3059",
     "dash.subscriptions": "\u30DE\u30A4\u30B5\u30D6\u30B9\u30AF\u30EA\u30D7\u30B7\u30E7\u30F3",
+    "dash.bookmarks": "\u30D6\u30C3\u30AF\u30DE\u30FC\u30AF",
     "dash.posts": "\u6295\u7A3F\u4E00\u89A7",
     "dash.newPost": "\u65B0\u898F\u6295\u7A3F",
     "dash.messages": "\u30E1\u30C3\u30BB\u30FC\u30B8",
@@ -475,6 +563,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "\u9996\u9875",
     "dash.explore": "\u63A2\u7D22\u521B\u4F5C\u8005",
     "dash.subscriptions": "\u6211\u7684\u8BA2\u9605",
+    "dash.bookmarks": "\u4E66\u7B7E",
     "dash.posts": "\u6211\u7684\u5E16\u5B50",
     "dash.newPost": "\u65B0\u5E16\u5B50",
     "dash.messages": "\u6D88\u606F",
@@ -537,6 +626,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "\uD648",
     "dash.explore": "\uD06C\uB9AC\uC5D0\uC774\uD130 \uD0D0\uC0C9",
     "dash.subscriptions": "\uB0B4 \uAD6C\uB3C5",
+    "dash.bookmarks": "\uBD81\uB9C8\uD06C",
     "dash.posts": "\uB0B4 \uAC8C\uC2DC\uBB3C",
     "dash.newPost": "\uC0C8 \uAC8C\uC2DC\uBB3C",
     "dash.messages": "\uBA54\uC2DC\uC9C0",
@@ -599,6 +689,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "\u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629",
     "dash.explore": "\u0627\u0633\u062A\u0643\u0634\u0641 \u0627\u0644\u0645\u0628\u062F\u0639\u064A\u0646",
     "dash.subscriptions": "\u0627\u0634\u062A\u0631\u0627\u0643\u0627\u062A\u064A",
+    "dash.bookmarks": "\u0627\u0644\u0645\u0641\u0636\u0644\u0627\u062A",
     "dash.posts": "\u0645\u0646\u0634\u0648\u0631\u0627\u062A\u064A",
     "dash.newPost": "\u0645\u0646\u0634\u0648\u0631 \u062C\u062F\u064A\u062F",
     "dash.messages": "\u0627\u0644\u0631\u0633\u0627\u0626\u0644",
@@ -661,6 +752,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.home": "\u0413\u043B\u0430\u0432\u043D\u0430\u044F",
     "dash.explore": "\u041E\u0431\u0437\u043E\u0440 \u043A\u0440\u0438\u044D\u0439\u0442\u043E\u0440\u043E\u0432",
     "dash.subscriptions": "\u041C\u043E\u0438 \u043F\u043E\u0434\u043F\u0438\u0441\u043A\u0438",
+    "dash.bookmarks": "\u0417\u0430\u043A\u043B\u0430\u0434\u043A\u0438",
     "dash.posts": "\u041C\u043E\u0438 \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438",
     "dash.newPost": "\u041D\u043E\u0432\u0430\u044F \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u044F",
     "dash.messages": "\u0421\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F",

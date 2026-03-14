@@ -760,9 +760,11 @@ function WithdrawModal({
   // For fans, they enter it manually (using the old flow via /api/wallet).
   const effectiveWalletAddress = isCreator ? walletAddress : manualWalletAddress;
 
+  const MINIMUM_PAYOUT_CENTS = 500; // $5.00
   const parsedAmount = parseFloat(amount);
   const amountCents = parsedAmount > 0 ? Math.round(parsedAmount * 100) : 0;
-  const isValidAmount = parsedAmount > 0 && amountCents <= available;
+  const isBelowMinimum = amountCents > 0 && amountCents < MINIMUM_PAYOUT_CENTS;
+  const isValidAmount = parsedAmount > 0 && amountCents >= MINIMUM_PAYOUT_CENTS && amountCents <= available;
   const canSubmit = isValidAmount && !!effectiveWalletAddress;
 
   const handleFillMax = () => {
@@ -937,15 +939,25 @@ function WithdrawModal({
                 />
               </div>
               <div className="mt-1 flex items-center justify-between">
-                <button
-                  onClick={handleFillMax}
-                  className="text-xs font-medium text-[#00AFF0] hover:underline"
-                >
-                  Max ({formatUsdc(Math.max(available, 0))})
-                </button>
-                {parsedAmount > 0 && amountCents > available && (
-                  <p className="text-xs text-red-500">Exceeds available balance</p>
-                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleFillMax}
+                    className="text-xs font-medium text-[#00AFF0] hover:underline"
+                  >
+                    Max ({formatUsdc(Math.max(available, 0))})
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    Min: $5.00
+                  </span>
+                </div>
+                <div>
+                  {isBelowMinimum && (
+                    <p className="text-xs text-red-500">Minimum withdrawal is $5.00</p>
+                  )}
+                  {parsedAmount > 0 && amountCents > available && (
+                    <p className="text-xs text-red-500">Exceeds available balance</p>
+                  )}
+                </div>
               </div>
             </div>
 

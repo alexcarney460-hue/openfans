@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         tier: subscriptionsTable.tier,
         price_usdc: subscriptionsTable.price_usdc,
         status: subscriptionsTable.status,
+        auto_renew: subscriptionsTable.auto_renew,
         started_at: subscriptionsTable.started_at,
         expires_at: subscriptionsTable.expires_at,
         created_at: subscriptionsTable.created_at,

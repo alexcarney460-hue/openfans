@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, X, Image as ImageIcon, Film, Loader2 } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Film, Loader2, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ interface PostFormState {
   readonly tier: Tier;
   readonly ppvEnabled: boolean;
   readonly ppvPrice: string; // dollar string e.g. "5.00"
+  readonly scheduleEnabled: boolean;
+  readonly scheduledAt: string; // ISO datetime-local string e.g. "2026-03-15T14:00"
 }
 
 type Tier = "free" | "basic" | "premium" | "vip";
@@ -50,6 +52,8 @@ const INITIAL_STATE: PostFormState = {
   tier: "free",
   ppvEnabled: false,
   ppvPrice: "",
+  scheduleEnabled: false,
+  scheduledAt: "",
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -107,24 +111,7 @@ export default function NewPostPage() {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    addFiles(files);
-  }, []);
-
-  const handleFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files ?? []);
-      addFiles(files);
-      // Reset so the same file can be re-selected
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    },
-    []
-  );
-
-  function addFiles(files: File[]) {
+  const addFiles = useCallback((files: File[]) => {
     const validFiles = files.filter((f) => {
       if (!ALLOWED_TYPES.has(f.type)) {
         setError(`"${f.name}" has an unsupported file type.`);
@@ -153,7 +140,24 @@ export default function NewPostPage() {
       const mediaIndex = mediaFiles.length + i;
       startUpload(mediaIndex, validFiles[i]);
     }
-  }
+  }, [mediaFiles]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    addFiles(files);
+  }, [addFiles]);
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? []);
+      addFiles(files);
+      // Reset so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+    [addFiles]
+  );
 
   async function startUpload(index: number, file: File) {
     setMediaFiles((prev) =>
@@ -236,6 +240,21 @@ export default function NewPostPage() {
         ppvPriceCents = Math.round(parsed * 100);
       }
 
+      // Build scheduled_at ISO string if scheduling is enabled
+      let scheduledAtIso: string | undefined;
+      if (form.scheduleEnabled && form.scheduledAt) {
+        const scheduledDate = new Date(form.scheduledAt);
+        if (isNaN(scheduledDate.getTime())) {
+          setError("Please enter a valid date and time for scheduling.");
+          return;
+        }
+        if (scheduledDate <= new Date()) {
+          setError("Scheduled time must be in the future.");
+          return;
+        }
+        scheduledAtIso = scheduledDate.toISOString();
+      }
+
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -247,6 +266,7 @@ export default function NewPostPage() {
           is_free: form.tier === "free",
           media_urls: mediaUrls,
           ...(ppvPriceCents !== undefined ? { ppv_price_usdc: ppvPriceCents } : {}),
+          ...(scheduledAtIso !== undefined ? { scheduled_at: scheduledAtIso } : {}),
         }),
       });
 
@@ -262,7 +282,7 @@ export default function NewPostPage() {
     } finally {
       setPublishing(false);
     }
-  }, [form.title, form.body, form.tier, form.ppvEnabled, form.ppvPrice, mediaFiles, router]);
+  }, [form.title, form.body, form.tier, form.ppvEnabled, form.ppvPrice, form.scheduleEnabled, form.scheduledAt, mediaFiles, router]);
 
   const isUploading = mediaFiles.some((m) => m.uploading);
 
@@ -534,7 +554,72 @@ export default function NewPostPage() {
             )}
           </div>
 
-          {/* Publish */}
+          {/* Schedule Toggle */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium text-foreground">
+                  Schedule Post
+                </Label>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Set a future date and time to automatically publish
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.scheduleEnabled}
+                onClick={() => updateField("scheduleEnabled", !form.scheduleEnabled)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0]/50 focus-visible:ring-offset-2",
+                  form.scheduleEnabled ? "bg-[#00AFF0]" : "bg-gray-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                    form.scheduleEnabled ? "translate-x-5" : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+            {form.scheduleEnabled && (
+              <div className="rounded-lg border border-[#00AFF0]/20 bg-[#00AFF0]/5 p-4">
+                <Label htmlFor="schedule-date" className="mb-1.5 block text-xs font-medium text-gray-500">
+                  Publish Date & Time
+                </Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="schedule-date"
+                    type="datetime-local"
+                    value={form.scheduledAt}
+                    onChange={(e) => updateField("scheduledAt", e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="border-gray-200 bg-white pl-10 text-foreground focus-visible:ring-[#00AFF0]/50"
+                  />
+                </div>
+                {form.scheduledAt && (
+                  <p className="mt-2 text-xs text-[#00AFF0]">
+                    This post will be published on{" "}
+                    {new Date(form.scheduledAt).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    at{" "}
+                    {new Date(form.scheduledAt).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Publish / Schedule */}
           <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-6">
             <Button
               variant="outline"
@@ -546,7 +631,7 @@ export default function NewPostPage() {
             <Button
               onClick={handlePublish}
               className="bg-[#00AFF0] hover:bg-[#009dd8] px-8"
-              disabled={!form.body.trim() || publishing || isUploading}
+              disabled={!form.body.trim() || publishing || isUploading || (form.scheduleEnabled && !form.scheduledAt)}
             >
               {isUploading ? (
                 <>
@@ -554,7 +639,12 @@ export default function NewPostPage() {
                   Uploading...
                 </>
               ) : publishing ? (
-                "Publishing..."
+                form.scheduleEnabled ? "Scheduling..." : "Publishing..."
+              ) : form.scheduleEnabled ? (
+                <>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Schedule Post
+                </>
               ) : (
                 "Publish"
               )}
