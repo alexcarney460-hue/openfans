@@ -15,6 +15,20 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
+function isMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(
+    navigator.userAgent,
+  );
+}
+
+function openPhantomDeepLink() {
+  const currentUrl = window.location.href;
+  const encodedUrl = encodeURIComponent(currentUrl);
+  // Phantom deep link: opens the current page inside Phantom's in-app browser
+  window.location.href = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+}
+
 export default function WalletConnectButton({
   className,
   onConnect,
@@ -25,6 +39,12 @@ export default function WalletConnectButton({
   const [showMenu, setShowMenu] = useState(false);
 
   const handleConnect = useCallback(() => {
+    if (isMobile() && !(window as any).phantom?.solana) {
+      // On mobile without Phantom extension (i.e. not inside Phantom browser),
+      // deep-link to open this page inside Phantom's in-app browser
+      openPhantomDeepLink();
+      return;
+    }
     setVisible(true);
   }, [setVisible]);
 

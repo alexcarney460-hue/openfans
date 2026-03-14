@@ -96,6 +96,17 @@ export function SubscribeModal({
   }, [isOpen]);
 
   const handleConnectWallet = useCallback(() => {
+    // On mobile without Phantom extension, deep-link to Phantom's in-app browser
+    if (
+      typeof window !== "undefined" &&
+      /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) &&
+      !(window as any).phantom?.solana
+    ) {
+      const currentUrl = window.location.href;
+      const encodedUrl = encodeURIComponent(currentUrl);
+      window.location.href = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+      return;
+    }
     openWalletModal(true);
   }, [openWalletModal]);
 
