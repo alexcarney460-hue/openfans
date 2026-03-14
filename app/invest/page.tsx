@@ -15,6 +15,17 @@ import {
   BarChart3,
   FileText,
   Download,
+  MessageSquare,
+  Bell,
+  Eye,
+  Languages,
+  UserCheck,
+  Lock,
+  Database,
+  Server,
+  Code2,
+  Wallet,
+  Search,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -66,12 +77,46 @@ const USE_OF_FUNDS = [
 ];
 
 const COMPARISON = [
-  { feature: "Creator Payout", of: "80%", us: "90\u201395%", win: true },
+  { feature: "Creator Payout", of: "80%", us: "95%", win: true },
+  { feature: "Platform Fee", of: "20%", us: "5%", win: true },
   { feature: "Payout Speed", of: "7\u201321 days", us: "Instant", win: true },
   { feature: "Payout Method", of: "Bank (limited)", us: "USDC (global)", win: true },
   { feature: "Transaction Cost", of: "High (cards)", us: "<$0.01", win: true },
   { feature: "Chargebacks", of: "Creator\u2019s loss", us: "None (crypto)", win: true },
-  { feature: "Geo Access", of: "Restricted", us: "Global", win: true },
+  { feature: "Deplatforming Risk", of: "Bank-dependent", us: "None (on-chain)", win: true },
+  { feature: "Geo Access", of: "Restricted", us: "Global (borderless)", win: true },
+  { feature: "Creator Referrals", of: "None", us: "1% lifetime commission", win: true },
+  { feature: "KYC/Age Verification", of: "Basic", us: "ID + selfie (built-in)", win: true },
+];
+
+const BUILT_FEATURES = [
+  { icon: Wallet, title: "Solana USDC Payments", desc: "Subscriptions, tips, and pay-per-view content. All settled on Solana mainnet via Helius RPC." },
+  { icon: DollarSign, title: "5% Platform Fee Model", desc: "Payments route through platform hot wallet. Creators withdraw to their own Solana wallets." },
+  { icon: UserCheck, title: "Creator KYC / Age Verification", desc: "Government ID + selfie upload with admin review queue. Required before monetization." },
+  { icon: BarChart3, title: "Admin Dashboard", desc: "Real-time analytics, revenue charts, creator management, and payout processing tools." },
+  { icon: TrendingUp, title: "Creator Analytics", desc: "Earnings dashboard, subscriber counts, withdrawal requests, and referral program tracking." },
+  { icon: MessageSquare, title: "Direct Messaging", desc: "Split-pane inbox with real-time polling. Full creator-to-subscriber communication." },
+  { icon: Users, title: "Social Features", desc: "Like and comment system on all posts. Post view counts and engagement metrics." },
+  { icon: Bell, title: "Notification System", desc: "Bell dropdown, full notification page, and transactional email notifications via Resend." },
+  { icon: Eye, title: "Event Tracking", desc: "12 event types tracked for engagement analytics. Click-through and conversion data." },
+  { icon: Shield, title: "Security Hardened", desc: "Deposit double-spend prevention, atomic payouts, rate limiting (Upstash Redis), CSP, HSTS." },
+  { icon: Search, title: "SEO & Social Sharing", desc: "OpenGraph meta tags, dynamic social cards, search-optimized creator pages." },
+  { icon: Languages, title: "Multi-Language Support", desc: "10 languages supported. Global-ready from day one." },
+];
+
+const PLATFORM_NUMBERS = [
+  { value: "16", label: "Database Tables" },
+  { value: "17+", label: "API Endpoints" },
+  { value: "12", label: "Tracked Event Types" },
+  { value: "10", label: "Languages Supported" },
+];
+
+const TECH_STACK = [
+  { category: "Frontend", items: "Next.js 14 (App Router), TypeScript, Tailwind CSS" },
+  { category: "Backend", items: "Supabase (Postgres + Auth + Storage), Drizzle ORM" },
+  { category: "Payments", items: "Solana blockchain, USDC, @solana/web3.js, @solana/spl-token" },
+  { category: "Infrastructure", items: "Vercel (hosting + serverless), Helius RPC (Solana mainnet)" },
+  { category: "Services", items: "Upstash Redis (rate limiting), Resend (email)" },
 ];
 
 const MILESTONES = [
@@ -365,7 +410,7 @@ export default function InvestPage() {
           <h2 className="mb-2 font-[family-name:var(--font-jakarta)] text-3xl font-bold text-[#0A1628]">
             Use of Funds
           </h2>
-          <p className="mb-8 text-sm text-gray-500">14\u201317 months runway at $45\u201355K/month burn rate.</p>
+          <p className="mb-8 text-sm text-gray-500">14&ndash;17 months runway at $45&ndash;55K/month burn rate.</p>
 
           <div className="space-y-3">
             {USE_OF_FUNDS.map((f) => (
@@ -397,30 +442,52 @@ export default function InvestPage() {
           <h2 className="mb-2 font-[family-name:var(--font-jakarta)] text-3xl font-bold text-[#0A1628]">
             Not a Pitch Deck. A Live Product.
           </h2>
-          <p className="mb-8 text-sm text-gray-500">OpenFans is deployed and functional today.</p>
+          <p className="mb-8 text-sm text-gray-500">
+            OpenFans is deployed on Vercel and processing real transactions on Solana mainnet today.
+          </p>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { icon: Zap, title: "Solana USDC Payments", desc: "Instant crypto settlement, <$0.01 fees" },
-              { icon: Users, title: "Subs, PPV, Tips, DMs", desc: "Full monetization suite for creators" },
-              { icon: Shield, title: "Security Hardened", desc: "CSP, HSTS, XSS protection, rate limiting" },
-              { icon: Globe, title: "10 Languages", desc: "Global-ready from day one" },
-              { icon: BarChart3, title: "Admin Analytics", desc: "Platform KPIs, revenue, creator metrics" },
-              { icon: TrendingUp, title: "Affiliate Program", desc: "1% lifetime on creator referrals" },
-            ].map((f) => (
-              <div key={f.title} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <f.icon className="mb-3 h-5 w-5 text-[#00AFF0]" />
-                <h3 className="mb-1 text-sm font-bold text-gray-900">{f.title}</h3>
-                <p className="text-xs text-gray-500">{f.desc}</p>
+          {/* Platform numbers */}
+          <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {PLATFORM_NUMBERS.map((n) => (
+              <div key={n.label} className="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+                <div className="text-2xl font-extrabold text-[#0A1628]">{n.value}</div>
+                <div className="mt-1 text-xs text-gray-400">{n.label}</div>
               </div>
             ))}
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          {/* Built features grid */}
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-widest text-gray-500">What&apos;s Built and Live</h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {BUILT_FEATURES.map((f) => (
+              <div key={f.title} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="mb-3 flex items-center gap-2">
+                  <f.icon className="h-5 w-5 text-[#00AFF0]" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                </div>
+                <h3 className="mb-1 text-sm font-bold text-gray-900">{f.title}</h3>
+                <p className="text-xs leading-relaxed text-gray-500">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Revenue model callout */}
+          <div className="mt-8 rounded-xl border-l-4 border-emerald-500 bg-emerald-50 p-5">
+            <h4 className="mb-1 text-sm font-bold text-gray-900">Revenue Model</h4>
+            <p className="text-sm text-gray-700">
+              5% platform fee on every transaction (subscriptions, tips, PPV). Payments flow through a platform hot wallet
+              on Solana mainnet. Creators withdraw their earnings to personal Solana wallets at any time.
+              No banks, no payment processors, no chargebacks.
+            </p>
+          </div>
+
+          {/* Funded by round (upcoming) */}
+          <h3 className="mb-4 mt-8 text-sm font-semibold uppercase tracking-widest text-gray-500">Funded by This Round</h3>
+          <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { icon: Smartphone, title: "Mobile Apps", desc: "iOS & Android (funded by round)" },
-              { icon: Globe, title: "Video CDN", desc: "Streaming infrastructure (funded by round)" },
-              { icon: Shield, title: "Content Moderation", desc: "AI + manual tooling (funded by round)" },
+              { icon: Smartphone, title: "Mobile Apps", desc: "iOS & Android native apps" },
+              { icon: Globe, title: "Video CDN", desc: "Streaming infrastructure for video content" },
+              { icon: Shield, title: "Content Moderation", desc: "AI + manual moderation tooling" },
             ].map((f) => (
               <div key={f.title} className="rounded-xl border border-dashed border-gray-300 bg-white/50 p-5">
                 <f.icon className="mb-3 h-5 w-5 text-amber-500" />
@@ -432,8 +499,60 @@ export default function InvestPage() {
         </div>
       </section>
 
-      {/* ── MILESTONES ── */}
+      {/* ── TECH STACK ── */}
       <section className="py-16">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-widest text-[#00AFF0]">
+            <Code2 className="h-4 w-4" /> Technology
+          </div>
+          <h2 className="mb-2 font-[family-name:var(--font-jakarta)] text-3xl font-bold text-[#0A1628]">
+            Tech Stack
+          </h2>
+          <p className="mb-8 text-sm text-gray-500">
+            Production-grade infrastructure. No prototypes, no mocks.
+          </p>
+
+          <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-[#0A1628] text-white">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider">Layer</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider">Technologies</th>
+                </tr>
+              </thead>
+              <tbody>
+                {TECH_STACK.map((row, i) => (
+                  <tr key={row.category} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="px-5 py-3 font-medium text-gray-900">{row.category}</td>
+                    <td className="px-5 py-3 text-gray-600">{row.items}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <Database className="mb-2 h-5 w-5 text-[#00AFF0]" />
+              <div className="text-xl font-bold text-[#0A1628]">16 Tables</div>
+              <div className="text-xs text-gray-400">Normalized Postgres schema with Drizzle ORM</div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <Server className="mb-2 h-5 w-5 text-[#00AFF0]" />
+              <div className="text-xl font-bold text-[#0A1628]">17+ Endpoints</div>
+              <div className="text-xs text-gray-400">RESTful API on Vercel serverless functions</div>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <Lock className="mb-2 h-5 w-5 text-[#00AFF0]" />
+              <div className="text-xl font-bold text-[#0A1628]">Rate Limited</div>
+              <div className="text-xs text-gray-400">Upstash Redis with per-endpoint throttling</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── MILESTONES ── */}
+      <section className="border-y border-gray-100 bg-gray-50 py-16">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-widest text-[#00AFF0]">
             <Clock className="h-4 w-4" /> Roadmap
@@ -466,14 +585,14 @@ export default function InvestPage() {
 
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-center">
             <p className="text-sm font-semibold text-amber-800">
-              Series A Target: Month 14\u201318 &mdash; $3\u20135M raise at $25\u201340M valuation
+              Series A Target: Month 14&ndash;18 &mdash; $3&ndash;5M raise at $25&ndash;40M valuation
             </p>
           </div>
         </div>
       </section>
 
       {/* ── RETURN SCENARIOS ── */}
-      <section className="border-y border-gray-100 bg-gray-50 py-16">
+      <section className="py-16">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-widest text-[#00AFF0]">
             <TrendingUp className="h-4 w-4" /> Returns
@@ -518,7 +637,7 @@ export default function InvestPage() {
       </section>
 
       {/* ── SCALING MATH ── */}
-      <section className="py-16">
+      <section className="border-y border-gray-100 bg-gray-50 py-16">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-widest text-[#00AFF0]">
             <TrendingUp className="h-4 w-4" /> The Bull Case
@@ -569,7 +688,7 @@ export default function InvestPage() {
       </section>
 
       {/* ── RISKS ── */}
-      <section className="border-y border-gray-100 bg-gray-50 py-16">
+      <section className="py-16">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-widest text-[#00AFF0]">
             <AlertTriangle className="h-4 w-4" /> Transparency

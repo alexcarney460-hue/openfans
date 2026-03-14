@@ -83,6 +83,18 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 - Copy Profile Link buttons on dashboard, settings, analytics
 - Subscription price editing in settings
 
+### KYC / Age Verification (2026-03-14)
+- Creator verification: legal name + DOB (18+) + ID photo + selfie upload
+- Admin review page (`/admin/verification`) with approve/reject
+- Unverified creators blocked from posting
+- Status banners on dashboard + settings
+
+### Social Features (2026-03-14)
+- Like toggle with optimistic UI (filled red heart)
+- Comments with pagination, add/delete, rate limiting
+- Notification center: bell dropdown + full page + unread badges + 30s polling
+- DM messaging: split-pane inbox, real-time threads, user search, read receipts
+
 ### Infrastructure
 - Redis rate limiting via Upstash (in-memory fallback for dev)
 - Click tracking (12 event types, analytics_events table, 8+ pages instrumented)
@@ -91,6 +103,7 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 - Phantom wallet setup guide (`/help/wallet-setup`)
 - Creator onboarding audit fixes (password validation, duplicate buttons, getting started guide)
 - Node 20 on Vercel (fixes OAuth + timeout issues)
+- Direct Phantom connect (bypass modal if installed)
 
 ### Production Fixes
 - Analytics timeout: consolidated queries + maxDuration 30s
@@ -117,9 +130,18 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 | POST | `/api/posts/[id]/unlock` | PPV purchase |
 | GET | `/api/earnings` | Creator earnings data |
 | GET | `/api/affiliates` | Creator's referral data |
+| GET/POST | `/api/verification` | Creator KYC submission + status |
+| GET/POST | `/api/admin/verification` | Admin review KYC submissions |
+| POST/GET | `/api/posts/[id]/like` | Toggle like / check like status |
+| GET/POST | `/api/posts/[id]/comments` | List + add comments |
+| DELETE | `/api/posts/[id]/comments/[commentId]` | Delete comment |
+| GET/PATCH | `/api/notifications` | Get notifications + mark read |
+| GET/POST | `/api/messages/[userId]` | Get/send messages in thread |
+| GET | `/api/messages/unread` | Unread message count |
+| GET | `/api/users/search` | Search users by name/username |
 
-## Database Schema (16 tables)
-users_table, creator_profiles, posts, ppv_purchases, subscriptions, messages, tips, payouts, wallets, wallet_transactions, affiliates, referrals, affiliate_commissions, notifications, contact_messages, analytics_events
+## Database Schema (18 tables)
+users_table, creator_profiles, posts, ppv_purchases, subscriptions, messages, tips, payouts, wallets, wallet_transactions, affiliates, referrals, affiliate_commissions, notifications, contact_messages, analytics_events, likes, comments
 
 ---
 
@@ -132,91 +154,104 @@ users_table, creator_profiles, posts, ppv_purchases, subscriptions, messages, ti
 - [ ] **Live mainnet wallet test** — deposit → subscribe → payout flow with real USDC
 
 ### Critical for Launch
-| Task | Why | Effort |
-|------|-----|--------|
-| KYC / age verification for creators | Legal requirement for adult content — age verification at minimum | Large |
-| Content moderation system | Review/flag/remove content — DMCA, illegal content | Large |
-| Subscription auto-renewal / expiry | Subs expire after 30 days but no auto-charge or renewal flow | Medium |
-| DMCA takedown workflow | `/dmca` page exists but no actual takedown process | Medium |
-| 2257 compliance records | Required for adult content — age verification records | Medium |
-| Terms of Service enforcement | Ability to suspend/ban creators and users from admin | Medium |
+| Task | Status | Effort |
+|------|--------|--------|
+| ~~KYC / age verification for creators~~ | DONE | ~~Large~~ |
+| Content moderation system | TODO | Large |
+| Subscription auto-renewal / expiry | TODO | Medium |
+| DMCA takedown workflow | TODO | Medium |
+| 2257 compliance records | TODO (KYC covers age, need record retention) | Medium |
+| Terms of Service enforcement (ban/suspend) | TODO | Medium |
 
 ### Revenue & Payments
-| Task | Why | Effort |
-|------|-----|--------|
-| Minimum payout threshold | Prevent tiny withdrawals eating gas fees ($5-10 minimum) | Small |
-| Payout schedule (weekly/monthly auto) | Creators shouldn't have to manually request every time | Medium |
-| Tax reporting / 1099 generation | Required for US creators earning >$600/year | Large |
-| Subscription pricing tiers | Multiple tier levels with different content access | Medium |
+| Task | Status | Effort |
+|------|--------|--------|
+| Minimum payout threshold | TODO | Small |
+| Payout schedule (weekly/monthly auto) | TODO | Medium |
+| Tax reporting / 1099 generation | TODO | Large |
+| Subscription pricing tiers | TODO | Medium |
 
 ### Creator Experience
-| Task | Why | Effort |
-|------|-----|--------|
-| Like + comment system | Makes platform feel alive (likes_count exists, no API/UI) | Medium |
-| Notification center UI | In-app notifications (schema exists, no UI) | Medium |
-| DM/messaging UI | Schema exists (messages table), needs frontend | Medium |
-| Scheduled posts | Creators want to queue content | Medium |
-| Mass messaging to subscribers | Creators need to announce things | Medium |
-| Content bundles / promotions | Discount codes, free trials | Medium |
-| Creator verification doc upload | Part of KYC — ID upload + selfie | Large |
-| Live streaming | Major differentiator from OnlyFans | Large |
-| Stories / disappearing content | Common creator platform feature | Large |
+| Task | Status | Effort |
+|------|--------|--------|
+| ~~Like + comment system~~ | DONE | ~~Medium~~ |
+| ~~Notification center UI~~ | DONE | ~~Medium~~ |
+| ~~DM/messaging UI~~ | DONE | ~~Medium~~ |
+| ~~Referral program UI~~ | DONE | ~~Medium~~ |
+| ~~Creator analytics dashboard~~ | DONE | ~~Medium~~ |
+| ~~Wallet setup guide~~ | DONE | ~~Small~~ |
+| ~~Creator verification doc upload~~ | DONE (part of KYC) | ~~Large~~ |
+| Scheduled posts | TODO | Medium |
+| Mass messaging to subscribers | TODO | Medium |
+| Content bundles / promotions | TODO | Medium |
+| Live streaming | TODO | Large |
+| Stories / disappearing content | TODO | Large |
 
 ### Fan Experience
-| Task | Why | Effort |
-|------|-----|--------|
-| Discover/explore page improvements | Better search, filters, trending | Medium |
-| Bookmarks / favorites | Save posts for later | Small |
-| Comment system UI | Schema has comments_count but no comments table/UI | Medium |
-| Like/unlike API + UI | likes_count exists but no like/unlike endpoint | Small |
-| Follow without subscribing | Free follow for updates | Small |
+| Task | Status | Effort |
+|------|--------|--------|
+| ~~Like/unlike API + UI~~ | DONE | ~~Small~~ |
+| ~~Comment system UI~~ | DONE | ~~Medium~~ |
+| Discover/explore page improvements | TODO | Medium |
+| Bookmarks / favorites | TODO | Small |
+| Follow without subscribing | TODO | Small |
 
 ### Admin & Ops
-| Task | Why | Effort |
-|------|-----|--------|
-| Content moderation queue | Admin page to review flagged content | Medium |
-| User management (ban/suspend) | Admin needs to handle bad actors | Medium |
-| Support ticket system | Users need to contact support | Medium |
-| Revenue reports / export | CSV/PDF export for accounting | Small |
-| Platform health monitoring | Uptime, error rates, performance | Medium |
+| Task | Status | Effort |
+|------|--------|--------|
+| ~~Admin analytics dashboard~~ | DONE | ~~Medium~~ |
+| ~~Admin payouts management~~ | DONE | ~~Medium~~ |
+| ~~Admin creators management~~ | DONE | ~~Medium~~ |
+| ~~Admin KYC verification review~~ | DONE | ~~Medium~~ |
+| Content moderation queue | TODO | Medium |
+| User management (ban/suspend) | TODO | Medium |
+| Support ticket system | TODO | Medium |
+| Revenue reports / export | TODO | Small |
+| Platform health monitoring | TODO | Medium |
 
 ### Marketing & Growth
-| Task | Why | Effort |
-|------|-----|--------|
-| Landing page improvements | Better conversion for investors + creators | Medium |
-| Blog / content marketing | SEO traffic | Medium |
-| Creator onboarding email sequence | Drip emails after signup | Medium |
-| Social proof (testimonials, stats) | Build trust on landing page | Small |
-| Mobile app (PWA at minimum) | Most creators use mobile | Large |
+| Task | Status | Effort |
+|------|--------|--------|
+| ~~SEO / OpenGraph meta tags~~ | DONE | ~~Small~~ |
+| ~~Click/event tracking~~ | DONE | ~~Medium~~ |
+| ~~Email notifications~~ | DONE (needs Resend key) | ~~Medium~~ |
+| Landing page improvements | TODO | Medium |
+| Blog / content marketing | TODO | Medium |
+| Creator onboarding email sequence | TODO | Medium |
+| Social proof (testimonials, stats) | TODO | Small |
+| Mobile app (PWA at minimum) | TODO | Large |
 
 ### Infrastructure
-| Task | Why | Effort |
-|------|-----|--------|
-| Production error monitoring (Sentry) | Catch errors before users report them | Small |
-| Database backups verification | Make sure Supabase backups are working | Small |
-| CDN for media files | Fast image/video delivery | Medium |
-| Video transcoding pipeline | Handle uploaded videos properly | Large |
-| Devnet on-chain test | Faucet was rate-limited — retry when available | Small |
+| Task | Status | Effort |
+|------|--------|--------|
+| ~~Redis rate limiting~~ | DONE (needs Upstash credentials) | ~~Small~~ |
+| ~~Database migrations~~ | DONE | ~~Small~~ |
+| ~~Node 20 on Vercel~~ | DONE | ~~Small~~ |
+| Production error monitoring (Sentry) | TODO | Small |
+| Database backups verification | TODO | Small |
+| CDN for media files | TODO | Medium |
+| Video transcoding pipeline | TODO | Large |
+| Devnet on-chain test | TODO (faucet rate-limited) | Small |
 
-### Suggested Priority Order
+### Next Priority Order
 
-**This week (investor-ready + creator onboarding prep):**
-1. KYC / age verification for creators
-2. Like + comment system
-3. Notification center UI
-4. DM/messaging UI
-5. Fund hot wallet + live test
+**This week (before creator onboarding):**
+1. Fund hot wallet + live mainnet test
+2. Content moderation system
+3. Subscription auto-renewal
+4. User management (ban/suspend)
+5. Minimum payout threshold
 
-**Next week (before onboarding creators):**
-6. Content moderation queue
-7. Subscription auto-renewal
-8. Scheduled posts
-9. Resend email setup
-10. Minimum payout threshold
+**Next week (creator onboarding begins):**
+6. Scheduled posts
+7. Discover/explore improvements
+8. Bookmarks + follow system
+9. Set up Resend + Upstash
+10. Landing page polish
 
 **Following weeks:**
-11. User management (ban/suspend)
-12. Explore page improvements
-13. Bookmarks + follow system
-14. Landing page polish
-15. Mobile responsive audit
+11. Mass messaging to subscribers
+12. Content bundles / promotions
+13. Revenue reports / export
+14. Mobile responsive audit
+15. Video transcoding pipeline
