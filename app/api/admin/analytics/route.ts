@@ -5,23 +5,14 @@ import { db } from "@/utils/db/db";
 import {
   usersTable,
   creatorProfilesTable,
-  subscriptionsTable,
-  tipsTable,
-  postsTable,
-  payoutsTable,
-  ppvPurchasesTable,
-  walletsTable,
   walletTransactionsTable,
-  analyticsEventsTable,
 } from "@/utils/db/schema";
-import { eq, sql, gte, and, count } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
-import { getOnChainUsdcBalance } from "@/utils/solana/balance";
 
 /**
  * GET /api/admin/analytics
- * Platform-wide analytics for the admin dashboard.
- * Requires admin role.
+ * Platform-wide analytics — uses a single raw SQL query for speed.
  */
 export async function GET() {
   try {
@@ -35,127 +26,57 @@ export async function GET() {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Run all queries in parallel
+    // Single consolidated query for all scalar metrics
+    const [metrics] = await db.execute(sql`
+      SELECT
+        (SELECT COUNT(*) FROM users_table)::int AS total_users,
+        (SELECT COUNT(*) FROM users_table WHERE role = 'creator')::int AS total_creators,
+        (SELECT COUNT(*) FROM users_table WHERE role = 'subscriber')::int AS total_subscribers,
+        (SELECT COUNT(*) FROM users_table WHERE created_at >= ${startOfMonth})::int AS users_this_month,
+        (SELECT COUNT(*) FROM users_table WHERE created_at >= ${startOfLastMonth} AND created_at < ${startOfMonth})::int AS users_last_month,
+        (SELECT COUNT(*) FROM users_table WHERE created_at >= ${sevenDaysAgo})::int AS users_last_7d,
+        (SELECT COUNT(*) FROM subscriptions WHERE status = 'active')::int AS active_subscriptions,
+        (SELECT COUNT(*) FROM posts)::int AS total_posts,
+        (SELECT COUNT(*) FROM posts WHERE created_at >= ${startOfMonth})::int AS posts_this_month,
+        COALESCE((SELECT SUM(price_usdc) FROM subscriptions), 0)::int AS sub_revenue_all,
+        COALESCE((SELECT SUM(amount_usdc) FROM tips), 0)::int AS tip_revenue_all,
+        COALESCE((SELECT SUM(amount_usdc) FROM ppv_purchases), 0)::int AS ppv_revenue_all,
+        COALESCE((SELECT SUM(price_usdc) FROM subscriptions WHERE created_at >= ${startOfMonth}), 0)::int AS sub_revenue_month,
+        COALESCE((SELECT SUM(amount_usdc) FROM tips WHERE created_at >= ${startOfMonth}), 0)::int AS tip_revenue_month,
+        COALESCE((SELECT SUM(amount_usdc) FROM ppv_purchases WHERE created_at >= ${startOfMonth}), 0)::int AS ppv_revenue_month,
+        COALESCE((SELECT SUM(price_usdc) FROM subscriptions WHERE created_at >= ${startOfLastMonth} AND created_at < ${startOfMonth}), 0)::int AS sub_revenue_last_month,
+        COALESCE((SELECT SUM(amount_usdc) FROM tips WHERE created_at >= ${startOfLastMonth} AND created_at < ${startOfMonth}), 0)::int AS tip_revenue_last_month,
+        COALESCE((SELECT SUM(amount_usdc) FROM ppv_purchases WHERE created_at >= ${startOfLastMonth} AND created_at < ${startOfMonth}), 0)::int AS ppv_revenue_last_month,
+        COALESCE((SELECT SUM(price_usdc) FROM subscriptions WHERE created_at >= ${startOfToday}), 0)::int AS sub_revenue_today,
+        COALESCE((SELECT SUM(amount_usdc) FROM tips WHERE created_at >= ${startOfToday}), 0)::int AS tip_revenue_today,
+        COALESCE((SELECT SUM(amount_usdc) FROM ppv_purchases WHERE created_at >= ${startOfToday}), 0)::int AS ppv_revenue_today,
+        COALESCE((SELECT SUM(amount_usdc) FROM payouts WHERE status = 'completed'), 0)::int AS total_payouts,
+        COALESCE((SELECT SUM(amount_usdc) FROM payouts WHERE status = 'pending'), 0)::int AS pending_payouts,
+        COALESCE((SELECT SUM(balance_usdc) FROM wallets), 0)::int AS platform_wallet_balance,
+        COALESCE((SELECT SUM(amount_usdc) FROM wallet_transactions WHERE type = 'platform_fee'), 0)::int AS fees_all_time,
+        COALESCE((SELECT SUM(amount_usdc) FROM wallet_transactions WHERE type = 'platform_fee' AND created_at >= ${startOfMonth}), 0)::int AS fees_this_month,
+        COALESCE((SELECT SUM(amount_usdc) FROM wallet_transactions WHERE type = 'platform_fee' AND created_at >= ${startOfToday}), 0)::int AS fees_today,
+        (SELECT COUNT(*) FROM analytics_events WHERE created_at >= ${startOfToday})::int AS events_today,
+        (SELECT COUNT(*) FROM analytics_events WHERE created_at >= ${sevenDaysAgo})::int AS events_this_week
+    `);
+
+    const m = metrics as Record<string, number>;
+
+    // Smaller parallel batch for list/chart queries
     const [
-      totalUsersResult,
-      totalCreatorsResult,
-      totalSubscribersResult,
-      usersThisMonthResult,
-      usersLastMonthResult,
-      activeSubscriptionsResult,
-      totalPostsResult,
-      postsThisMonthResult,
-      subRevenueAllTimeResult,
-      tipRevenueAllTimeResult,
-      ppvRevenueAllTimeResult,
-      subRevenueThisMonthResult,
-      tipRevenueThisMonthResult,
-      ppvRevenueThisMonthResult,
-      subRevenueLastMonthResult,
-      tipRevenueLastMonthResult,
-      totalPayoutsResult,
-      pendingPayoutsResult,
-      platformWalletBalanceResult,
       userGrowthResult,
       revenueByDayResult,
       topCreatorsResult,
       categoryBreakdownResult,
       subStatusBreakdownResult,
       recentTransactionsResult,
-      usersLast7dResult,
-      dailySubRevenueResult,
-      dailyTipRevenueResult,
-      dailyPpvRevenueResult,
-      ppvRevenueLastMonthResult,
-      actualPlatformFeesAllTimeResult,
-      actualPlatformFeesThisMonthResult,
-      actualPlatformFeesTodayResult,
-      eventsTodayResult,
-      eventsThisWeekResult,
-      eventsByTypeTodayResult,
+      eventsByTypeResult,
     ] = await Promise.all([
-      // Total users
-      db.select({ count: count() }).from(usersTable),
-
-      // Total creators
-      db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "creator")),
-
-      // Total subscribers (role = subscriber)
-      db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "subscriber")),
-
-      // Users this month
-      db.select({ count: count() }).from(usersTable).where(gte(usersTable.created_at, startOfMonth)),
-
-      // Users last month
-      db.select({ count: count() }).from(usersTable).where(
-        and(gte(usersTable.created_at, startOfLastMonth), sql`${usersTable.created_at} < ${startOfMonth}`),
-      ),
-
-      // Active subscriptions
-      db.select({ count: count() }).from(subscriptionsTable).where(eq(subscriptionsTable.status, "active")),
-
-      // Total posts
-      db.select({ count: count() }).from(postsTable),
-
-      // Posts this month
-      db.select({ count: count() }).from(postsTable).where(gte(postsTable.created_at, startOfMonth)),
-
-      // All-time revenue: subscriptions
-      db.select({ total: sql<number>`COALESCE(SUM(${subscriptionsTable.price_usdc}), 0)::int` }).from(subscriptionsTable),
-
-      // All-time revenue: tips
-      db.select({ total: sql<number>`COALESCE(SUM(${tipsTable.amount_usdc}), 0)::int` }).from(tipsTable),
-
-      // All-time revenue: PPV
-      db.select({ total: sql<number>`COALESCE(SUM(${ppvPurchasesTable.amount_usdc}), 0)::int` }).from(ppvPurchasesTable),
-
-      // This month revenue: subscriptions
-      db.select({ total: sql<number>`COALESCE(SUM(${subscriptionsTable.price_usdc}), 0)::int` })
-        .from(subscriptionsTable).where(gte(subscriptionsTable.created_at, startOfMonth)),
-
-      // This month revenue: tips
-      db.select({ total: sql<number>`COALESCE(SUM(${tipsTable.amount_usdc}), 0)::int` })
-        .from(tipsTable).where(gte(tipsTable.created_at, startOfMonth)),
-
-      // This month revenue: PPV
-      db.select({ total: sql<number>`COALESCE(SUM(${ppvPurchasesTable.amount_usdc}), 0)::int` })
-        .from(ppvPurchasesTable).where(gte(ppvPurchasesTable.created_at, startOfMonth)),
-
-      // Last month revenue: subscriptions
-      db.select({ total: sql<number>`COALESCE(SUM(${subscriptionsTable.price_usdc}), 0)::int` })
-        .from(subscriptionsTable).where(
-          and(gte(subscriptionsTable.created_at, startOfLastMonth), sql`${subscriptionsTable.created_at} < ${startOfMonth}`),
-        ),
-
-      // Last month revenue: tips
-      db.select({ total: sql<number>`COALESCE(SUM(${tipsTable.amount_usdc}), 0)::int` })
-        .from(tipsTable).where(
-          and(gte(tipsTable.created_at, startOfLastMonth), sql`${tipsTable.created_at} < ${startOfMonth}`),
-        ),
-
-      // Total payouts completed
-      db.select({ total: sql<number>`COALESCE(SUM(${payoutsTable.amount_usdc}), 0)::int` })
-        .from(payoutsTable).where(eq(payoutsTable.status, "completed")),
-
-      // Pending payouts
-      db.select({ total: sql<number>`COALESCE(SUM(${payoutsTable.amount_usdc}), 0)::int` })
-        .from(payoutsTable).where(eq(payoutsTable.status, "pending")),
-
-      // Total platform wallet balance
-      db.select({ total: sql<number>`COALESCE(SUM(${walletsTable.balance_usdc}), 0)::int` }).from(walletsTable),
-
-      // User growth — last 30 days grouped by day
       db.execute(sql`
-        SELECT
-          DATE(created_at) AS date,
-          COUNT(*) AS count
-        FROM users_table
-        WHERE created_at >= ${thirtyDaysAgo}
-        GROUP BY DATE(created_at)
-        ORDER BY date ASC
+        SELECT DATE(created_at) AS date, COUNT(*)::int AS count
+        FROM users_table WHERE created_at >= ${thirtyDaysAgo}
+        GROUP BY DATE(created_at) ORDER BY date ASC
       `),
-
-      // Revenue by day — last 30 days (subscriptions + tips + PPV)
       db.execute(sql`
         SELECT DATE(created_at) AS date, COALESCE(SUM(amount), 0)::int AS revenue
         FROM (
@@ -165,11 +86,8 @@ export async function GET() {
           UNION ALL
           SELECT created_at, amount_usdc AS amount FROM ppv_purchases WHERE created_at >= ${thirtyDaysAgo}
         ) combined
-        GROUP BY DATE(created_at)
-        ORDER BY date ASC
+        GROUP BY DATE(created_at) ORDER BY date ASC
       `),
-
-      // Top 10 creators by earnings
       db.select({
         user_id: creatorProfilesTable.user_id,
         username: usersTable.username,
@@ -184,27 +102,12 @@ export async function GET() {
         .innerJoin(usersTable, eq(usersTable.id, creatorProfilesTable.user_id))
         .orderBy(sql`${creatorProfilesTable.total_earnings_usdc} DESC`)
         .limit(10),
-
-      // Category breakdown
       db.execute(sql`
-        SELECT
-          UNNEST(categories) AS category,
-          COUNT(*) AS count
-        FROM creator_profiles
-        WHERE array_length(categories, 1) > 0
-        GROUP BY category
-        ORDER BY count DESC
-        LIMIT 20
+        SELECT UNNEST(categories) AS category, COUNT(*)::int AS count
+        FROM creator_profiles WHERE array_length(categories, 1) > 0
+        GROUP BY category ORDER BY count DESC LIMIT 20
       `),
-
-      // Subscription status breakdown
-      db.execute(sql`
-        SELECT status, COUNT(*) AS count
-        FROM subscriptions
-        GROUP BY status
-      `),
-
-      // Recent platform transactions (last 20)
+      db.execute(sql`SELECT status, COUNT(*)::int AS count FROM subscriptions GROUP BY status`),
       db.select({
         id: walletTransactionsTable.id,
         type: walletTransactionsTable.type,
@@ -218,138 +121,50 @@ export async function GET() {
         .innerJoin(usersTable, eq(usersTable.id, walletTransactionsTable.user_id))
         .orderBy(sql`${walletTransactionsTable.created_at} DESC`)
         .limit(20),
-
-      // Users last 7 days
-      db.select({ count: count() }).from(usersTable).where(gte(usersTable.created_at, sevenDaysAgo)),
-
-      // Today's subscription revenue
-      db.select({ total: sql<number>`COALESCE(SUM(${subscriptionsTable.price_usdc}), 0)::int` })
-        .from(subscriptionsTable).where(gte(subscriptionsTable.created_at, startOfToday)),
-
-      // Today's tip revenue
-      db.select({ total: sql<number>`COALESCE(SUM(${tipsTable.amount_usdc}), 0)::int` })
-        .from(tipsTable).where(gte(tipsTable.created_at, startOfToday)),
-
-      // Today's PPV revenue
-      db.select({ total: sql<number>`COALESCE(SUM(${ppvPurchasesTable.amount_usdc}), 0)::int` })
-        .from(ppvPurchasesTable).where(gte(ppvPurchasesTable.created_at, startOfToday)),
-
-      // Last month revenue: PPV
-      db.select({ total: sql<number>`COALESCE(SUM(${ppvPurchasesTable.amount_usdc}), 0)::int` })
-        .from(ppvPurchasesTable).where(
-          and(gte(ppvPurchasesTable.created_at, startOfLastMonth), sql`${ppvPurchasesTable.created_at} < ${startOfMonth}`),
-        ),
-
-      // Actual platform fees collected all-time (from wallet_transactions ledger)
-      db.select({
-        total: sql<number>`COALESCE(SUM(${walletTransactionsTable.amount_usdc}), 0)::int`,
-      })
-        .from(walletTransactionsTable)
-        .where(eq(walletTransactionsTable.type, 'platform_fee')),
-
-      // Actual platform fees collected this month
-      db.select({
-        total: sql<number>`COALESCE(SUM(${walletTransactionsTable.amount_usdc}), 0)::int`,
-      })
-        .from(walletTransactionsTable)
-        .where(and(
-          eq(walletTransactionsTable.type, 'platform_fee'),
-          gte(walletTransactionsTable.created_at, startOfMonth),
-        )),
-
-      // Actual platform fees collected today
-      db.select({
-        total: sql<number>`COALESCE(SUM(${walletTransactionsTable.amount_usdc}), 0)::int`,
-      })
-        .from(walletTransactionsTable)
-        .where(and(
-          eq(walletTransactionsTable.type, 'platform_fee'),
-          gte(walletTransactionsTable.created_at, startOfToday),
-        )),
-
-      // Analytics events today
-      db.select({ count: count() })
-        .from(analyticsEventsTable)
-        .where(gte(analyticsEventsTable.created_at, startOfToday)),
-
-      // Analytics events this week
-      db.select({ count: count() })
-        .from(analyticsEventsTable)
-        .where(gte(analyticsEventsTable.created_at, sevenDaysAgo)),
-
-      // Analytics events by type today
-      db.select({
-        event_type: analyticsEventsTable.event_type,
-        count: count(),
-      })
-        .from(analyticsEventsTable)
-        .where(gte(analyticsEventsTable.created_at, startOfToday))
-        .groupBy(analyticsEventsTable.event_type)
-        .orderBy(sql`count(*) DESC`),
+      db.execute(sql`
+        SELECT event_type, COUNT(*)::int AS count
+        FROM analytics_events WHERE created_at >= ${startOfToday}
+        GROUP BY event_type ORDER BY count DESC
+      `),
     ]);
 
-    const totalRevenueAllTime =
-      (subRevenueAllTimeResult[0]?.total ?? 0) +
-      (tipRevenueAllTimeResult[0]?.total ?? 0) +
-      (ppvRevenueAllTimeResult[0]?.total ?? 0);
+    const totalRevenueAllTime = m.sub_revenue_all + m.tip_revenue_all + m.ppv_revenue_all;
+    const thisMonthRevenue = m.sub_revenue_month + m.tip_revenue_month + m.ppv_revenue_month;
+    const lastMonthRevenue = m.sub_revenue_last_month + m.tip_revenue_last_month + m.ppv_revenue_last_month;
+    const dailyTotalRevenue = m.sub_revenue_today + m.tip_revenue_today + m.ppv_revenue_today;
+    const dailyCreatorEarnings = dailyTotalRevenue - m.fees_today;
 
-    const thisMonthRevenue =
-      (subRevenueThisMonthResult[0]?.total ?? 0) +
-      (tipRevenueThisMonthResult[0]?.total ?? 0) +
-      (ppvRevenueThisMonthResult[0]?.total ?? 0);
-
-    const lastMonthRevenue =
-      (subRevenueLastMonthResult[0]?.total ?? 0) +
-      (tipRevenueLastMonthResult[0]?.total ?? 0) +
-      (ppvRevenueLastMonthResult[0]?.total ?? 0);
-
-    // Actual platform fees collected (from wallet_transactions ledger)
-    const platformFeeAllTime = actualPlatformFeesAllTimeResult[0]?.total ?? 0;
-    const platformFeeThisMonth = actualPlatformFeesThisMonthResult[0]?.total ?? 0;
-
-    // Daily earnings (today)
-    const dailyTotalRevenue =
-      (dailySubRevenueResult[0]?.total ?? 0) +
-      (dailyTipRevenueResult[0]?.total ?? 0) +
-      (dailyPpvRevenueResult[0]?.total ?? 0);
-    const dailyPlatformFees = actualPlatformFeesTodayResult[0]?.total ?? 0;
-    const dailyCreatorEarnings = dailyTotalRevenue - dailyPlatformFees;
-
-    // On-chain hot wallet balance — skip entirely in this endpoint to avoid timeout
-    // Fetched separately via /api/admin/wallet-balance if needed
     const platformWalletAddress = process.env.NEXT_PUBLIC_PLATFORM_WALLET;
-    const hotWalletConfigured = !!platformWalletAddress;
-    const hotWalletBalanceUsdc = 0;
 
     return NextResponse.json({
       data: {
         overview: {
-          total_users: totalUsersResult[0]?.count ?? 0,
-          total_creators: totalCreatorsResult[0]?.count ?? 0,
-          total_subscribers: totalSubscribersResult[0]?.count ?? 0,
-          users_this_month: usersThisMonthResult[0]?.count ?? 0,
-          users_last_month: usersLastMonthResult[0]?.count ?? 0,
-          users_last_7d: usersLast7dResult[0]?.count ?? 0,
-          active_subscriptions: activeSubscriptionsResult[0]?.count ?? 0,
-          total_posts: totalPostsResult[0]?.count ?? 0,
-          posts_this_month: postsThisMonthResult[0]?.count ?? 0,
+          total_users: m.total_users,
+          total_creators: m.total_creators,
+          total_subscribers: m.total_subscribers,
+          users_this_month: m.users_this_month,
+          users_last_month: m.users_last_month,
+          users_last_7d: m.users_last_7d,
+          active_subscriptions: m.active_subscriptions,
+          total_posts: m.total_posts,
+          posts_this_month: m.posts_this_month,
         },
         revenue: {
           all_time_usdc: totalRevenueAllTime,
           this_month_usdc: thisMonthRevenue,
           last_month_usdc: lastMonthRevenue,
-          subscription_revenue_usdc: subRevenueAllTimeResult[0]?.total ?? 0,
-          tip_revenue_usdc: tipRevenueAllTimeResult[0]?.total ?? 0,
-          ppv_revenue_usdc: ppvRevenueAllTimeResult[0]?.total ?? 0,
-          platform_fee_all_time_usdc: platformFeeAllTime,
-          platform_fee_this_month_usdc: platformFeeThisMonth,
-          total_payouts_usdc: totalPayoutsResult[0]?.total ?? 0,
-          pending_payouts_usdc: pendingPayoutsResult[0]?.total ?? 0,
-          platform_wallet_balance_usdc: platformWalletBalanceResult[0]?.total ?? 0,
-          daily_platform_fees_usdc: dailyPlatformFees,
+          subscription_revenue_usdc: m.sub_revenue_all,
+          tip_revenue_usdc: m.tip_revenue_all,
+          ppv_revenue_usdc: m.ppv_revenue_all,
+          platform_fee_all_time_usdc: m.fees_all_time,
+          platform_fee_this_month_usdc: m.fees_this_month,
+          total_payouts_usdc: m.total_payouts,
+          pending_payouts_usdc: m.pending_payouts,
+          platform_wallet_balance_usdc: m.platform_wallet_balance,
+          daily_platform_fees_usdc: m.fees_today,
           daily_creator_earnings_usdc: dailyCreatorEarnings,
-          hot_wallet_balance_usdc: hotWalletBalanceUsdc,
-          hot_wallet_configured: hotWalletConfigured,
+          hot_wallet_balance_usdc: 0,
+          hot_wallet_configured: !!platformWalletAddress,
         },
         charts: {
           user_growth: userGrowthResult,
@@ -360,9 +175,9 @@ export async function GET() {
         subscription_status: subStatusBreakdownResult,
         recent_transactions: recentTransactionsResult,
         engagement: {
-          events_today: eventsTodayResult[0]?.count ?? 0,
-          events_this_week: eventsThisWeekResult[0]?.count ?? 0,
-          events_by_type: eventsByTypeTodayResult.map((row) => ({
+          events_today: m.events_today,
+          events_this_week: m.events_this_week,
+          events_by_type: (eventsByTypeResult as unknown as Array<{ event_type: string; count: number }>).map((row) => ({
             event_type: row.event_type,
             count: Number(row.count),
           })),
