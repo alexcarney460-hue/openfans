@@ -17,6 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { GettingStartedGuide } from "@/components/GettingStartedGuide";
 
 // -- Types --
 
@@ -82,6 +83,10 @@ export default function DashboardPage() {
   const [username, setUsername] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
   const [displayName, setDisplayName] = useState<string>("");
+  const [hasAvatar, setHasAvatar] = useState(false);
+  const [hasBanner, setHasBanner] = useState(false);
+  const [hasBio, setHasBio] = useState(false);
+  const [postCount, setPostCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const isCreator = userRole === "creator" || userRole === "admin";
@@ -94,15 +99,19 @@ export default function DashboardPage() {
           setUsername(meRes.data.username ?? null);
           setUserRole(meRes.data.role ?? "subscriber");
           setDisplayName(meRes.data.display_name ?? "");
+          setHasAvatar(!!meRes.data.avatar_url);
+          setHasBanner(!!meRes.data.banner_url);
+          setHasBio(!!meRes.data.bio && meRes.data.bio.trim().length > 0);
         }
 
         const role = meRes.data?.role ?? "subscriber";
         const isCreatorRole = role === "creator" || role === "admin";
 
         if (isCreatorRole) {
-          const [earningsRes, subscribersRes] = await Promise.allSettled([
+          const [earningsRes, subscribersRes, postsRes] = await Promise.allSettled([
             fetch("/api/earnings").then((r) => r.json()),
             fetch("/api/subscribers").then((r) => r.json()),
+            fetch(`/api/posts?creator_id=${meRes.data.id}&limit=1`).then((r) => r.ok ? r.json() : null),
           ]);
 
           if (earningsRes.status === "fulfilled" && earningsRes.value.data) {
@@ -114,6 +123,10 @@ export default function DashboardPage() {
 
           if (subscribersRes.status === "fulfilled" && subscribersRes.value.data) {
             setSubscriberCount(subscribersRes.value.data.length);
+          }
+
+          if (postsRes.status === "fulfilled" && postsRes.value?.data) {
+            setPostCount(postsRes.value.data.length);
           }
         }
       } catch {
@@ -252,6 +265,15 @@ export default function DashboardPage() {
   // Creator dashboard
   return (
     <div className="space-y-6">
+      {/* Getting Started Guide for new creators */}
+      <GettingStartedGuide
+        hasAvatar={hasAvatar}
+        hasBanner={hasBanner}
+        hasBio={hasBio}
+        postCount={postCount}
+        username={username}
+      />
+
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">

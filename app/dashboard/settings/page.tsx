@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2, Loader2 } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2, ImageIcon } from "lucide-react";
 
 interface ToggleSwitchProps {
   enabled: boolean;
@@ -64,10 +64,14 @@ export default function SettingsPage() {
   const [allowMessages, setAllowMessages] = useState(false);
 
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerUploading, setBannerUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("subscriber");
 
   useEffect(() => {
     fetch("/api/wallet")
@@ -96,6 +100,8 @@ export default function SettingsPage() {
           setBio(user.bio ?? "");
           setEmail(user.email ?? "");
           setAvatarUrl(user.avatar_url ?? null);
+          setBannerUrl(user.banner_url ?? null);
+          setUserRole(user.role ?? "subscriber");
         }
       } catch {
         // silently fail
@@ -153,6 +159,53 @@ export default function SettingsPage() {
       setAvatarUploading(false);
       // Reset input so same file can be re-selected
       if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setBannerUploading(true);
+    setSaveMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("bucket", "banners");
+
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const json = await uploadRes.json().catch(() => ({ error: "Upload failed" }));
+        setSaveMessage(json.error ?? "Failed to upload banner.");
+        return;
+      }
+
+      const uploadJson = await uploadRes.json();
+      const newBannerUrl = uploadJson.data.url;
+
+      const patchRes = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ banner_url: newBannerUrl }),
+      });
+
+      if (patchRes.ok) {
+        setBannerUrl(newBannerUrl);
+        setSaveMessage("Banner updated successfully.");
+      } else {
+        const json = await patchRes.json().catch(() => ({ error: "Unknown error" }));
+        setSaveMessage(json.error ?? "Failed to update banner.");
+      }
+    } catch {
+      setSaveMessage("Failed to upload banner.");
+    } finally {
+      setBannerUploading(false);
+      if (bannerInputRef.current) bannerInputRef.current.value = "";
     }
   };
 
@@ -260,6 +313,49 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">JPG, PNG, GIF, or WebP. Max 5MB.</p>
             </div>
           </div>
+
+          {/* Banner upload (creators only) */}
+          {(userRole === "creator" || userRole === "admin") && (
+            <div className="mb-6">
+              <p className="text-sm font-medium text-foreground mb-2">Banner Image</p>
+              <div
+                className="relative h-32 w-full overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 cursor-pointer hover:border-[#00AFF0]/50 transition-colors"
+                onClick={() => bannerInputRef.current?.click()}
+              >
+                {bannerUrl ? (
+                  <img
+                    src={bannerUrl}
+                    alt="Banner"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center text-gray-400">
+                    <ImageIcon className="h-8 w-8 mb-2" />
+                    <span className="text-sm">Click to upload a banner image</span>
+                    <span className="text-xs text-gray-300 mt-1">Recommended: 1500 x 500px</span>
+                  </div>
+                )}
+                {bannerUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <Loader2 className="h-6 w-6 animate-spin text-white" />
+                  </div>
+                )}
+                {bannerUrl && !bannerUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors">
+                    <Camera className="h-6 w-6 text-white opacity-0 hover:opacity-100 transition-opacity" />
+                  </div>
+                )}
+              </div>
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={handleBannerUpload}
+              />
+              <p className="text-xs text-muted-foreground mt-1">JPG, PNG, GIF, or WebP. Max 50MB.</p>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
