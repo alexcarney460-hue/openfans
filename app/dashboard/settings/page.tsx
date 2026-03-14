@@ -78,16 +78,6 @@ export default function SettingsPage() {
   const { setVisible: openWalletModal } = useWalletModal();
 
   const handleConnectWallet = useCallback(() => {
-    if (
-      typeof window !== "undefined" &&
-      /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) &&
-      !(window as any).phantom?.solana
-    ) {
-      const currentUrl = window.location.href;
-      const encodedUrl = encodeURIComponent(currentUrl);
-      window.location.href = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
-      return;
-    }
     openWalletModal(true);
   }, [openWalletModal]);
 
