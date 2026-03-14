@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Wallet, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 interface ToggleSwitchProps {
   enabled: boolean;
@@ -74,12 +73,32 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
-  const { publicKey, connected } = useWallet();
-  const { setVisible: openWalletModal } = useWalletModal();
+  const { publicKey, connected, connecting, wallet, wallets, select, connect } = useWallet();
 
-  const handleConnectWallet = useCallback(() => {
-    openWalletModal(true);
-  }, [openWalletModal]);
+  const handleConnectWallet = useCallback(async () => {
+    try {
+      const phantom = wallets.find((w) =>
+        w.adapter.name.toLowerCase().includes("phantom"),
+      );
+      const target = phantom ?? wallets[0];
+
+      if (!target) {
+        window.open("https://phantom.app/", "_blank");
+        return;
+      }
+
+      select(target.adapter.name);
+    } catch {
+      setSaveMessage("Failed to connect wallet.");
+    }
+  }, [wallets, select]);
+
+  // Auto-connect after selecting a wallet
+  useEffect(() => {
+    if (wallet && !connected && !connecting) {
+      connect().catch(() => {});
+    }
+  }, [wallet, connected, connecting, connect]);
 
   // When wallet connects via adapter, save it to the backend
   useEffect(() => {

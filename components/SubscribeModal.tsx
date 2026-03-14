@@ -3,7 +3,6 @@
 import { useEffect, useCallback, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import {
   PublicKey,
   Transaction,
@@ -63,9 +62,8 @@ export function SubscribeModal({
   creatorId,
   price,
 }: SubscribeModalProps) {
-  const { publicKey, sendTransaction, connected, wallet } = useWallet();
+  const { publicKey, sendTransaction, connected, connecting, wallet, wallets, select, connect } = useWallet();
   const { connection } = useConnection();
-  const { setVisible: openWalletModal } = useWalletModal();
   const [txState, setTxState] = useState<TxState>({ status: "idle" });
 
   const handleKeyDown = useCallback(
@@ -95,8 +93,15 @@ export function SubscribeModal({
     }
   }, [isOpen]);
 
-  const handleConnectWallet = useCallback(() => {
-    // On mobile without Phantom extension, deep-link to Phantom's in-app browser
+  // Auto-connect after selecting a wallet
+  useEffect(() => {
+    if (wallet && !connected && !connecting) {
+      connect().catch(() => {});
+    }
+  }, [wallet, connected, connecting, connect]);
+
+  const handleConnectWallet = useCallback(async () => {
+    // Mobile without Phantom in-app browser → deep-link to Phantom
     if (
       typeof window !== "undefined" &&
       /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) &&
@@ -107,8 +112,25 @@ export function SubscribeModal({
       window.location.href = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
       return;
     }
-    openWalletModal(true);
-  }, [openWalletModal]);
+
+    try {
+      // Direct connect — find Phantom or first available wallet, skip modal
+      const phantom = wallets.find((w) =>
+        w.adapter.name.toLowerCase().includes("phantom"),
+      );
+      const target = phantom ?? wallets[0];
+
+      if (!target) {
+        window.open("https://phantom.app/", "_blank");
+        return;
+      }
+
+      select(target.adapter.name);
+      // connect() is triggered by the useEffect below after select
+    } catch {
+      setTxState({ status: "error", message: "Failed to connect wallet" });
+    }
+  }, [wallets, select]);
 
   const handleSubscribe = useCallback(async () => {
     if (!publicKey || !sendTransaction) {

@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { cn } from "@/lib/utils";
 
 interface WalletConnectButtonProps {
@@ -25,7 +24,6 @@ function isMobile(): boolean {
 function openPhantomDeepLink() {
   const currentUrl = window.location.href;
   const encodedUrl = encodeURIComponent(currentUrl);
-  // Phantom deep link: opens the current page inside Phantom's in-app browser
   window.location.href = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
 }
 
@@ -34,19 +32,50 @@ export default function WalletConnectButton({
   onConnect,
   onDisconnect,
 }: WalletConnectButtonProps) {
-  const { publicKey, wallet, disconnect, connecting, connected } = useWallet();
-  const { setVisible } = useWalletModal();
+  const { publicKey, wallet, select, connect, disconnect, connecting, connected, wallets } = useWallet();
   const [showMenu, setShowMenu] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleConnect = useCallback(() => {
+  const handleConnect = useCallback(async () => {
+    setError(null);
+
+    // Mobile without Phantom in-app browser → deep-link to Phantom
     if (isMobile() && !(window as any).phantom?.solana) {
-      // On mobile without Phantom extension (i.e. not inside Phantom browser),
-      // deep-link to open this page inside Phantom's in-app browser
       openPhantomDeepLink();
       return;
     }
-    setVisible(true);
-  }, [setVisible]);
+
+    try {
+      // Try to find Phantom first, fall back to any available wallet
+      const phantom = wallets.find((w) =>
+        w.adapter.name.toLowerCase().includes("phantom"),
+      );
+      const target = phantom ?? wallets[0];
+
+      if (!target) {
+        // No wallets detected at all — send them to install Phantom
+        window.open("https://phantom.app/", "_blank");
+        return;
+      }
+
+      // Select + connect in one flow — no modal needed
+      select(target.adapter.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect");
+    }
+  }, [wallets, select]);
+
+  // Auto-connect after selecting a wallet
+  useEffect(() => {
+    if (wallet && !connected && !connecting) {
+      connect().catch((err) => {
+        // User rejected or wallet error
+        if (err instanceof Error && !err.message.includes("User rejected")) {
+          setError(err.message);
+        }
+      });
+    }
+  }, [wallet, connected, connecting, connect]);
 
   const handleDisconnect = useCallback(async () => {
     await disconnect();
@@ -57,7 +86,6 @@ export default function WalletConnectButton({
   // Notify parent when wallet connects
   const address = publicKey?.toBase58() ?? "";
   if (connected && address && onConnect) {
-    // Fire onConnect callback (parent should guard against repeated calls)
     onConnect(address);
   }
 
@@ -119,25 +147,27 @@ export default function WalletConnectButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleConnect}
-      disabled={connecting}
-      className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 transition-all hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/10 disabled:cursor-not-allowed disabled:opacity-60",
-        className,
+    <div className={cn("w-full", className)}>
+      <button
+        type="button"
+        onClick={handleConnect}
+        disabled={connecting}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 transition-all hover:border-[#00AFF0]/40 hover:bg-[#00AFF0]/10 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <PhantomLogo />
+        {connecting ? (
+          <>
+            <Spinner />
+            <span>Connecting...</span>
+          </>
+        ) : (
+          <span>Connect Wallet</span>
+        )}
+      </button>
+      {error && (
+        <p className="mt-1.5 text-center text-xs text-red-400">{error}</p>
       )}
-    >
-      <PhantomLogo />
-      {connecting ? (
-        <>
-          <Spinner />
-          <span>Connecting...</span>
-        </>
-      ) : (
-        <span>Connect Wallet</span>
-      )}
-    </button>
+    </div>
   );
 }
 
