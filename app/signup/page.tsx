@@ -3,7 +3,13 @@ import SignupForm from "@/components/SignupForm"
 import ProviderSigninBlock from "@/components/ProviderSigninBlock"
 import WalletConnectButton from "@/components/WalletConnectButton"
 
-export default function Signup() {
+interface SignupPageProps {
+  searchParams: { ref?: string }
+}
+
+export default function Signup({ searchParams }: SignupPageProps) {
+  const refCode = searchParams.ref ?? ""
+
   return (
     <div className="bg-gray-50 flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
@@ -26,8 +32,15 @@ export default function Signup() {
             </p>
           </div>
 
+          {/* Referred by banner */}
+          {refCode && (
+            <div className="mb-4 rounded-lg border border-[#00AFF0]/20 bg-[#00AFF0]/5 px-4 py-2.5 text-center text-xs text-gray-600">
+              You were invited by a creator
+            </div>
+          )}
+
           {/* Signup Form */}
-          <SignupForm />
+          <SignupForm refCode={refCode} />
 
           {/* Divider */}
           <div className="relative my-6">

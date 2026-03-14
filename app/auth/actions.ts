@@ -3,8 +3,8 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from "next/navigation"
 import { revalidatePath } from 'next/cache'
 import { db } from '@/utils/db/db'
-import { usersTable } from '@/utils/db/schema'
-import { eq } from 'drizzle-orm'
+import { usersTable, affiliatesTable, referralsTable } from '@/utils/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { isAdminEmail } from '@/utils/admin'
 import { sanitizeRedirectPath } from '@/utils/redirect'
 
@@ -90,6 +90,7 @@ export async function signup(currentState: { message: string }, formData: FormDa
         password: formData.get('password') as string,
         username: formData.get('username') as string || formData.get('name') as string || '',
         role: formData.get('role') as string || 'subscriber',
+        ref: (formData.get('ref') as string || '').trim(),
     }
 
     // Server-side email validation
@@ -143,6 +144,34 @@ export async function signup(currentState: { message: string }, formData: FormDa
             display_name: data.username,
             role: isAdminEmail(data.email) ? 'admin' : (data.role === 'creator' ? 'creator' : 'subscriber'),
         })
+        // Process referral code if provided
+        if (data.ref) {
+            try {
+                const affiliate = await db
+                    .select({ id: affiliatesTable.id, user_id: affiliatesTable.user_id, is_active: affiliatesTable.is_active })
+                    .from(affiliatesTable)
+                    .where(eq(affiliatesTable.referral_code, data.ref))
+                    .limit(1)
+
+                if (affiliate.length > 0 && affiliate[0].is_active && affiliate[0].user_id !== signUpData.user.id) {
+                    // Create referral record
+                    await db.insert(referralsTable).values({
+                        referrer_id: affiliate[0].user_id,
+                        referred_user_id: signUpData.user.id,
+                        referral_code: data.ref,
+                        status: 'active',
+                    })
+
+                    // Increment total_referrals on affiliate
+                    await db.update(affiliatesTable)
+                        .set({ total_referrals: sql`${affiliatesTable.total_referrals} + 1` })
+                        .where(eq(affiliatesTable.id, affiliate[0].id))
+                }
+            } catch (refErr) {
+                // Don't fail signup if referral processing fails
+                console.error("Referral processing error:", refErr instanceof Error ? refErr.message : "Unknown error")
+            }
+        }
     } catch (err) {
         console.error("Error in signup:", err instanceof Error ? err.message : "Unknown error")
         return { message: "Failed to setup user account" }

@@ -55,7 +55,7 @@ interface FormErrors {
   terms?: string
 }
 
-export default function SignupForm() {
+export default function SignupForm({ refCode = "" }: { refCode?: string }) {
   const initialState = { message: "" }
   const [formState, formAction] = useFormState(signup, initialState)
 
@@ -177,6 +177,7 @@ export default function SignupForm() {
           <p className="text-xs text-red-400">{errors.role}</p>
         )}
         <input type="hidden" name="role" value={role || ""} />
+        {refCode && <input type="hidden" name="ref" value={refCode} />}
       </div>
 
       {/* Username */}

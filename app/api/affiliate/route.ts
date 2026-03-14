@@ -81,7 +81,7 @@ export async function GET() {
       data: {
         affiliate: {
           referral_code: currentAffiliate.referral_code,
-          referral_link: `https://openfans.online/signup?ref=${currentAffiliate.referral_code}`,
+          referral_link: `https://openfans.online/ref/${currentAffiliate.referral_code}`,
           commission_rate: currentAffiliate.commission_rate,
           total_referrals: currentAffiliate.total_referrals,
           total_earnings_usdc: currentAffiliate.total_earnings_usdc,

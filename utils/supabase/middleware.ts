@@ -26,6 +26,7 @@ const PUBLIC_PATHS = [
   "/acceptable-use",
   "/refund-policy",
   "/error",
+  "/ref",
 ];
 
 // API routes that allow public GET access

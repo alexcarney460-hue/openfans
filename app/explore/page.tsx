@@ -23,6 +23,7 @@ interface ApiCreator {
   readonly total_subscribers: number;
   readonly categories: string[];
   readonly is_featured: boolean;
+  readonly post_count?: number;
 }
 
 type MappedCreator = {
@@ -53,7 +54,7 @@ function mapApiCreator(c: ApiCreator): MappedCreator {
     categories: c.categories ?? [],
     subscriptionPrice: (c.subscription_price_usdc ?? 0) / 100,
     stats: {
-      posts: 0,
+      posts: c.post_count ?? 0,
       subscribers: c.total_subscribers ?? 0,
       likes: 0,
     },

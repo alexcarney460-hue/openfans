@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { usersTable, creatorProfilesTable } from "@/utils/db/schema";
+import { usersTable, creatorProfilesTable, postsTable } from "@/utils/db/schema";
 import { eq, ilike, sql, and } from "drizzle-orm";
 
 const DEFAULT_PAGE = 1;
@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
         total_subscribers: creatorProfilesTable.total_subscribers,
         categories: creatorProfilesTable.categories,
         is_featured: creatorProfilesTable.is_featured,
+        post_count: sql<number>`(SELECT count(*)::int FROM posts WHERE posts.creator_id = ${usersTable.id})`,
       })
       .from(usersTable)
       .innerJoin(
