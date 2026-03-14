@@ -6,6 +6,10 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const SOLANA_RPC_ENDPOINT =
@@ -17,8 +21,13 @@ interface SolanaProviderProps {
 }
 
 export default function SolanaProvider({ children }: SolanaProviderProps) {
-  // Empty array — wallet-standard auto-detects installed wallets (Phantom, Solflare, etc.)
-  const wallets = useMemo(() => [], []);
+  // Manual adapters serve as fallbacks on mobile where wallet-standard
+  // can't auto-detect Phantom/Solflare (they run as separate apps).
+  // On desktop, wallet-standard deduplicates these automatically.
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    [],
+  );
 
   return (
     <ConnectionProvider endpoint={SOLANA_RPC_ENDPOINT}>
