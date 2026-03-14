@@ -376,9 +376,11 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("GET /api/admin/analytics error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack?.split("\n").slice(0, 3).join(" | ") : "";
+    console.error("GET /api/admin/analytics error:", message, stack);
     return NextResponse.json(
-      { error: "Internal server error", code: "INTERNAL_ERROR" },
+      { error: "Internal server error", code: "INTERNAL_ERROR", debug: message },
       { status: 500 },
     );
   }
