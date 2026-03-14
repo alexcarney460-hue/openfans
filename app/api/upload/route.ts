@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit: 20 requests per minute per user
-    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "upload", 20, 60_000);
+    const rateLimited = await checkRateLimit(request, getRateLimitKey(request, user.id), "upload", 20, 60_000);
     if (rateLimited) return rateLimited;
 
     // Parse form data

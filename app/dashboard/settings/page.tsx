@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Wallet, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletReadyState } from "@solana/wallet-adapter-base";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useTrack } from "@/hooks/useTrack";
 
 interface ToggleSwitchProps {
   enabled: boolean;
@@ -74,72 +75,29 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
-  const { publicKey, connected, connecting, wallet, wallets, select, connect } = useWallet();
-  const userClickedConnect = useRef(false);
+  const { publicKey, connected, connecting } = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
+  const track = useTrack();
 
-  const handleConnectWallet = useCallback(async () => {
-    const installed = wallets.filter(
-      (w) =>
-        w.readyState === WalletReadyState.Installed ||
-        w.readyState === WalletReadyState.Loadable,
-    );
-    const phantom = installed.find((w) =>
-      w.adapter.name.toLowerCase().includes("phantom"),
-    );
-    const target = phantom ?? installed[0];
+  const handleConnectWallet = useCallback(() => {
+    track("wallet_connect_click");
+    setWalletModalVisible(true);
+  }, [setWalletModalVisible, track]);
 
-    if (!target) {
-      setSaveMessage("No wallet found. Install the Phantom browser extension to continue.");
-      return;
-    }
-
-    try {
-      userClickedConnect.current = true;
-      select(target.adapter.name);
-    } catch {
-      userClickedConnect.current = false;
-      setSaveMessage("Failed to connect wallet.");
-    }
-  }, [wallets, select]);
-
-  // Only connect after user explicitly clicked "Connect Wallet"
-  useEffect(() => {
-    if (
-      userClickedConnect.current &&
-      wallet &&
-      !connected &&
-      !connecting &&
-      (wallet.readyState === WalletReadyState.Installed ||
-        wallet.readyState === WalletReadyState.Loadable)
-    ) {
-      userClickedConnect.current = false;
-      connect().catch(() => {});
-    }
-  }, [wallet, connected, connecting, connect]);
-
-  // When wallet connects via adapter, save it to the backend
+  // When wallet connects via adapter, save the address to the user profile
   useEffect(() => {
     if (connected && publicKey) {
       const addr = publicKey.toBase58();
       setWalletAddress(addr);
-      fetch("/api/wallet", {
-        method: "POST",
+      fetch("/api/me", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wallet_address: addr }),
-      }).catch(() => {});
+      }).catch(() => {
+        setSaveMessage("Wallet connected but failed to save address to your profile.");
+      });
     }
   }, [connected, publicKey]);
-
-  useEffect(() => {
-    fetch("/api/wallet")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.data?.wallet_address) {
-          setWalletAddress(data.data.wallet_address);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     async function fetchUser() {
@@ -159,6 +117,7 @@ export default function SettingsPage() {
           setAvatarUrl(user.avatar_url ?? null);
           setBannerUrl(user.banner_url ?? null);
           setUserRole(user.role ?? "subscriber");
+          setWalletAddress(user.wallet_address ?? null);
         }
       } catch {
         // silently fail
@@ -566,8 +525,16 @@ export default function SettingsPage() {
                 size="sm"
                 className="border-gray-200"
                 onClick={handleConnectWallet}
+                disabled={connecting}
               >
-                Connect Wallet
+                {connecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect Wallet"
+                )}
               </Button>
             </div>
           )}

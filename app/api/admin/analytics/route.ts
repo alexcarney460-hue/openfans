@@ -12,9 +12,11 @@ import {
   ppvPurchasesTable,
   walletsTable,
   walletTransactionsTable,
+  analyticsEventsTable,
 } from "@/utils/db/schema";
 import { eq, sql, gte, and, count } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
+import { getOnChainUsdcBalance } from "@/utils/solana/balance";
 
 /**
  * GET /api/admin/analytics
@@ -27,6 +29,7 @@ export async function GET() {
     if (authError) return authError;
 
     const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -60,6 +63,16 @@ export async function GET() {
       subStatusBreakdownResult,
       recentTransactionsResult,
       usersLast7dResult,
+      dailySubRevenueResult,
+      dailyTipRevenueResult,
+      dailyPpvRevenueResult,
+      ppvRevenueLastMonthResult,
+      actualPlatformFeesAllTimeResult,
+      actualPlatformFeesThisMonthResult,
+      actualPlatformFeesTodayResult,
+      eventsTodayResult,
+      eventsThisWeekResult,
+      eventsByTypeTodayResult,
     ] = await Promise.all([
       // Total users
       db.select({ count: count() }).from(usersTable),
@@ -142,13 +155,16 @@ export async function GET() {
         ORDER BY date ASC
       `),
 
-      // Revenue by day — last 30 days (subscriptions only for simplicity)
+      // Revenue by day — last 30 days (subscriptions + tips + PPV)
       db.execute(sql`
-        SELECT
-          DATE(created_at) AS date,
-          COALESCE(SUM(price_usdc), 0)::int AS revenue
-        FROM subscriptions
-        WHERE created_at >= ${thirtyDaysAgo}
+        SELECT DATE(created_at) AS date, COALESCE(SUM(amount), 0)::int AS revenue
+        FROM (
+          SELECT created_at, price_usdc AS amount FROM subscriptions WHERE created_at >= ${thirtyDaysAgo}
+          UNION ALL
+          SELECT created_at, amount_usdc AS amount FROM tips WHERE created_at >= ${thirtyDaysAgo}
+          UNION ALL
+          SELECT created_at, amount_usdc AS amount FROM ppv_purchases WHERE created_at >= ${thirtyDaysAgo}
+        ) combined
         GROUP BY DATE(created_at)
         ORDER BY date ASC
       `),
@@ -205,6 +221,71 @@ export async function GET() {
 
       // Users last 7 days
       db.select({ count: count() }).from(usersTable).where(gte(usersTable.created_at, sevenDaysAgo)),
+
+      // Today's subscription revenue
+      db.select({ total: sql<number>`COALESCE(SUM(${subscriptionsTable.price_usdc}), 0)::int` })
+        .from(subscriptionsTable).where(gte(subscriptionsTable.created_at, startOfToday)),
+
+      // Today's tip revenue
+      db.select({ total: sql<number>`COALESCE(SUM(${tipsTable.amount_usdc}), 0)::int` })
+        .from(tipsTable).where(gte(tipsTable.created_at, startOfToday)),
+
+      // Today's PPV revenue
+      db.select({ total: sql<number>`COALESCE(SUM(${ppvPurchasesTable.amount_usdc}), 0)::int` })
+        .from(ppvPurchasesTable).where(gte(ppvPurchasesTable.created_at, startOfToday)),
+
+      // Last month revenue: PPV
+      db.select({ total: sql<number>`COALESCE(SUM(${ppvPurchasesTable.amount_usdc}), 0)::int` })
+        .from(ppvPurchasesTable).where(
+          and(gte(ppvPurchasesTable.created_at, startOfLastMonth), sql`${ppvPurchasesTable.created_at} < ${startOfMonth}`),
+        ),
+
+      // Actual platform fees collected all-time (from wallet_transactions ledger)
+      db.select({
+        total: sql<number>`COALESCE(SUM(${walletTransactionsTable.amount_usdc}), 0)::int`,
+      })
+        .from(walletTransactionsTable)
+        .where(eq(walletTransactionsTable.type, 'platform_fee')),
+
+      // Actual platform fees collected this month
+      db.select({
+        total: sql<number>`COALESCE(SUM(${walletTransactionsTable.amount_usdc}), 0)::int`,
+      })
+        .from(walletTransactionsTable)
+        .where(and(
+          eq(walletTransactionsTable.type, 'platform_fee'),
+          gte(walletTransactionsTable.created_at, startOfMonth),
+        )),
+
+      // Actual platform fees collected today
+      db.select({
+        total: sql<number>`COALESCE(SUM(${walletTransactionsTable.amount_usdc}), 0)::int`,
+      })
+        .from(walletTransactionsTable)
+        .where(and(
+          eq(walletTransactionsTable.type, 'platform_fee'),
+          gte(walletTransactionsTable.created_at, startOfToday),
+        )),
+
+      // Analytics events today
+      db.select({ count: count() })
+        .from(analyticsEventsTable)
+        .where(gte(analyticsEventsTable.created_at, startOfToday)),
+
+      // Analytics events this week
+      db.select({ count: count() })
+        .from(analyticsEventsTable)
+        .where(gte(analyticsEventsTable.created_at, sevenDaysAgo)),
+
+      // Analytics events by type today
+      db.select({
+        event_type: analyticsEventsTable.event_type,
+        count: count(),
+      })
+        .from(analyticsEventsTable)
+        .where(gte(analyticsEventsTable.created_at, startOfToday))
+        .groupBy(analyticsEventsTable.event_type)
+        .orderBy(sql`count(*) DESC`),
     ]);
 
     const totalRevenueAllTime =
@@ -219,11 +300,34 @@ export async function GET() {
 
     const lastMonthRevenue =
       (subRevenueLastMonthResult[0]?.total ?? 0) +
-      (tipRevenueLastMonthResult[0]?.total ?? 0);
+      (tipRevenueLastMonthResult[0]?.total ?? 0) +
+      (ppvRevenueLastMonthResult[0]?.total ?? 0);
 
-    // Platform fee is 5% of all revenue
-    const platformFeeAllTime = Math.floor(totalRevenueAllTime * 0.05);
-    const platformFeeThisMonth = Math.floor(thisMonthRevenue * 0.05);
+    // Actual platform fees collected (from wallet_transactions ledger)
+    const platformFeeAllTime = actualPlatformFeesAllTimeResult[0]?.total ?? 0;
+    const platformFeeThisMonth = actualPlatformFeesThisMonthResult[0]?.total ?? 0;
+
+    // Daily earnings (today)
+    const dailyTotalRevenue =
+      (dailySubRevenueResult[0]?.total ?? 0) +
+      (dailyTipRevenueResult[0]?.total ?? 0) +
+      (dailyPpvRevenueResult[0]?.total ?? 0);
+    const dailyPlatformFees = actualPlatformFeesTodayResult[0]?.total ?? 0;
+    const dailyCreatorEarnings = dailyTotalRevenue - dailyPlatformFees;
+
+    // On-chain hot wallet balance
+    const platformWalletAddress = process.env.NEXT_PUBLIC_PLATFORM_WALLET;
+    let hotWalletBalanceUsdc = 0;
+    let hotWalletConfigured = false;
+    if (platformWalletAddress) {
+      hotWalletConfigured = true;
+      try {
+        hotWalletBalanceUsdc = await getOnChainUsdcBalance(platformWalletAddress);
+      } catch (err) {
+        console.error("Failed to fetch on-chain wallet balance:", err);
+        // Return 0 balance but still mark as configured
+      }
+    }
 
     return NextResponse.json({
       data: {
@@ -250,6 +354,10 @@ export async function GET() {
           total_payouts_usdc: totalPayoutsResult[0]?.total ?? 0,
           pending_payouts_usdc: pendingPayoutsResult[0]?.total ?? 0,
           platform_wallet_balance_usdc: platformWalletBalanceResult[0]?.total ?? 0,
+          daily_platform_fees_usdc: dailyPlatformFees,
+          daily_creator_earnings_usdc: dailyCreatorEarnings,
+          hot_wallet_balance_usdc: hotWalletBalanceUsdc,
+          hot_wallet_configured: hotWalletConfigured,
         },
         charts: {
           user_growth: userGrowthResult,
@@ -259,6 +367,14 @@ export async function GET() {
         category_breakdown: categoryBreakdownResult,
         subscription_status: subStatusBreakdownResult,
         recent_transactions: recentTransactionsResult,
+        engagement: {
+          events_today: eventsTodayResult[0]?.count ?? 0,
+          events_this_week: eventsThisWeekResult[0]?.count ?? 0,
+          events_by_type: eventsByTypeTodayResult.map((row) => ({
+            event_type: row.event_type,
+            count: Number(row.count),
+          })),
+        },
       },
     });
   } catch (error) {

@@ -64,13 +64,20 @@ export default function WalletConnectButton({
     }
 
     try {
-      userClickedConnect.current = true;
-      select(target.adapter.name);
+      // If the target wallet is already selected, select() won't trigger a
+      // wallet state change, so the useEffect below would never fire.
+      // In that case call connect() directly.
+      if (wallet?.adapter.name === target.adapter.name) {
+        await connect();
+      } else {
+        userClickedConnect.current = true;
+        select(target.adapter.name);
+      }
     } catch (err) {
       userClickedConnect.current = false;
       setError(err instanceof Error ? err.message : "Failed to connect");
     }
-  }, [wallets, select]);
+  }, [wallets, wallet, select, connect]);
 
   // Only auto-connect after the user explicitly clicked "Connect Wallet"
   useEffect(() => {

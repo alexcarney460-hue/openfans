@@ -14,12 +14,14 @@ import {
   ChevronLeft,
   LogOut,
   Home,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/payouts", label: "Payouts", icon: Wallet },
 ] as const;
 
 export default function AdminLayout({

@@ -7,7 +7,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { db } from "@/utils/db/db";
 import { usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
-import { isValidStorageUrl } from "@/utils/validation";
+import { isValidStorageUrl, isValidSolanaAddress } from "@/utils/validation";
 
 /**
  * GET /api/me
@@ -28,6 +28,7 @@ export async function GET() {
         role: usersTable.role,
         bio: usersTable.bio,
         banner_url: usersTable.banner_url,
+        wallet_address: usersTable.wallet_address,
       })
       .from(usersTable)
       .where(eq(usersTable.id, user.id))
@@ -127,6 +128,25 @@ export async function PATCH(request: NextRequest) {
       updates.banner_url = trimmed || null;
     }
 
+    if (typeof body.wallet_address === "string") {
+      const trimmed = body.wallet_address.trim();
+      if (trimmed && !isValidSolanaAddress(trimmed)) {
+        return NextResponse.json(
+          { error: "wallet_address must be a valid Solana address", code: "INVALID_WALLET_ADDRESS" },
+          { status: 400 },
+        );
+      }
+      // Block platform wallet as payout address
+      const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || "";
+      if (platformWallet && trimmed === platformWallet) {
+        return NextResponse.json(
+          { error: "Cannot use the platform wallet as your payout address", code: "INVALID_WALLET" },
+          { status: 400 },
+        );
+      }
+      updates.wallet_address = trimmed || null;
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update", code: "NO_UPDATES" },
@@ -149,6 +169,7 @@ export async function PATCH(request: NextRequest) {
         role: usersTable.role,
         bio: usersTable.bio,
         banner_url: usersTable.banner_url,
+        wallet_address: usersTable.wallet_address,
       });
 
     if (updated.length === 0) {

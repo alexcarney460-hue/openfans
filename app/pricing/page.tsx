@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
+import { useTrack } from "@/hooks/useTrack";
 import {
   Check,
   X,
@@ -133,6 +135,12 @@ const BENEFITS = [
 ] as const;
 
 export default function PricingPage() {
+  const track = useTrack();
+
+  useEffect(() => {
+    track("page_view", "pricing");
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <SiteHeader />

@@ -10,6 +10,7 @@ import {
   Heart,
   MessageCircle,
   Image as ImageIcon,
+  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface Post {
   readonly tier: "free" | "basic" | "premium" | "vip";
   readonly likes_count: number;
   readonly comments_count: number;
+  readonly views_count: number;
   readonly created_at: string;
 }
 
@@ -175,9 +177,10 @@ export default function PostsPage() {
                 <div className="col-span-5">Post</div>
                 <div className="col-span-2">Date</div>
                 <div className="col-span-1">Tier</div>
+                <div className="col-span-1 text-center">Views</div>
                 <div className="col-span-1 text-center">Likes</div>
                 <div className="col-span-1 text-center">Comments</div>
-                <div className="col-span-2 text-right">Actions</div>
+                <div className="col-span-1 text-right">Actions</div>
               </div>
 
               {/* Table rows */}
@@ -227,6 +230,12 @@ export default function PostsPage() {
                       </Badge>
                     </div>
 
+                    {/* Views */}
+                    <div className="col-span-1 flex items-center justify-center gap-1 text-sm text-muted-foreground">
+                      <Eye className="h-3.5 w-3.5" />
+                      {post.views_count}
+                    </div>
+
                     {/* Likes */}
                     <div className="col-span-1 flex items-center justify-center gap-1 text-sm text-muted-foreground">
                       <Heart className="h-3.5 w-3.5" />
@@ -240,7 +249,7 @@ export default function PostsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="col-span-2 flex items-center justify-end gap-2">
+                    <div className="col-span-1 flex items-center justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"

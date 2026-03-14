@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
+import { useTrack } from "@/hooks/useTrack";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { WalletReadyState } from "@solana/wallet-adapter-base";
@@ -65,6 +66,7 @@ export function SubscribeModal({
 }: SubscribeModalProps) {
   const { publicKey, sendTransaction, connected, connecting, wallet, wallets, select, connect } = useWallet();
   const { connection } = useConnection();
+  const track = useTrack();
   const [txState, setTxState] = useState<TxState>({ status: "idle" });
   const userClickedConnect = useRef(false);
 
@@ -153,6 +155,8 @@ export function SubscribeModal({
       setTxState({ status: "error", message: "Wallet not connected" });
       return;
     }
+
+    track("subscribe_click", creatorUsername, { price });
 
     try {
       setTxState({ status: "confirming" });

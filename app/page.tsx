@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -7,6 +8,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { HomepageCreators } from "@/components/HomepageCreators";
 import { DollarSign, Zap, Shield } from "lucide-react";
 import { useLanguage } from "@/utils/i18n/context";
+import { useTrack } from "@/hooks/useTrack";
 import type { TranslationKey } from "@/utils/i18n/translations";
 
 // -------------------------------------------------------------------
@@ -59,6 +61,11 @@ const AVATAR_GRADIENTS = [
 // -------------------------------------------------------------------
 export default function LandingPage() {
   const { t } = useLanguage();
+  const track = useTrack();
+
+  useEffect(() => {
+    track("page_view", "home");
+  }, []);
 
   return (
     <div className="flex min-h-dvh flex-col bg-white">

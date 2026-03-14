@@ -12,6 +12,8 @@ import {
 import { eq, and, sql, desc, gte } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
+const CREATOR_SHARE_MULTIPLIER = 0.95; // 5% platform fee
+
 /**
  * GET /api/earnings
  * Get earnings summary for the authenticated creator.
@@ -81,8 +83,10 @@ export async function GET(request: NextRequest) {
         ),
       );
 
-    const thisMonthEarnings =
-      (monthSubEarnings[0]?.total ?? 0) + (monthTipEarnings[0]?.total ?? 0);
+    const thisMonthEarnings = Math.round(
+      ((monthSubEarnings[0]?.total ?? 0) + (monthTipEarnings[0]?.total ?? 0)) *
+        CREATOR_SHARE_MULTIPLIER,
+    );
 
     // Calculate all-time earnings from subscriptions + tips
     const allTimeSubEarnings = await db
@@ -99,8 +103,10 @@ export async function GET(request: NextRequest) {
       .from(tipsTable)
       .where(eq(tipsTable.creator_id, user.id));
 
-    const totalEarningsCalc =
-      (allTimeSubEarnings[0]?.total ?? 0) + (allTimeTipEarnings[0]?.total ?? 0);
+    const totalEarningsCalc = Math.round(
+      ((allTimeSubEarnings[0]?.total ?? 0) + (allTimeTipEarnings[0]?.total ?? 0)) *
+        CREATOR_SHARE_MULTIPLIER,
+    );
 
     // Get total paid out
     const totalPaidOut = await db

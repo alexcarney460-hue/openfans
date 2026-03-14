@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
+import { useTrack } from "@/hooks/useTrack";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -53,6 +54,7 @@ export function PPVUnlockModal({
   const { publicKey, sendTransaction, connected, wallet } = useWallet();
   const { connection } = useConnection();
   const { setVisible: openWalletModal } = useWalletModal();
+  const track = useTrack();
   const [txState, setTxState] = useState<TxState>({ status: "idle" });
 
   const priceDollars = priceUsdc / 100;
@@ -87,6 +89,8 @@ export function PPVUnlockModal({
 
   const handleUnlock = useCallback(async () => {
     if (!publicKey || !sendTransaction) return;
+
+    track("ppv_click", String(postId), { price: priceDollars });
 
     try {
       setTxState({ status: "confirming" });

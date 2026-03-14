@@ -2,13 +2,22 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { tipsTable, usersTable, postsTable, creatorProfilesTable } from "@/utils/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  tipsTable,
+  usersTable,
+  postsTable,
+  creatorProfilesTable,
+  walletsTable,
+  walletTransactionsTable,
+} from "@/utils/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
 import { createNotification } from "@/utils/notifications";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
+
+const PLATFORM_FEE_PERCENT = 5;
 
 /**
  * POST /api/tips
@@ -27,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (authError) return authError;
 
     // Rate limit: 10 requests per minute per user (financial endpoint)
-    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "tips", 10, 60_000);
+    const rateLimited = await checkRateLimit(request, getRateLimitKey(request, user.id), "tips", 10, 60_000);
     if (rateLimited) return rateLimited;
 
     const body = await request.json().catch(() => null);
@@ -132,20 +141,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get creator wallet for verification
-    const creatorProfile = await db
-      .select({ payout_wallet: creatorProfilesTable.payout_wallet })
-      .from(creatorProfilesTable)
-      .where(eq(creatorProfilesTable.user_id, creator_id))
-      .limit(1);
+    // Verify the Solana transaction on-chain against the PLATFORM wallet
+    const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || "";
+    if (!platformWallet) {
+      return NextResponse.json(
+        { error: "Platform wallet not configured", code: "CONFIG_ERROR" },
+        { status: 500 },
+      );
+    }
 
-    const recipientWallet = creatorProfile[0]?.payout_wallet || "";
-
-    // Verify the Solana transaction on-chain
     const verification = await verifyTransaction(
       payment_tx.trim(),
       amount_usdc,
-      recipientWallet,
+      platformWallet,
     );
 
     if (!verification.verified) {
@@ -167,6 +175,72 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    // Calculate platform fee and creator share
+    const platformFee = Math.round(
+      (amount_usdc * PLATFORM_FEE_PERCENT) / 100,
+    );
+    const creatorAmount = amount_usdc - platformFee;
+
+    // Get or create creator wallet, then credit with creatorAmount
+    const existingCreatorWallet = await db
+      .select()
+      .from(walletsTable)
+      .where(eq(walletsTable.user_id, creator_id))
+      .limit(1);
+
+    let creatorWallet = existingCreatorWallet[0];
+    if (!creatorWallet) {
+      const [newWallet] = await db
+        .insert(walletsTable)
+        .values({ user_id: creator_id, balance_usdc: 0 })
+        .returning();
+      creatorWallet = newWallet;
+    }
+
+    // Atomic credit to creator wallet
+    const [updatedCreatorWallet] = await db
+      .update(walletsTable)
+      .set({
+        balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
+        updated_at: new Date(),
+      })
+      .where(eq(walletsTable.user_id, creator_id))
+      .returning();
+
+    // Record wallet transaction for creator
+    if (updatedCreatorWallet) {
+      await db.insert(walletTransactionsTable).values({
+        wallet_id: updatedCreatorWallet.id,
+        user_id: creator_id,
+        type: "tip_received",
+        amount_usdc: creatorAmount,
+        balance_after: updatedCreatorWallet.balance_usdc,
+        description: `Tip received (5% fee: $${(platformFee / 100).toFixed(2)})`,
+        reference_id: payment_tx.trim(),
+        related_user_id: user.id,
+      });
+
+      // Record platform fee transaction
+      await db.insert(walletTransactionsTable).values({
+        wallet_id: updatedCreatorWallet.id,
+        user_id: creator_id,
+        type: "platform_fee",
+        amount_usdc: -platformFee,
+        balance_after: updatedCreatorWallet.balance_usdc,
+        description: `Platform fee (5%) on tip`,
+        reference_id: payment_tx.trim(),
+        related_user_id: user.id,
+      });
+    }
+
+    // Update creator's total_earnings_usdc
+    await db
+      .update(creatorProfilesTable)
+      .set({
+        total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
+      })
+      .where(eq(creatorProfilesTable.user_id, creator_id));
+
     // Notify the creator about the tip
     const tipperInfo = await db
       .select({ display_name: usersTable.display_name })
@@ -174,7 +248,7 @@ export async function POST(request: NextRequest) {
       .where(eq(usersTable.id, user.id))
       .limit(1);
     const tipperName = tipperInfo[0]?.display_name ?? "Someone";
-    const tipDollars = (amount_usdc / 100).toFixed(2);
+    const tipDollars = (creatorAmount / 100).toFixed(2);
 
     createNotification(
       creator_id,

@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     if (authError) return authError;
 
     // Rate limit: 30 requests per minute per user
-    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "messages", 30, 60_000);
+    const rateLimited = await checkRateLimit(request, getRateLimitKey(request, user.id), "messages", 30, 60_000);
     if (rateLimited) return rateLimited;
 
     const reqBody = await request.json().catch(() => null);

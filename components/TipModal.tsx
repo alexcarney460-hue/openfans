@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
+import { useTrack } from "@/hooks/useTrack";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -56,6 +57,7 @@ export function TipModal({
   const { publicKey, sendTransaction, connected, wallet } = useWallet();
   const { connection } = useConnection();
   const { setVisible: openWalletModal } = useWalletModal();
+  const track = useTrack();
   const [txState, setTxState] = useState<TxState>({ status: "idle" });
   const [amount, setAmount] = useState<string>("5");
   const [message, setMessage] = useState<string>("");
@@ -95,6 +97,8 @@ export function TipModal({
 
   const handleSendTip = useCallback(async () => {
     if (!publicKey || !sendTransaction || !isValidAmount) return;
+
+    track("tip_click", creatorUsername, { amount: parsedAmount });
 
     try {
       setTxState({ status: "confirming" });

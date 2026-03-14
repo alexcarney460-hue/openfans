@@ -40,6 +40,7 @@ function redactPaidPost(post: Record<string, unknown>) {
     is_free: post.is_free,
     likes_count: post.likes_count,
     comments_count: post.comments_count,
+    views_count: post.views_count,
     created_at: post.created_at,
     ppv_price_usdc: post.ppv_price_usdc ?? null,
     is_ppv: (post.ppv_price_usdc ?? null) !== null,

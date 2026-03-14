@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useFormState, useFormStatus } from "react-dom"
+import { useTrack } from "@/hooks/useTrack"
 import { signup } from "@/app/auth/actions"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -58,6 +59,7 @@ interface FormErrors {
 export default function SignupForm({ refCode = "" }: { refCode?: string }) {
   const initialState = { message: "" }
   const [formState, formAction] = useFormState(signup, initialState)
+  const track = useTrack()
 
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
@@ -107,7 +109,9 @@ export default function SignupForm({ refCode = "" }: { refCode?: string }) {
       onSubmit={(e) => {
         if (!validate()) {
           e.preventDefault()
+          return
         }
+        track("signup_click")
       }}
     >
       {/* Role Selector */}

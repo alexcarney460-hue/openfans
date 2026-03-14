@@ -6,13 +6,17 @@ import {
   subscriptionsTable,
   usersTable,
   creatorProfilesTable,
+  walletsTable,
+  walletTransactionsTable,
 } from "@/utils/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
 import { createNotification } from "@/utils/notifications";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
+
+const PLATFORM_FEE_PERCENT = 5;
 
 const VALID_TIERS = ["basic", "premium", "vip"] as const;
 type SubscriptionTier = (typeof VALID_TIERS)[number];
@@ -76,7 +80,7 @@ export async function POST(request: NextRequest) {
     if (authError) return authError;
 
     // Rate limit: 10 requests per minute per user (financial endpoint)
-    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "subscriptions", 10, 60_000);
+    const rateLimited = await checkRateLimit(request, getRateLimitKey(request, user.id), "subscriptions", 10, 60_000);
     if (rateLimited) return rateLimited;
 
     const body = await request.json().catch(() => null);
@@ -186,12 +190,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the Solana transaction on-chain
-    const recipientWallet = creatorProfile[0].payout_wallet || "";
+    // Verify the Solana transaction on-chain against the PLATFORM wallet
+    const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || "";
+    if (!platformWallet) {
+      return NextResponse.json(
+        { error: "Platform wallet not configured", code: "CONFIG_ERROR" },
+        { status: 500 },
+      );
+    }
+
     const verification = await verifyTransaction(
       payment_tx.trim(),
       priceUsdc,
-      recipientWallet,
+      platformWallet,
     );
 
     if (!verification.verified) {
@@ -217,6 +228,72 @@ export async function POST(request: NextRequest) {
         expires_at: expiresAt,
       })
       .returning();
+
+    // Calculate platform fee and creator share
+    const platformFee = Math.round(
+      (priceUsdc * PLATFORM_FEE_PERCENT) / 100,
+    );
+    const creatorAmount = priceUsdc - platformFee;
+
+    // Get or create creator wallet, then credit with creatorAmount
+    const existingCreatorWallet = await db
+      .select()
+      .from(walletsTable)
+      .where(eq(walletsTable.user_id, creator_id))
+      .limit(1);
+
+    let creatorWallet = existingCreatorWallet[0];
+    if (!creatorWallet) {
+      const [newWallet] = await db
+        .insert(walletsTable)
+        .values({ user_id: creator_id, balance_usdc: 0 })
+        .returning();
+      creatorWallet = newWallet;
+    }
+
+    // Atomic credit to creator wallet
+    const [updatedCreatorWallet] = await db
+      .update(walletsTable)
+      .set({
+        balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
+        updated_at: new Date(),
+      })
+      .where(eq(walletsTable.user_id, creator_id))
+      .returning();
+
+    // Record wallet transaction for creator
+    if (updatedCreatorWallet) {
+      await db.insert(walletTransactionsTable).values({
+        wallet_id: updatedCreatorWallet.id,
+        user_id: creator_id,
+        type: "subscription_received",
+        amount_usdc: creatorAmount,
+        balance_after: updatedCreatorWallet.balance_usdc,
+        description: `Subscription received (5% fee: $${(platformFee / 100).toFixed(2)})`,
+        reference_id: payment_tx.trim(),
+        related_user_id: user.id,
+      });
+
+      // Record platform fee transaction
+      await db.insert(walletTransactionsTable).values({
+        wallet_id: updatedCreatorWallet.id,
+        user_id: creator_id,
+        type: "platform_fee",
+        amount_usdc: -platformFee,
+        balance_after: updatedCreatorWallet.balance_usdc,
+        description: `Platform fee (5%) on subscription`,
+        reference_id: payment_tx.trim(),
+        related_user_id: user.id,
+      });
+    }
+
+    // Update creator's total_earnings_usdc
+    await db
+      .update(creatorProfilesTable)
+      .set({
+        total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
+      })
+      .where(eq(creatorProfilesTable.user_id, creator_id));
 
     // Notify the creator about the new subscriber
     const subscriberInfo = await db

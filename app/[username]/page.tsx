@@ -11,10 +11,12 @@ import {
   ArrowLeft,
   Lock,
   DollarSign,
+  Eye,
 } from "lucide-react";
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 import { TipModal } from "@/components/TipModal";
 import { PPVUnlockModal } from "@/components/PPVUnlockModal";
+import { useTrack } from "@/hooks/useTrack";
 import { EXPLORE_CREATORS } from "@/app/explore/mock-data";
 
 function formatNumber(num: number): string {
@@ -69,6 +71,7 @@ interface ApiPost {
   readonly tier: string;
   readonly likes_count: number;
   readonly comments_count: number;
+  readonly views_count: number;
   readonly created_at: string;
   readonly is_locked?: boolean;
   readonly is_ppv?: boolean;
@@ -101,6 +104,7 @@ function generateMockPosts(username: string, displayName: string, avatarUrl: str
     tier: tmpl.tier,
     likes_count: Math.floor(Math.random() * 500) + 50,
     comments_count: Math.floor(Math.random() * 80) + 5,
+    views_count: Math.floor(Math.random() * 2000) + 100,
     created_at: new Date(now - (i * 2 + 1) * 24 * 60 * 60 * 1000).toISOString(),
     is_locked: !tmpl.is_free,
     is_ppv: false,
@@ -142,6 +146,14 @@ export default function CreatorProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [ppvTarget, setPpvTarget] = useState<ApiPost | null>(null);
+  const track = useTrack();
+
+  // Track profile view on mount
+  useEffect(() => {
+    if (params.username) {
+      track("profile_view", params.username);
+    }
+  }, [params.username, track]);
 
   useEffect(() => {
     async function fetchCreator() {
@@ -487,6 +499,10 @@ export default function CreatorProfilePage() {
                       <span className="flex items-center gap-1.5 text-gray-400">
                         <Heart className="h-4 w-4" />
                         <span className="text-xs">{formatNumber(post.likes_count)}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5 text-gray-400">
+                        <Eye className="h-4 w-4" />
+                        <span className="text-xs">{formatNumber(post.views_count)}</span>
                       </span>
                       {isPpv && ppvPriceDollars && !isLocked && post.has_purchased && (
                         <span className="ml-auto text-xs text-green-500">Purchased</span>

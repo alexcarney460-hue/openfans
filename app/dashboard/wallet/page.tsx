@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -10,6 +11,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Copy,
+  ExternalLink,
+  Settings,
+  Loader2,
+  XCircle,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -25,25 +30,40 @@ type TransactionType =
   | "platform_fee";
 
 interface WalletTransaction {
-  id: number;
-  type: TransactionType;
-  amount_usdc: number;
-  balance_after: number;
-  description: string | null;
-  reference_id: string | null;
-  status: "pending" | "completed" | "failed";
-  created_at: string;
+  readonly id: number;
+  readonly type: TransactionType;
+  readonly amount_usdc: number;
+  readonly balance_after: number;
+  readonly description: string | null;
+  readonly reference_id: string | null;
+  readonly status: "pending" | "completed" | "failed";
+  readonly created_at: string;
 }
 
 interface WalletData {
-  wallet: {
-    id: number;
-    balance_usdc: number;
-    minimum_balance_usdc: number;
-    available_for_withdrawal: number;
-    created_at: string;
+  readonly wallet: {
+    readonly id: number;
+    readonly balance_usdc: number;
+    readonly minimum_balance_usdc: number;
+    readonly available_for_withdrawal: number;
+    readonly created_at: string;
   };
-  transactions: WalletTransaction[];
+  readonly transactions: readonly WalletTransaction[];
+}
+
+interface UserProfile {
+  readonly id: string;
+  readonly role: string;
+  readonly wallet_address: string | null;
+}
+
+interface PayoutRecord {
+  readonly id: number;
+  readonly amount_usdc: number;
+  readonly wallet_address: string;
+  readonly payment_tx: string | null;
+  readonly status: "pending" | "processing" | "completed" | "failed";
+  readonly created_at: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -59,6 +79,11 @@ function formatDate(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function truncateAddress(addr: string): string {
+  if (addr.length <= 12) return addr;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 const TX_TYPE_CONFIG: Record<
@@ -78,7 +103,15 @@ const TX_TYPE_CONFIG: Record<
 const STATUS_ICON = {
   completed: <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />,
   pending: <Clock className="h-3.5 w-3.5 text-amber-500" />,
-  failed: <AlertCircle className="h-3.5 w-3.5 text-red-500" />,
+  processing: <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00AFF0]" />,
+  failed: <XCircle className="h-3.5 w-3.5 text-red-500" />,
+};
+
+const STATUS_BADGE_STYLES: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  processing: "bg-blue-50 text-[#00AFF0] border-blue-200",
+  completed: "bg-green-50 text-green-700 border-green-200",
+  failed: "bg-red-50 text-red-700 border-red-200",
 };
 
 // ─── Loading Spinner ────────────────────────────────────────────────────────
@@ -99,27 +132,33 @@ export default function WalletPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [payouts, setPayouts] = useState<readonly PayoutRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string>("subscriber");
 
-  const fetchWallet = useCallback(() => {
+  const isCreator = userProfile?.role === "creator" || userProfile?.role === "admin";
+
+  const fetchAll = useCallback(() => {
     setLoading(true);
     setError(null);
 
-    // Fetch wallet data and user role in parallel
     Promise.all([
       fetch("/api/wallet").then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
+        if (!res.ok) throw new Error("Failed to load wallet");
         return res.json();
       }),
-      fetch("/api/me").then((res) => res.ok ? res.json() : null),
+      fetch("/api/me").then((res) => (res.ok ? res.json() : null)),
+      fetch("/api/payouts/mine").then((res) => (res.ok ? res.json() : null)),
     ])
-      .then(([walletJson, meJson]) => {
+      .then(([walletJson, meJson, payoutsJson]) => {
         if (walletJson.data) {
           setWalletData(walletJson.data);
         }
-        if (meJson?.data?.role) {
-          setUserRole(meJson.data.role);
+        if (meJson?.data) {
+          setUserProfile(meJson.data);
+        }
+        if (payoutsJson?.data) {
+          setPayouts(payoutsJson.data);
         }
         setLoading(false);
       })
@@ -130,8 +169,8 @@ export default function WalletPage() {
   }, []);
 
   useEffect(() => {
-    fetchWallet();
-  }, [fetchWallet]);
+    fetchAll();
+  }, [fetchAll]);
 
   if (loading) return <LoadingSpinner />;
 
@@ -150,7 +189,7 @@ export default function WalletPage() {
   const minimum = walletData?.wallet.minimum_balance_usdc ?? 0;
   const available = walletData?.wallet.available_for_withdrawal ?? 0;
   const transactions = walletData?.transactions ?? [];
-  const isCreator = userRole === "creator" || userRole === "admin";
+  const walletAddress = userProfile?.wallet_address ?? null;
 
   const filteredTxns = transactions.filter((tx) => {
     if (activeTab === "all") return true;
@@ -203,7 +242,7 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* Minimum Required (fans only) / Pending (creators) */}
+        {/* Minimum Required / Pending */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
@@ -211,25 +250,66 @@ export default function WalletPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-gray-400">
-                {isCreator ? "Pending" : "Minimum Hold"}
+                {isCreator ? "Minimum Hold" : "Minimum Hold"}
               </p>
               <p className="text-2xl font-bold text-gray-900">{formatUsdc(minimum)}</p>
             </div>
           </div>
           <p className="mt-2 text-xs text-gray-400">
-            {isCreator
-              ? "Processing or pending clearance"
-              : "Required for active subscriptions"}
+            Required for active subscriptions
           </p>
         </div>
       </div>
+
+      {/* Connected Wallet */}
+      {isCreator && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
+                <Wallet className="h-5 w-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">
+                  Payout Wallet
+                </p>
+                {walletAddress ? (
+                  <p className="text-sm font-semibold text-gray-900 font-mono">
+                    {truncateAddress(walletAddress)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-600 font-medium">
+                    No wallet connected
+                  </p>
+                )}
+              </div>
+            </div>
+            {walletAddress ? (
+              <CopyButton text={walletAddress} />
+            ) : (
+              <Link
+                href="/dashboard/settings"
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Connect in Settings
+              </Link>
+            )}
+          </div>
+          {!walletAddress && (
+            <p className="mt-3 text-xs text-gray-400">
+              You must connect a Solana wallet address in your profile settings before requesting a withdrawal.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-3">
         {isCreator ? (
           <button
             onClick={() => setShowWithdrawModal(true)}
-            disabled={available <= 0}
+            disabled={available <= 0 || !walletAddress}
             className="flex items-center gap-2 rounded-lg bg-[#00AFF0] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowUpRight className="h-4 w-4" />
@@ -255,6 +335,70 @@ export default function WalletPage() {
           </>
         )}
       </div>
+
+      {/* Payout History (creators only) */}
+      {isCreator && payouts.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-5 py-4">
+            <h2 className="text-sm font-bold text-gray-900">Payout History</h2>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Track the status of your withdrawal requests
+            </p>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {payouts.map((payout) => (
+              <div
+                key={payout.id}
+                className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gray-50"
+              >
+                {/* Status icon */}
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gray-50">
+                  {STATUS_ICON[payout.status]}
+                </div>
+
+                {/* Details */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-900">
+                      Withdrawal to {truncateAddress(payout.wallet_address)}
+                    </p>
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                        STATUS_BADGE_STYLES[payout.status] ?? STATUS_BADGE_STYLES.pending
+                      }`}
+                    >
+                      {payout.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    {formatDate(payout.created_at)}
+                  </p>
+                </div>
+
+                {/* Amount + tx link */}
+                <div className="flex-shrink-0 text-right">
+                  <p className="text-sm font-semibold text-gray-900">
+                    -{formatUsdc(payout.amount_usdc)}
+                  </p>
+                  {payout.payment_tx ? (
+                    <a
+                      href={`https://explorer.solana.com/tx/${payout.payment_tx}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-[#00AFF0] hover:underline"
+                    >
+                      View tx
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">--</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* How It Works */}
       <div className="rounded-xl border border-[#00AFF0]/20 bg-[#00AFF0]/5 p-5">
@@ -384,26 +528,65 @@ export default function WalletPage() {
         </div>
       </div>
 
-      {/* Deposit Modal Placeholder */}
+      {/* Deposit Modal */}
       {showDepositModal && (
-        <DepositModal onClose={() => setShowDepositModal(false)} onSuccess={fetchWallet} />
+        <DepositModal onClose={() => setShowDepositModal(false)} onSuccess={fetchAll} />
       )}
 
-      {/* Withdraw Modal Placeholder */}
+      {/* Withdraw Modal */}
       {showWithdrawModal && (
         <WithdrawModal
           available={available}
+          walletAddress={walletAddress}
+          isCreator={isCreator}
           onClose={() => setShowWithdrawModal(false)}
-          onSuccess={fetchWallet}
+          onSuccess={fetchAll}
         />
       )}
     </div>
   );
 }
 
+// ─── Copy Button ─────────────────────────────────────────────────────────────
+
+function CopyButton({ text }: { readonly text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+    >
+      {copied ? (
+        <>
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+          Copied
+        </>
+      ) : (
+        <>
+          <Copy className="h-3.5 w-3.5" />
+          Copy
+        </>
+      )}
+    </button>
+  );
+}
+
 // ─── Deposit Modal ──────────────────────────────────────────────────────────
 
-function DepositModal({ onClose, onSuccess }: { readonly onClose: () => void; readonly onSuccess: () => void }) {
+function DepositModal({
+  onClose,
+  onSuccess,
+}: {
+  readonly onClose: () => void;
+  readonly onSuccess: () => void;
+}) {
   const [amount, setAmount] = useState("");
   const PLATFORM_WALLET = "4e8YpUSns8RoVrPfVayhX4BWQSqecmjFUh1jxx77niQt";
   const [copied, setCopied] = useState(false);
@@ -542,41 +725,121 @@ function DepositModal({ onClose, onSuccess }: { readonly onClose: () => void; re
 
 // ─── Withdraw Modal ─────────────────────────────────────────────────────────
 
+type WithdrawStep = "form" | "confirm";
+
 function WithdrawModal({
   available,
+  walletAddress,
+  isCreator,
   onClose,
   onSuccess,
 }: {
   readonly available: number;
+  readonly walletAddress: string | null;
+  readonly isCreator: boolean;
   readonly onClose: () => void;
   readonly onSuccess: () => void;
 }) {
+  const [step, setStep] = useState<WithdrawStep>("form");
   const [amount, setAmount] = useState("");
-  const [walletAddress, setWalletAddress] = useState("");
+  const [manualWalletAddress, setManualWalletAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleWithdraw = async () => {
-    const parsedAmount = parseFloat(amount);
-    if (!parsedAmount || parsedAmount <= 0 || !walletAddress) return;
+  // For creators, the wallet address comes from their profile.
+  // For fans, they enter it manually (using the old flow via /api/wallet).
+  const effectiveWalletAddress = isCreator ? walletAddress : manualWalletAddress;
+
+  const parsedAmount = parseFloat(amount);
+  const amountCents = parsedAmount > 0 ? Math.round(parsedAmount * 100) : 0;
+  const isValidAmount = parsedAmount > 0 && amountCents <= available;
+  const canSubmit = isValidAmount && !!effectiveWalletAddress;
+
+  const handleFillMax = () => {
+    setAmount((Math.max(available, 0) / 100).toFixed(2));
+  };
+
+  const handleConfirm = async () => {
+    if (!canSubmit) return;
 
     setSubmitting(true);
+    setApiError(null);
+
     try {
-      await fetch("/api/wallet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "withdraw",
-          amount_usdc: Math.round(parsedAmount * 100),
-          payment_tx: `withdrawal-${Date.now()}`,
-          wallet_address: walletAddress,
-        }),
-      });
-      onSuccess();
-      onClose();
-    } catch {
+      if (isCreator) {
+        // Use the payout request endpoint for creators
+        const res = await fetch("/api/payouts/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount_usdc: amountCents }),
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+          setApiError(json.error ?? "Failed to request withdrawal. Please try again.");
+          setSubmitting(false);
+          setStep("form");
+          return;
+        }
+      } else {
+        // Fan withdrawal (old path, though API currently rejects it)
+        const res = await fetch("/api/wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "withdraw",
+            amount_usdc: amountCents,
+            wallet_address: manualWalletAddress,
+          }),
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+          setApiError(json.error ?? "Failed to request withdrawal. Please try again.");
+          setSubmitting(false);
+          setStep("form");
+          return;
+        }
+      }
+
+      setSuccess(true);
       setSubmitting(false);
+
+      // Auto-close after showing success
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 1500);
+    } catch {
+      setApiError("Network error. Please check your connection and try again.");
+      setSubmitting(false);
+      setStep("form");
     }
   };
+
+  // Success state
+  if (success) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
+        <div className="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-2xl">
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10">
+              <CheckCircle2 className="h-7 w-7 text-green-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Withdrawal Requested</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Your withdrawal of {formatUsdc(amountCents)} has been submitted and is
+              pending admin review.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -596,69 +859,162 @@ function WithdrawModal({
           </svg>
         </button>
 
-        <div className="mb-5 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
-            <ArrowUpRight className="h-6 w-6 text-green-600" />
-          </div>
-          <h3 className="text-lg font-bold text-gray-900">Withdraw USDC</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Available: {formatUsdc(Math.max(available, 0))}
-          </p>
-        </div>
+        {step === "form" ? (
+          <>
+            <div className="mb-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+                <ArrowUpRight className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Withdraw USDC</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Available: {formatUsdc(Math.max(available, 0))}
+              </p>
+            </div>
 
-        {/* Wallet Address */}
-        <div className="mb-4">
-          <label className="mb-1 block text-xs font-medium text-gray-500">
-            Solana wallet address
-          </label>
-          <input
-            type="text"
-            value={walletAddress}
-            onChange={(e) => setWalletAddress(e.target.value)}
-            placeholder="Enter your Solana wallet address"
-            className="w-full rounded-lg border border-gray-200 py-2.5 px-3 text-sm text-gray-900 focus:border-[#00AFF0] focus:outline-none focus:ring-1 focus:ring-[#00AFF0]"
-          />
-        </div>
+            {/* Error display */}
+            {apiError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="text-xs text-red-700">{apiError}</p>
+              </div>
+            )}
 
-        {/* Amount */}
-        <div className="mb-4">
-          <label className="mb-1 block text-xs font-medium text-gray-500">
-            Amount (USDC)
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-            <input
-              type="number"
-              min="1"
-              max={available / 100}
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              className="w-full rounded-lg border border-gray-200 py-2.5 pl-7 pr-4 text-sm text-gray-900 focus:border-[#00AFF0] focus:outline-none focus:ring-1 focus:ring-[#00AFF0]"
-            />
-          </div>
-          <button
-            onClick={() => setAmount((available / 100).toFixed(2))}
-            className="mt-1 text-xs font-medium text-[#00AFF0] hover:underline"
-          >
-            Withdraw max ({formatUsdc(available)})
-          </button>
-        </div>
+            {/* Wallet Address (for non-creators only) */}
+            {!isCreator && (
+              <div className="mb-4">
+                <label className="mb-1 block text-xs font-medium text-gray-500">
+                  Solana wallet address
+                </label>
+                <input
+                  type="text"
+                  value={manualWalletAddress}
+                  onChange={(e) => setManualWalletAddress(e.target.value)}
+                  placeholder="Enter your Solana wallet address"
+                  className="w-full rounded-lg border border-gray-200 py-2.5 px-3 text-sm text-gray-900 focus:border-[#00AFF0] focus:outline-none focus:ring-1 focus:ring-[#00AFF0]"
+                />
+              </div>
+            )}
 
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <p className="text-xs text-amber-700">
-            Withdrawals are processed within 24 hours. A small network fee applies.
-          </p>
-        </div>
+            {/* Creator payout wallet display */}
+            {isCreator && walletAddress && (
+              <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="mb-1 text-xs font-medium text-gray-500">
+                  Withdrawal will be sent to:
+                </p>
+                <p className="text-sm font-mono text-gray-900">
+                  {truncateAddress(walletAddress)}
+                </p>
+              </div>
+            )}
 
-        <button
-          onClick={handleWithdraw}
-          disabled={submitting || !walletAddress || !amount || parseFloat(amount) <= 0}
-          className="w-full rounded-lg bg-[#00AFF0] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {submitting ? "Processing..." : "Request Withdrawal"}
-        </button>
+            {/* Amount */}
+            <div className="mb-4">
+              <label className="mb-1 block text-xs font-medium text-gray-500">
+                Amount (USDC)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                <input
+                  type="number"
+                  min="0.01"
+                  max={available / 100}
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setApiError(null);
+                  }}
+                  placeholder="0.00"
+                  className="w-full rounded-lg border border-gray-200 py-2.5 pl-7 pr-4 text-sm text-gray-900 focus:border-[#00AFF0] focus:outline-none focus:ring-1 focus:ring-[#00AFF0]"
+                />
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <button
+                  onClick={handleFillMax}
+                  className="text-xs font-medium text-[#00AFF0] hover:underline"
+                >
+                  Max ({formatUsdc(Math.max(available, 0))})
+                </button>
+                {parsedAmount > 0 && amountCents > available && (
+                  <p className="text-xs text-red-500">Exceeds available balance</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs text-amber-700">
+                Withdrawals are reviewed by an admin and typically processed within 24 hours.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setStep("confirm")}
+              disabled={!canSubmit}
+              className="w-full rounded-lg bg-[#00AFF0] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Request Withdrawal
+            </button>
+          </>
+        ) : (
+          /* Confirmation step */
+          <>
+            <div className="mb-5 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10">
+                <AlertCircle className="h-6 w-6 text-amber-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Confirm Withdrawal</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Please review the details below
+              </p>
+            </div>
+
+            <div className="mb-5 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex justify-between">
+                <span className="text-xs font-medium text-gray-500">Amount</span>
+                <span className="text-sm font-bold text-gray-900">
+                  {formatUsdc(amountCents)} USDC
+                </span>
+              </div>
+              <div className="border-t border-gray-200" />
+              <div className="flex justify-between">
+                <span className="text-xs font-medium text-gray-500">Destination</span>
+                <span className="text-sm font-mono text-gray-900">
+                  {effectiveWalletAddress ? truncateAddress(effectiveWalletAddress) : "--"}
+                </span>
+              </div>
+              <div className="border-t border-gray-200" />
+              <div className="flex justify-between">
+                <span className="text-xs font-medium text-gray-500">Remaining balance</span>
+                <span className="text-sm text-gray-900">
+                  {formatUsdc(Math.max(available - amountCents, 0))}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep("form")}
+                disabled={submitting}
+                className="flex-1 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={submitting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#00AFF0] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6] disabled:opacity-50"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Confirm Withdrawal"
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

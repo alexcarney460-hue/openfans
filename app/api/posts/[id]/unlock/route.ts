@@ -19,7 +19,11 @@ const PLATFORM_FEE_PERCENT = 5;
 
 /**
  * POST /api/posts/[postId]/unlock
- * Record a PPV purchase after on-chain USDC payment.
+ * Record a PPV purchase after on-chain USDC payment to the platform wallet.
+ *
+ * The buyer pays on-chain to the platform wallet. The platform credits
+ * the creator's internal wallet with 95% (minus 5% platform fee).
+ * The buyer's internal wallet is NOT debited — they already paid on-chain.
  *
  * Body:
  *   - payment_tx: string (Solana transaction signature)
@@ -35,7 +39,7 @@ export async function POST(
     if (authError) return authError;
 
     // Rate limit: 10 requests per minute per user (financial endpoint)
-    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "posts/unlock", 10, 60_000);
+    const rateLimited = await checkRateLimit(request, getRateLimitKey(request, user.id), "posts/unlock", 10, 60_000);
     if (rateLimited) return rateLimited;
 
     const postId = parseInt(params.id, 10);
@@ -118,20 +122,19 @@ export async function POST(
       );
     }
 
-    // Get creator wallet for on-chain verification
-    const creatorProfile = await db
-      .select({ payout_wallet: creatorProfilesTable.payout_wallet })
-      .from(creatorProfilesTable)
-      .where(eq(creatorProfilesTable.user_id, post.creator_id))
-      .limit(1);
+    // Verify the Solana transaction on-chain against the PLATFORM wallet
+    const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || "";
+    if (!platformWallet) {
+      return NextResponse.json(
+        { error: "Platform wallet not configured", code: "CONFIG_ERROR" },
+        { status: 500 },
+      );
+    }
 
-    const recipientWallet = creatorProfile[0]?.payout_wallet || "";
-
-    // Verify the Solana transaction on-chain
     const verification = await verifyTransaction(
       payment_tx.trim(),
       post.ppv_price_usdc,
-      recipientWallet,
+      platformWallet,
     );
 
     if (!verification.verified) {
@@ -152,52 +155,30 @@ export async function POST(
       })
       .returning();
 
-    // Atomic wallet balance updates for buyer and creator
-    // Buyer: ppv_charge (debit) -- atomic debit with insufficient-balance guard
-    const buyerUpdated = await db
-      .update(walletsTable)
-      .set({
-        balance_usdc: sql`${walletsTable.balance_usdc} - ${post.ppv_price_usdc}`,
-        updated_at: new Date(),
-      })
-      .where(
-        sql`${walletsTable.user_id} = ${user.id} AND ${walletsTable.balance_usdc} >= ${post.ppv_price_usdc}`,
-      )
-      .returning();
-
-    if (buyerUpdated.length === 0) {
-      // Rollback the PPV purchase record since payment failed
-      await db
-        .delete(ppvPurchasesTable)
-        .where(eq(ppvPurchasesTable.id, purchase.id));
-
-      return NextResponse.json(
-        {
-          error: "Insufficient wallet balance for this purchase",
-          code: "INSUFFICIENT_BALANCE",
-        },
-        { status: 400 },
-      );
-    }
-
-    await db.insert(walletTransactionsTable).values({
-      wallet_id: buyerUpdated[0].id,
-      user_id: user.id,
-      type: "ppv_charge",
-      amount_usdc: -post.ppv_price_usdc,
-      balance_after: buyerUpdated[0].balance_usdc,
-      description: `PPV unlock: "${post.title ?? "Untitled"}"`,
-      reference_id: payment_tx.trim(),
-      related_user_id: post.creator_id,
-    });
-
-    // Creator: ppv_received (credit, minus platform fee) -- atomic credit
+    // Calculate platform fee and creator share
     const platformFee = Math.round(
       (post.ppv_price_usdc * PLATFORM_FEE_PERCENT) / 100,
     );
     const creatorAmount = post.ppv_price_usdc - platformFee;
 
-    const creatorUpdated = await db
+    // Get or create creator wallet, then credit with creatorAmount
+    const existingCreatorWallet = await db
+      .select()
+      .from(walletsTable)
+      .where(eq(walletsTable.user_id, post.creator_id))
+      .limit(1);
+
+    let creatorWallet = existingCreatorWallet[0];
+    if (!creatorWallet) {
+      const [newWallet] = await db
+        .insert(walletsTable)
+        .values({ user_id: post.creator_id, balance_usdc: 0 })
+        .returning();
+      creatorWallet = newWallet;
+    }
+
+    // Atomic credit to creator wallet
+    const [updatedCreatorWallet] = await db
       .update(walletsTable)
       .set({
         balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
@@ -206,18 +187,39 @@ export async function POST(
       .where(eq(walletsTable.user_id, post.creator_id))
       .returning();
 
-    if (creatorUpdated.length > 0) {
+    // Record wallet transaction for creator
+    if (updatedCreatorWallet) {
       await db.insert(walletTransactionsTable).values({
-        wallet_id: creatorUpdated[0].id,
+        wallet_id: updatedCreatorWallet.id,
         user_id: post.creator_id,
         type: "ppv_received",
         amount_usdc: creatorAmount,
-        balance_after: creatorUpdated[0].balance_usdc,
+        balance_after: updatedCreatorWallet.balance_usdc,
         description: `PPV sale: "${post.title ?? "Untitled"}" (5% fee: $${(platformFee / 100).toFixed(2)})`,
         reference_id: payment_tx.trim(),
         related_user_id: user.id,
       });
+
+      // Record platform fee transaction
+      await db.insert(walletTransactionsTable).values({
+        wallet_id: updatedCreatorWallet.id,
+        user_id: post.creator_id,
+        type: "platform_fee",
+        amount_usdc: -platformFee,
+        balance_after: updatedCreatorWallet.balance_usdc,
+        description: `Platform fee (5%) on PPV sale`,
+        reference_id: payment_tx.trim(),
+        related_user_id: user.id,
+      });
     }
+
+    // Update creator's total_earnings_usdc
+    await db
+      .update(creatorProfilesTable)
+      .set({
+        total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
+      })
+      .where(eq(creatorProfilesTable.user_id, post.creator_id));
 
     // Send notification to the creator
     await db.insert(notificationsTable).values({

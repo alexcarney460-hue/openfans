@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useFormState, useFormStatus } from "react-dom"
+import { useTrack } from "@/hooks/useTrack"
 import { loginUser } from "@/app/auth/actions"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -47,6 +48,7 @@ function SubmitButton() {
 export default function LoginForm() {
   const initialState = { message: "" }
   const [formState, formAction] = useFormState(loginUser, initialState)
+  const track = useTrack()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
@@ -75,7 +77,9 @@ export default function LoginForm() {
       onSubmit={(e) => {
         if (!validate()) {
           e.preventDefault()
+          return
         }
+        track("login_click")
       }}
     >
       <div className="grid gap-2">

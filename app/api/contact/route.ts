@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limit: 5 requests per minute per IP (unauthenticated endpoint)
     const rateLimitKey = getRateLimitKey(request);
-    const rateLimited = checkRateLimit(request, rateLimitKey, "contact", 5, 60_000);
+    const rateLimited = await checkRateLimit(request, rateLimitKey, "contact", 5, 60_000);
     if (rateLimited) return rateLimited;
     const body = await request.json().catch(() => null);
     if (!body) {

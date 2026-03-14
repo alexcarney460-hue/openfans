@@ -79,8 +79,7 @@ export async function GET(request: NextRequest) {
  * Body:
  *   - action: "deposit" | "withdraw"
  *   - amount_usdc: number (in cents, e.g. 999 = $9.99)
- *   - payment_tx: string (Solana transaction signature)
- *   - wallet_address?: string (for withdrawals — destination wallet)
+ *   - payment_tx: string (Solana transaction signature — required for deposits only)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -88,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (authError) return authError;
 
     // Rate limit: 10 requests per minute per user (financial endpoint)
-    const rateLimited = checkRateLimit(request, getRateLimitKey(request, user.id), "wallet", 10, 60_000);
+    const rateLimited = await checkRateLimit(request, getRateLimitKey(request, user.id), "wallet", 10, 60_000);
     if (rateLimited) return rateLimited;
 
     const body = await request.json().catch(() => null);
@@ -99,7 +98,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { action, amount_usdc, payment_tx, wallet_address } = body;
+    const { action, amount_usdc, payment_tx } = body;
 
     // Validate action
     if (!action || !["deposit", "withdraw"].includes(action)) {
@@ -117,12 +116,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate payment_tx
-    if (!payment_tx || typeof payment_tx !== "string" || payment_tx.trim().length === 0) {
-      return NextResponse.json(
-        { error: "payment_tx is required", code: "MISSING_PAYMENT_TX" },
-        { status: 400 },
-      );
+    // Validate payment_tx (required for deposits only)
+    if (action === "deposit") {
+      if (!payment_tx || typeof payment_tx !== "string" || payment_tx.trim().length === 0) {
+        return NextResponse.json(
+          { error: "payment_tx is required for deposits", code: "MISSING_PAYMENT_TX" },
+          { status: 400 },
+        );
+      }
     }
 
     // Get or create wallet
@@ -142,20 +143,6 @@ export async function POST(request: NextRequest) {
     const currentWallet = wallet[0];
 
     if (action === "deposit") {
-      // Check for duplicate transaction (replay protection)
-      const existingTx = await db
-        .select({ id: walletTransactionsTable.id })
-        .from(walletTransactionsTable)
-        .where(eq(walletTransactionsTable.reference_id, payment_tx.trim()))
-        .limit(1);
-
-      if (existingTx.length > 0) {
-        return NextResponse.json(
-          { error: "This transaction has already been used", code: "DUPLICATE_TX" },
-          { status: 409 },
-        );
-      }
-
       // Verify the on-chain transaction: amount and destination (platform wallet)
       const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || "";
       const verification = await verifyTransaction(
@@ -171,36 +158,69 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Atomic balance update -- prevents race conditions from concurrent deposits
-      const updatedRows = await db
-        .update(walletsTable)
-        .set({
-          balance_usdc: sql`${walletsTable.balance_usdc} + ${amount_usdc}`,
-          updated_at: new Date(),
-        })
-        .where(eq(walletsTable.id, currentWallet.id))
-        .returning();
+      // Wrap duplicate check + balance credit + transaction insert in a single
+      // database transaction to prevent double-spend race conditions.
+      let txRecord;
+      let newBalance: number;
+      try {
+        const result = await db.transaction(async (tx) => {
+          // 1. Check for duplicate within transaction (serialised)
+          const existingTx = await tx
+            .select({ id: walletTransactionsTable.id })
+            .from(walletTransactionsTable)
+            .where(eq(walletTransactionsTable.reference_id, payment_tx.trim()))
+            .limit(1);
 
-      const newBalance = updatedRows[0].balance_usdc;
+          if (existingTx.length > 0) {
+            throw new Error("DUPLICATE_TX");
+          }
 
-      const txRecord = await db
-        .insert(walletTransactionsTable)
-        .values({
-          wallet_id: currentWallet.id,
-          user_id: user.id,
-          type: "deposit",
-          amount_usdc,
-          balance_after: newBalance,
-          description: "USDC deposit from wallet",
-          reference_id: payment_tx.trim(),
-          status: "completed",
-        })
-        .returning();
+          // 2. Atomic balance update
+          const updatedRows = await tx
+            .update(walletsTable)
+            .set({
+              balance_usdc: sql`${walletsTable.balance_usdc} + ${amount_usdc}`,
+              updated_at: new Date(),
+            })
+            .where(eq(walletsTable.id, currentWallet.id))
+            .returning();
+
+          const balance = updatedRows[0].balance_usdc;
+
+          // 3. Insert transaction record
+          const record = await tx
+            .insert(walletTransactionsTable)
+            .values({
+              wallet_id: currentWallet.id,
+              user_id: user.id,
+              type: "deposit",
+              amount_usdc,
+              balance_after: balance,
+              description: "USDC deposit from wallet",
+              reference_id: payment_tx.trim(),
+              status: "completed",
+            })
+            .returning();
+
+          return { txRecord: record[0], newBalance: balance };
+        });
+
+        txRecord = result.txRecord;
+        newBalance = result.newBalance;
+      } catch (err) {
+        if (err instanceof Error && err.message === "DUPLICATE_TX") {
+          return NextResponse.json(
+            { error: "This transaction has already been used", code: "DUPLICATE_TX" },
+            { status: 409 },
+          );
+        }
+        throw err;
+      }
 
       return NextResponse.json(
         {
           data: {
-            transaction: txRecord[0],
+            transaction: txRecord,
             new_balance: newBalance,
           },
         },
@@ -209,73 +229,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "withdraw") {
-      if (!wallet_address || typeof wallet_address !== "string") {
-        return NextResponse.json(
-          { error: "wallet_address is required for withdrawals", code: "MISSING_WALLET" },
-          { status: 400 },
-        );
-      }
-
-      // Atomic withdrawal: debit balance only if sufficient funds remain above minimum_balance_usdc.
-      // The WHERE clause guarantees no double-spend and no negative available balance.
-      const updatedRows = await db
-        .update(walletsTable)
-        .set({
-          balance_usdc: sql`${walletsTable.balance_usdc} - ${amount_usdc}`,
-          updated_at: new Date(),
-        })
-        .where(
-          sql`${walletsTable.id} = ${currentWallet.id} AND ${walletsTable.balance_usdc} - ${walletsTable.minimum_balance_usdc} >= ${amount_usdc}`,
-        )
-        .returning();
-
-      if (updatedRows.length === 0) {
-        // Re-read wallet to provide an accurate error message
-        const freshWallet = await db
-          .select()
-          .from(walletsTable)
-          .where(eq(walletsTable.id, currentWallet.id))
-          .limit(1);
-        const available = freshWallet.length > 0
-          ? freshWallet[0].balance_usdc - freshWallet[0].minimum_balance_usdc
-          : 0;
-        const minBal = freshWallet.length > 0
-          ? freshWallet[0].minimum_balance_usdc
-          : 0;
-
-        return NextResponse.json(
-          {
-            error: `Insufficient available balance. You have $${(available / 100).toFixed(2)} available (minimum $${(minBal / 100).toFixed(2)} must remain for active subscriptions).`,
-            code: "INSUFFICIENT_BALANCE",
-          },
-          { status: 400 },
-        );
-      }
-
-      const newBalance = updatedRows[0].balance_usdc;
-
-      const txRecord = await db
-        .insert(walletTransactionsTable)
-        .values({
-          wallet_id: currentWallet.id,
-          user_id: user.id,
-          type: "withdrawal",
-          amount_usdc: -amount_usdc,
-          balance_after: newBalance,
-          description: `Withdrawal to ${wallet_address.slice(0, 4)}...${wallet_address.slice(-4)}`,
-          reference_id: payment_tx.trim(),
-          status: "pending",
-        })
-        .returning();
-
+      // Withdrawals are handled exclusively by POST /api/payouts/request
+      // which has proper creator role checks and validation.
       return NextResponse.json(
-        {
-          data: {
-            transaction: txRecord[0],
-            new_balance: newBalance,
-          },
-        },
-        { status: 201 },
+        { error: "Use POST /api/payouts/request for withdrawals", code: "USE_PAYOUT_ENDPOINT" },
+        { status: 400 },
       );
     }
 

@@ -44,6 +44,10 @@ interface AnalyticsData {
     total_payouts_usdc: number;
     pending_payouts_usdc: number;
     platform_wallet_balance_usdc: number;
+    daily_platform_fees_usdc: number;
+    daily_creator_earnings_usdc: number;
+    hot_wallet_balance_usdc: number;
+    hot_wallet_configured: boolean;
   };
   charts: {
     user_growth: Array<{ date: string; count: number }>;
@@ -61,6 +65,11 @@ interface AnalyticsData {
   }>;
   category_breakdown: Array<{ category: string; count: number }>;
   subscription_status: Array<{ status: string; count: number }>;
+  engagement: {
+    events_today: number;
+    events_this_week: number;
+    events_by_type: Array<{ event_type: string; count: number }>;
+  };
   recent_transactions: Array<{
     id: number;
     type: string;
@@ -172,12 +181,14 @@ function StatCard({
   change,
   icon: Icon,
   accent = false,
+  valueClassName,
 }: {
   label: string;
   value: string;
   change?: { value: string; positive: boolean } | null;
   icon: typeof Users;
   accent?: boolean;
+  valueClassName?: string;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
@@ -204,7 +215,7 @@ function StatCard({
           </span>
         )}
       </div>
-      <p className="mt-3 text-xl font-bold text-gray-900 sm:text-2xl">{value}</p>
+      <p className={`mt-3 text-xl font-bold sm:text-2xl ${valueClassName ?? "text-gray-900"}`}>{value}</p>
       <p className="mt-0.5 text-xs text-gray-500">{label}</p>
     </div>
   );
@@ -338,6 +349,28 @@ export default function AdminDashboard() {
           label="Total Posts"
           value={formatNum(data.overview.total_posts)}
           icon={FileText}
+        />
+        <StatCard
+          label="Today's Platform Revenue"
+          value={usdcToDisplay(data.revenue.daily_platform_fees_usdc)}
+          icon={DollarSign}
+          accent
+        />
+        <StatCard
+          label="Today's Creator Earnings"
+          value={usdcToDisplay(data.revenue.daily_creator_earnings_usdc)}
+          icon={TrendingUp}
+        />
+        <StatCard
+          label="Hot Wallet (On-Chain)"
+          value={
+            data.revenue.hot_wallet_configured
+              ? usdcToDisplay(data.revenue.hot_wallet_balance_usdc)
+              : "Not Configured"
+          }
+          icon={Wallet}
+          accent={data.revenue.hot_wallet_configured}
+          valueClassName={data.revenue.hot_wallet_configured ? "text-gray-900" : "text-red-500"}
         />
       </div>
 
@@ -521,6 +554,54 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ===================== ENGAGEMENT ===================== */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Events Today"
+          value={formatNum(data.engagement.events_today)}
+          icon={Activity}
+          accent
+        />
+        <StatCard
+          label="Events This Week"
+          value={formatNum(data.engagement.events_this_week)}
+          icon={TrendingUp}
+        />
+      </div>
+
+      {/* Event Type Breakdown */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+        <h2 className="mb-3 text-sm font-bold text-gray-900">Event Types (Today)</h2>
+        {data.engagement.events_by_type.length === 0 ? (
+          <p className="py-6 text-center text-xs text-gray-400">No events today</p>
+        ) : (
+          <div className="space-y-2">
+            {data.engagement.events_by_type.map((evt) => {
+              const total = data.engagement.events_by_type.reduce((s, e) => s + e.count, 0);
+              const pct = total > 0 ? (evt.count / total) * 100 : 0;
+              return (
+                <div key={evt.event_type} className="flex items-center gap-3">
+                  <span className="w-36 truncate text-xs text-gray-600">
+                    {evt.event_type.replace(/_/g, " ")}
+                  </span>
+                  <div className="flex-1">
+                    <div className="h-2 w-full rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-[#00AFF0]"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="w-8 text-right text-xs font-medium text-gray-500">
+                    {evt.count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ===================== CATEGORIES & SUBSCRIPTION STATUS ===================== */}

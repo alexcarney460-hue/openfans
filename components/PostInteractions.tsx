@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Heart, MessageCircle, Share2, Send } from "lucide-react";
+import { Heart, MessageCircle, Share2, Send, Eye } from "lucide-react";
 import { formatNumber, timeAgo } from "@/lib/mock-data";
 import type { Comment } from "@/lib/mock-data";
 
 interface PostInteractionsProps {
   readonly initialLikes: number;
   readonly initialCommentCount: number;
+  readonly initialViewCount?: number;
   readonly initialComments: readonly Comment[];
   readonly isLocked: boolean;
   readonly postUrl: string;
@@ -16,6 +17,7 @@ interface PostInteractionsProps {
 export function PostInteractions({
   initialLikes,
   initialCommentCount,
+  initialViewCount,
   initialComments,
   isLocked,
   postUrl,
@@ -106,6 +108,15 @@ export function PostInteractions({
             )}
           </span>
         </div>
+        {initialViewCount != null && (
+          <div
+            className="flex items-center gap-2 text-gray-400"
+            aria-label={`${formatNumber(initialViewCount)} views`}
+          >
+            <Eye className="h-5 w-5" />
+            <span className="text-sm">{formatNumber(initialViewCount)}</span>
+          </div>
+        )}
         <button
           className="relative ml-auto text-gray-400 transition-colors hover:text-gray-600"
           aria-label="Share this post"

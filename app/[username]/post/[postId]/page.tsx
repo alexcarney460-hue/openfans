@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useTrack } from "@/hooks/useTrack";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -38,6 +39,7 @@ interface ApiPost {
   readonly tier: string;
   readonly likes_count: number;
   readonly comments_count: number;
+  readonly views_count: number;
   readonly created_at: string;
   readonly is_locked?: boolean;
 }
@@ -52,10 +54,15 @@ interface ApiCreator {
 
 export default function SinglePostPage() {
   const params = useParams<{ username: string; postId: string }>();
+  const track = useTrack();
   const [post, setPost] = useState<ApiPost | null>(null);
   const [creator, setCreator] = useState<ApiCreator | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    track("post_view", params.postId);
+  }, [params.postId]);
 
   useEffect(() => {
     async function fetchData() {
@@ -250,6 +257,7 @@ export default function SinglePostPage() {
         <PostInteractions
           initialLikes={post.likes_count}
           initialCommentCount={post.comments_count}
+          initialViewCount={post.views_count}
           initialComments={[]}
           isLocked={isLocked}
           postUrl={`/${creator.username}/post/${post.id}`}

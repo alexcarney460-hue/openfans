@@ -83,6 +83,7 @@ export const postsTable = pgTable('posts', {
     .default('basic'),
   likes_count: integer('likes_count').notNull().default(0),
   comments_count: integer('comments_count').notNull().default(0),
+  views_count: integer('views_count').notNull().default(0),
   ppv_price_usdc: integer('ppv_price_usdc'), // cents — null = not PPV, number = one-time unlock price
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
@@ -213,8 +214,8 @@ export const payoutsTable = pgTable('payouts', {
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   amount_usdc: integer('amount_usdc').notNull(), // cents
   wallet_address: text('wallet_address').notNull(),
-  payment_tx: text('payment_tx').notNull().unique(),
-  status: text('status', { enum: ['pending', 'completed', 'failed'] })
+  payment_tx: text('payment_tx').unique(), // null while pending, set when processed
+  status: text('status', { enum: ['pending', 'processing', 'completed', 'failed'] })
     .notNull()
     .default('pending'),
   created_at: timestamp('created_at', { withTimezone: true })
@@ -401,6 +402,45 @@ export const notificationsTable = pgTable('notifications', {
 
 export type InsertNotification = typeof notificationsTable.$inferInsert;
 export type SelectNotification = typeof notificationsTable.$inferSelect;
+
+// ─── Analytics Events ─────────────────────────────────────────────────────────
+// Lightweight event tracking for clicks, views, and engagement metrics.
+
+export const analyticsEventsTable = pgTable('analytics_events', {
+  id: serial('id').primaryKey(),
+  event_type: text('event_type', {
+    enum: [
+      'page_view',
+      'profile_view',
+      'post_view',
+      'post_click',
+      'subscribe_click',
+      'tip_click',
+      'ppv_click',
+      'share_click',
+      'message_click',
+      'signup_click',
+      'login_click',
+      'wallet_connect_click',
+    ],
+  }).notNull(),
+  user_id: text('user_id').references(() => usersTable.id, { onDelete: 'set null' }), // nullable — anonymous visitors
+  target_id: text('target_id'), // post id, creator id, page path, etc.
+  metadata: text('metadata'), // optional JSON string for extra context
+  ip_hash: text('ip_hash'), // hashed IP for unique visitor counting (not raw IP)
+  user_agent: text('user_agent'),
+  referrer: text('referrer'),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}, (table) => ({
+  eventTypeIdx: index('analytics_events_event_type_idx').on(table.event_type),
+  createdAtIdx: index('analytics_events_created_at_idx').on(table.created_at),
+  targetIdIdx: index('analytics_events_target_id_idx').on(table.target_id),
+}));
+
+export type InsertAnalyticsEvent = typeof analyticsEventsTable.$inferInsert;
+export type SelectAnalyticsEvent = typeof analyticsEventsTable.$inferSelect;
 
 // ─── Contact Messages ─────────────────────────────────────────────────────────
 
