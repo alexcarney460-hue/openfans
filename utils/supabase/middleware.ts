@@ -17,6 +17,15 @@ const PUBLIC_PATHS = [
   "/contact",
   "/subscriptions",
   "/transactions",
+  "/invest",
+  "/content-policy",
+  "/dmca",
+  "/usc2257",
+  "/anti-slavery",
+  "/complaints",
+  "/acceptable-use",
+  "/refund-policy",
+  "/error",
 ];
 
 // API routes that allow public GET access
@@ -41,9 +50,9 @@ function isPublicRoute(pathname: string, method: string): boolean {
     return true;
   }
 
-  // Dynamic username routes at root level (e.g., /somecreator)
-  // These are public profile pages -- single segment after /
-  if (/^\/[a-zA-Z0-9_-]+$/.test(pathname) && !pathname.startsWith("/api") && !pathname.startsWith("/dashboard")) {
+  // Dynamic username routes (e.g., /somecreator or /somecreator/post/123)
+  // These are public profile and post pages
+  if (/^\/[a-zA-Z0-9_-]+(\/post\/[a-zA-Z0-9_-]+)?$/.test(pathname) && !pathname.startsWith("/api") && !pathname.startsWith("/dashboard") && !pathname.startsWith("/admin")) {
     return true;
   }
 
@@ -64,10 +73,19 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // If Supabase is not configured, fail closed: block non-public routes
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    const pathname = request.nextUrl.pathname;
-    const method = request.method;
+  const pathname = request.nextUrl.pathname;
+  const method = request.method;
+
+  // Always allow webhook routes through immediately
+  if (pathname.startsWith("/webhook")) {
+    return supabaseResponse;
+  }
+
+  // If Supabase is not configured, allow public routes and block protected ones
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
     if (isPublicRoute(pathname, method)) {
       return supabaseResponse;
     }
@@ -77,49 +95,67 @@ export async function updateSession(request: NextRequest) {
     );
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value),
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
+  // For public routes that don't need auth context (API endpoints, explore, etc.),
+  // attempt Supabase session refresh but don't block on failure.
+  // For the root path ("/"), we still need auth to decide on redirect.
+  const routeIsPublic = isPublicRoute(pathname, method);
+  const needsAuthForRedirect = routeIsPublic && pathname === "/";
+  const needsAuth = !routeIsPublic || needsAuthForRedirect;
+
+  let user = null;
+
+  try {
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value),
+            );
+            supabaseResponse = NextResponse.next({
+              request,
+            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options),
+            );
+          },
         },
       },
-    },
-  );
+    );
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
-  const method = request.method;
-  const url = request.nextUrl.clone();
-
-  // Always allow webhook routes through
-  if (pathname.startsWith("/webhook")) {
+    // IMPORTANT: Avoid writing any logic between createServerClient and
+    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+    // issues with users being randomly logged out.
+    const { data } = await supabase.auth.getUser();
+    user = data?.user ?? null;
+  } catch {
+    // Supabase client creation or auth check failed.
+    // For public routes, continue without auth context.
+    // For protected routes, deny access.
+    if (!routeIsPublic) {
+      if (pathname.startsWith("/api/")) {
+        return new NextResponse(
+          JSON.stringify({ error: "Service unavailable", code: "SERVICE_UNAVAILABLE" }),
+          { status: 503, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
     return supabaseResponse;
   }
 
-  // Check if this is a public route
-  if (isPublicRoute(pathname, method)) {
+  // Public route handling
+  if (routeIsPublic) {
     // If user is logged in and visits root, redirect to dashboard
     if (user && pathname === "/") {
+      const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);
     }
@@ -139,6 +175,7 @@ export async function updateSession(request: NextRequest) {
 
   // For non-API protected routes (dashboard, etc.): redirect to login
   if (!user) {
+    const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }

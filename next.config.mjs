@@ -16,6 +16,20 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/investment",
+        destination: "/invest",
+        permanent: true,
+      },
+      {
+        source: "/investors",
+        destination: "/invest",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     const isDev = process.env.NODE_ENV === "development";
 

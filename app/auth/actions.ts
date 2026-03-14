@@ -54,7 +54,11 @@ export async function resetPassword(currentState: { message: string }, formData:
         return { message: pwError }
     }
 
-    const { data } = await supabase.auth.exchangeCodeForSession(passwordData.code)
+    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(passwordData.code)
+
+    if (exchangeError) {
+        return { message: "Reset link has expired or is invalid. Please request a new one." }
+    }
 
     let { error } = await supabase.auth.updateUser({
         password: passwordData.password
@@ -85,6 +89,7 @@ export async function signup(currentState: { message: string }, formData: FormDa
         email: formData.get('email') as string,
         password: formData.get('password') as string,
         username: formData.get('username') as string || formData.get('name') as string || '',
+        role: formData.get('role') as string || 'subscriber',
     }
 
     // Server-side email validation
@@ -136,14 +141,14 @@ export async function signup(currentState: { message: string }, formData: FormDa
             email: signUpData.user.email!,
             username: data.username,
             display_name: data.username,
-            role: isAdminEmail(data.email) ? 'admin' : 'subscriber',
+            role: isAdminEmail(data.email) ? 'admin' : (data.role === 'creator' ? 'creator' : 'subscriber'),
         })
     } catch (err) {
         console.error("Error in signup:", err instanceof Error ? err.message : "Unknown error")
         return { message: "Failed to setup user account" }
     }
 
-    const redirectPath = '/dashboard'
+    const redirectPath = data.role === 'creator' ? '/onboarding' : '/dashboard'
     revalidatePath("/", "layout")
     redirect(redirectPath)
 }
@@ -184,8 +189,12 @@ export async function signInWithGoogle() {
         },
     })
 
+    if (error) {
+        redirect(`/login?error=${encodeURIComponent(error.message)}`)
+    }
+
     if (data.url) {
-        redirect(data.url) // use the redirect API for your server framework
+        redirect(data.url)
     }
 }
 
@@ -199,10 +208,13 @@ export async function signInWithGithub() {
         },
     })
 
-    if (data.url) {
-        redirect(data.url) // use the redirect API for your server framework
+    if (error) {
+        redirect(`/login?error=${encodeURIComponent(error.message)}`)
     }
 
+    if (data.url) {
+        redirect(data.url)
+    }
 }
 
 
@@ -214,6 +226,10 @@ export async function signInWithTwitter() {
             redirectTo: `${PUBLIC_URL}/auth/callback`,
         },
     })
+
+    if (error) {
+        redirect(`/login?error=${encodeURIComponent(error.message)}`)
+    }
 
     if (data.url) {
         redirect(data.url)

@@ -73,6 +73,12 @@ export async function PATCH(request: NextRequest) {
     const updates: Record<string, unknown> = {};
 
     if (typeof body.display_name === "string" && body.display_name.trim().length > 0) {
+      if (body.display_name.trim().length > 100) {
+        return NextResponse.json(
+          { error: "Display name must be 100 characters or less", code: "INVALID_DISPLAY_NAME" },
+          { status: 400 },
+        );
+      }
       updates.display_name = body.display_name.trim();
     }
 
@@ -88,6 +94,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (typeof body.bio === "string") {
+      if (body.bio.trim().length > 2000) {
+        return NextResponse.json(
+          { error: "Bio must be 2000 characters or less", code: "INVALID_BIO" },
+          { status: 400 },
+        );
+      }
       updates.bio = body.bio.trim();
     }
 

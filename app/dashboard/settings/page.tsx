@@ -67,6 +67,18 @@ export default function SettingsPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/wallet")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.data?.wallet_address) {
+          setWalletAddress(data.data.wallet_address);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function fetchUser() {
@@ -310,7 +322,13 @@ export default function SettingsPage() {
                 className="mt-1.5 border-gray-200 bg-gray-50 text-muted-foreground cursor-not-allowed"
               />
             </div>
-            <Button variant="outline" className="border-gray-200">
+            <Button
+              variant="outline"
+              className="border-gray-200"
+              onClick={() => {
+                window.location.href = "/forgot-password";
+              }}
+            >
               Change Password
             </Button>
           </div>
@@ -374,20 +392,34 @@ export default function SettingsPage() {
       <Card className="border-gray-200 bg-white">
         <CardContent className="p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">Connected Wallet</h2>
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <div className="flex items-center gap-3">
-              <Wallet className="h-5 w-5 text-[#00AFF0]" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Phantom Wallet</p>
-                <p className="text-xs text-muted-foreground font-mono">
-                  7xKXt...3mPq
-                </p>
+          {walletAddress ? (
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center gap-3">
+                <Wallet className="h-5 w-5 text-[#00AFF0]" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Solana Wallet</p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                  </p>
+                </div>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="border-gray-200 text-red-400 hover:text-red-300">
-              Disconnect
-            </Button>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+              <Wallet className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground mb-3">No wallet connected yet</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-gray-200"
+                onClick={() => {
+                  window.location.href = "/dashboard/wallet";
+                }}
+              >
+                Connect Wallet
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

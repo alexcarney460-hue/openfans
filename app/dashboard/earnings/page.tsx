@@ -138,7 +138,12 @@ export default function EarningsPage() {
             <p className="mt-1 text-xs text-muted-foreground">
               This month: {formatUsdc(summary?.this_month_earnings_usdc ?? 0)}
             </p>
-            <Button className="mt-4 w-full bg-[#00AFF0] hover:bg-[#009dd8]">
+            <Button
+              className="mt-4 w-full bg-[#00AFF0] hover:bg-[#009dd8]"
+              onClick={() => {
+                window.location.href = "/dashboard/wallet";
+              }}
+            >
               <Wallet className="mr-2 h-4 w-4" />
               Withdraw to Wallet
             </Button>
