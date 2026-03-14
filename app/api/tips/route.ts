@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import { tipsTable, usersTable, postsTable, creatorProfilesTable } from "@/utils/db/schema";
