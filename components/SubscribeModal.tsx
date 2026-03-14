@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { WalletReadyState } from "@solana/wallet-adapter-base";
@@ -66,6 +66,7 @@ export function SubscribeModal({
   const { publicKey, sendTransaction, connected, connecting, wallet, wallets, select, connect } = useWallet();
   const { connection } = useConnection();
   const [txState, setTxState] = useState<TxState>({ status: "idle" });
+  const userClickedConnect = useRef(false);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -94,15 +95,17 @@ export function SubscribeModal({
     }
   }, [isOpen]);
 
-  // Auto-connect after selecting a wallet (only if actually installed)
+  // Only connect after user explicitly clicked "Connect Wallet"
   useEffect(() => {
     if (
+      userClickedConnect.current &&
       wallet &&
       !connected &&
       !connecting &&
       (wallet.readyState === WalletReadyState.Installed ||
         wallet.readyState === WalletReadyState.Loadable)
     ) {
+      userClickedConnect.current = false;
       connect().catch(() => {});
     }
   }, [wallet, connected, connecting, connect]);
@@ -137,8 +140,10 @@ export function SubscribeModal({
     }
 
     try {
+      userClickedConnect.current = true;
       select(target.adapter.name);
     } catch {
+      userClickedConnect.current = false;
       setTxState({ status: "error", message: "Failed to connect wallet" });
     }
   }, [wallets, select]);

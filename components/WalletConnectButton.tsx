@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ export default function WalletConnectButton({
   const { publicKey, wallet, select, connect, disconnect, connecting, connected, wallets } = useWallet();
   const [showMenu, setShowMenu] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const userClickedConnect = useRef(false);
 
   const handleConnect = useCallback(async () => {
     setError(null);
@@ -58,27 +59,30 @@ export default function WalletConnectButton({
     const target = phantom ?? installed[0];
 
     if (!target) {
-      // No wallet extension found — show install prompt, don't redirect
       setError("No wallet found. Install the Phantom browser extension to continue.");
       return;
     }
 
     try {
+      userClickedConnect.current = true;
       select(target.adapter.name);
     } catch (err) {
+      userClickedConnect.current = false;
       setError(err instanceof Error ? err.message : "Failed to connect");
     }
   }, [wallets, select]);
 
-  // Auto-connect after selecting a wallet (only if it's actually installed)
+  // Only auto-connect after the user explicitly clicked "Connect Wallet"
   useEffect(() => {
     if (
+      userClickedConnect.current &&
       wallet &&
       !connected &&
       !connecting &&
       (wallet.readyState === WalletReadyState.Installed ||
         wallet.readyState === WalletReadyState.Loadable)
     ) {
+      userClickedConnect.current = false;
       connect().catch((err) => {
         if (err instanceof Error && !err.message.includes("User rejected")) {
           setError(err.message);

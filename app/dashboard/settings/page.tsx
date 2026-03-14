@@ -75,6 +75,7 @@ export default function SettingsPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
   const { publicKey, connected, connecting, wallet, wallets, select, connect } = useWallet();
+  const userClickedConnect = useRef(false);
 
   const handleConnectWallet = useCallback(async () => {
     const installed = wallets.filter(
@@ -93,21 +94,25 @@ export default function SettingsPage() {
     }
 
     try {
+      userClickedConnect.current = true;
       select(target.adapter.name);
     } catch {
+      userClickedConnect.current = false;
       setSaveMessage("Failed to connect wallet.");
     }
   }, [wallets, select]);
 
-  // Auto-connect after selecting a wallet (only if actually installed)
+  // Only connect after user explicitly clicked "Connect Wallet"
   useEffect(() => {
     if (
+      userClickedConnect.current &&
       wallet &&
       !connected &&
       !connecting &&
       (wallet.readyState === WalletReadyState.Installed ||
         wallet.readyState === WalletReadyState.Loadable)
     ) {
+      userClickedConnect.current = false;
       connect().catch(() => {});
     }
   }, [wallet, connected, connecting, connect]);
