@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Wallet, Trash2, Loader2, ImageIcon } from "lucide-react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 interface ToggleSwitchProps {
   enabled: boolean;
@@ -72,6 +74,35 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
+  const { publicKey, connected } = useWallet();
+  const { setVisible: openWalletModal } = useWalletModal();
+
+  const handleConnectWallet = useCallback(() => {
+    if (
+      typeof window !== "undefined" &&
+      /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) &&
+      !(window as any).phantom?.solana
+    ) {
+      const currentUrl = window.location.href;
+      const encodedUrl = encodeURIComponent(currentUrl);
+      window.location.href = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+      return;
+    }
+    openWalletModal(true);
+  }, [openWalletModal]);
+
+  // When wallet connects via adapter, save it to the backend
+  useEffect(() => {
+    if (connected && publicKey) {
+      const addr = publicKey.toBase58();
+      setWalletAddress(addr);
+      fetch("/api/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet_address: addr }),
+      }).catch(() => {});
+    }
+  }, [connected, publicKey]);
 
   useEffect(() => {
     fetch("/api/wallet")
@@ -508,9 +539,7 @@ export default function SettingsPage() {
                 variant="outline"
                 size="sm"
                 className="border-gray-200"
-                onClick={() => {
-                  window.location.href = "/dashboard/wallet";
-                }}
+                onClick={handleConnectWallet}
               >
                 Connect Wallet
               </Button>
