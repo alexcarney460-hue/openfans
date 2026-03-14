@@ -113,8 +113,17 @@ def post_single(page, image_path: str, caption: str) -> dict:
         log(f"ERROR: File not found: {image_path}")
         return {"ok": False, "error": "file_not_found", "path": image_path}
 
-    # Navigate to home
-    page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=60000)
+    # Navigate to home — retry on redirect interruptions
+    for _nav_retry in range(3):
+        try:
+            page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=60000)
+            break
+        except Exception as nav_err:
+            if "interrupted" in str(nav_err).lower() or "navigation" in str(nav_err).lower():
+                log(f"  Navigation interrupted, retrying... ({_nav_retry + 1})")
+                time.sleep(3)
+            else:
+                raise
     time.sleep(4)
     dismiss_popups(page)
 

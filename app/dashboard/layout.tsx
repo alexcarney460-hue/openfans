@@ -24,6 +24,7 @@ import {
   LogOut,
   Compass,
   Heart,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -51,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/analytics", labelKey: "dash.analytics", icon: BarChart3, creatorOnly: true },
   { href: "/dashboard/wallet", labelKey: "dash.wallet", icon: Wallet },
   { href: "/dashboard/affiliate", labelKey: "dash.affiliates", icon: Gift, creatorOnly: true },
+  { href: "/dashboard/referrals", labelKey: "dash.referrals", icon: Share2, creatorOnly: true },
   { href: "/dashboard/notifications", labelKey: "dash.notifications", icon: Bell },
   { href: "/dashboard/settings", labelKey: "dash.settings", icon: Settings },
 ];

@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2, Loader2, ImageIcon } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useTrack } from "@/hooks/useTrack";
@@ -63,6 +64,11 @@ export default function SettingsPage() {
   const [pushNotifs, setPushNotifs] = useState(false);
   const [messageAlerts, setMessageAlerts] = useState(true);
 
+  const [subscriptionPrice, setSubscriptionPrice] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [priceSaving, setPriceSaving] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const [showActivity, setShowActivity] = useState(true);
   const [allowMessages, setAllowMessages] = useState(false);
 
@@ -118,6 +124,22 @@ export default function SettingsPage() {
           setBannerUrl(user.banner_url ?? null);
           setUserRole(user.role ?? "subscriber");
           setWalletAddress(user.wallet_address ?? null);
+
+          // Load creator profile data if creator
+          if (user.role === "creator" || user.role === "admin") {
+            try {
+              const cpRes = await fetch("/api/creator-profile");
+              if (cpRes.ok) {
+                const cpJson = await cpRes.json();
+                if (cpJson.data) {
+                  setSubscriptionPrice(cpJson.data.subscription_price?.toString() ?? "");
+                  setCategories(cpJson.data.categories ?? []);
+                }
+              }
+            } catch {
+              // non-critical
+            }
+          }
         }
       } catch {
         // silently fail
@@ -253,6 +275,52 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCopyProfileLink = useCallback(async () => {
+    if (!username) return;
+    const profileUrl = `${window.location.origin}/${username}`;
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = profileUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  }, [username]);
+
+  const handleSaveSubscriptionPrice = async () => {
+    setPriceSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const res = await fetch("/api/creator-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription_price: Number(subscriptionPrice),
+          categories,
+        }),
+      });
+
+      if (res.ok) {
+        setSaveMessage("Subscription price saved successfully.");
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setSaveMessage(json.error ?? "Failed to save subscription price.");
+      }
+    } catch {
+      setSaveMessage("Failed to save subscription price.");
+    } finally {
+      setPriceSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -264,14 +332,38 @@ export default function SettingsPage() {
     );
   }
 
+  const isCreator = userRole === "creator" || userRole === "admin";
+
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your profile, account, and preferences.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your profile, account, and preferences.
+          </p>
+        </div>
+        {username && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-gray-200 gap-2"
+            onClick={handleCopyProfileLink}
+          >
+            {linkCopied ? (
+              <>
+                <Check className="h-4 w-4 text-emerald-500" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Share2 className="h-4 w-4" />
+                Copy Profile Link
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {saveMessage && (
@@ -536,10 +628,61 @@ export default function SettingsPage() {
                   "Connect Wallet"
                 )}
               </Button>
+              <Link
+                href="/help/wallet-setup"
+                className="mt-3 inline-flex items-center gap-1 text-xs text-[#00AFF0] transition-colors hover:text-[#009dd8]"
+              >
+                Don&apos;t have a wallet? Set one up
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Subscription Pricing (creators only) */}
+      {isCreator && (
+        <Card className="border-gray-200 bg-white">
+          <CardContent className="p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Subscription Pricing</h2>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="subscriptionPrice" className="text-sm text-muted-foreground">
+                  Monthly Subscription Price (USDC)
+                </Label>
+                <div className="relative mt-1.5">
+                  <Input
+                    id="subscriptionPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="9.99"
+                    value={subscriptionPrice}
+                    onChange={(e) => setSubscriptionPrice(e.target.value)}
+                    className="border-gray-200 bg-gray-50 pr-16 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
+                    USDC/mo
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This is the price fans pay to subscribe to your content each month.
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  className="bg-[#00AFF0] hover:bg-[#009dd8]"
+                  onClick={handleSaveSubscriptionPrice}
+                  disabled={priceSaving || !subscriptionPrice}
+                >
+                  {priceSaving ? "Saving..." : "Update Price"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Save button */}
       <div className="flex justify-end">

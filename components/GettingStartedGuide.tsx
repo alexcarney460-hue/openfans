@@ -13,6 +13,7 @@ import {
   Circle,
   X,
   Sparkles,
+  Share2,
 } from "lucide-react";
 
 interface GettingStartedProps {
@@ -83,6 +84,16 @@ export function GettingStartedGuide({
       href: "/dashboard/posts/new",
       buttonLabel: "Create a Post",
       icon: PenSquare,
+    },
+    {
+      id: "share",
+      label: "Share your profile",
+      description:
+        "Copy your profile link and share it on social media, in your bio, or with your audience. Your link is openfans.online/@" + (username ?? "you") + ".",
+      done: false,
+      href: username ? `/${username}` : "/dashboard/settings",
+      buttonLabel: "View & Share Profile",
+      icon: Share2,
     },
   ];
 

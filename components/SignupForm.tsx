@@ -85,6 +85,12 @@ export default function SignupForm({ refCode = "" }: { refCode?: string }) {
       newErrors.password = "Password is required"
     } else if (password.length < 8) {
       newErrors.password = "Password must be at least 8 characters"
+    } else if (!/[A-Z]/.test(password)) {
+      newErrors.password = "Password must contain at least one uppercase letter"
+    } else if (!/[a-z]/.test(password)) {
+      newErrors.password = "Password must contain at least one lowercase letter"
+    } else if (!/[0-9]/.test(password)) {
+      newErrors.password = "Password must contain at least one number"
     }
     if (password !== confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match"

@@ -22,6 +22,7 @@ import { logout } from "@/app/auth/actions";
 const NAV_ITEMS = [
   { href: "/admin", label: "Analytics", icon: BarChart3 },
   { href: "/admin/payouts", label: "Payouts", icon: Wallet },
+  { href: "/admin/creators", label: "Creators", icon: Users },
 ] as const;
 
 export default function AdminLayout({

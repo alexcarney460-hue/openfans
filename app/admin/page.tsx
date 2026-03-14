@@ -263,6 +263,33 @@ export default function AdminDashboard() {
           }
         })
         .catch(() => {});
+
+      // Fetch chart data separately (heavier queries)
+      fetch("/api/admin/charts")
+        .then((r) => r.json())
+        .then((cj) => {
+          if (cj.data) {
+            setData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    charts:
+                      cj.data.user_growth && cj.data.revenue_by_day
+                        ? {
+                            user_growth: cj.data.user_growth,
+                            revenue_by_day: cj.data.revenue_by_day,
+                          }
+                        : prev.charts,
+                    category_breakdown:
+                      cj.data.category_breakdown || prev.category_breakdown,
+                    subscription_status:
+                      cj.data.subscription_status || prev.subscription_status,
+                  }
+                : prev,
+            );
+          }
+        })
+        .catch(() => {});
     } catch {
       setError("Failed to load analytics");
     } finally {

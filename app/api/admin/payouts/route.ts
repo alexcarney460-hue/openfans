@@ -11,6 +11,8 @@ import {
 import { eq, desc, and, sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 import { sendUsdc } from "@/utils/solana/transfer";
+import { createNotification } from "@/utils/notifications";
+import { sendPayoutCompletedEmail } from "@/utils/email";
 
 /**
  * GET /api/admin/payouts
@@ -233,6 +235,27 @@ export async function POST(request: NextRequest) {
           eq(walletTransactionsTable.status, "pending"),
         ),
       );
+
+    // Notify the creator about the completed payout
+    const payoutDollars = (payout.amount_usdc / 100).toFixed(2);
+
+    createNotification(
+      payout.creator_id,
+      "payout_completed",
+      "Payout sent!",
+      `Your payout of $${payoutDollars} USDC has been sent to your wallet.`,
+      String(payout_id),
+    );
+
+    // Send email notification (fire-and-forget)
+    const creatorInfo = await db
+      .select({ email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, payout.creator_id))
+      .limit(1);
+    if (creatorInfo[0]?.email) {
+      sendPayoutCompletedEmail(creatorInfo[0].email, payoutDollars);
+    }
 
     return NextResponse.json({
       data: {

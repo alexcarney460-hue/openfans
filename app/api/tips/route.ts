@@ -14,6 +14,7 @@ import { eq, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
 import { createNotification } from "@/utils/notifications";
+import { sendNewTipEmail } from "@/utils/email";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
@@ -257,6 +258,16 @@ export async function POST(request: NextRequest) {
       `${tipperName} tipped you $${tipDollars} USDC.`,
       String(newTip[0].id),
     );
+
+    // Send email notification to the creator (fire-and-forget)
+    const creatorEmail = await db
+      .select({ email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, creator_id))
+      .limit(1);
+    if (creatorEmail[0]?.email) {
+      sendNewTipEmail(creatorEmail[0].email, tipperInfo[0]?.display_name ?? "Someone", tipDollars);
+    }
 
     return NextResponse.json({ data: newTip[0] }, { status: 201 });
   } catch (error) {

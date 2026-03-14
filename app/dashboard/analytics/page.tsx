@@ -12,6 +12,8 @@ import {
   ArrowDownRight,
   RefreshCw,
   Clock,
+  Share2,
+  Check,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -245,6 +247,27 @@ export default function CreatorAnalyticsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCopyProfileLink = async () => {
+    const username = state.profile?.username;
+    if (!username) return;
+    const profileUrl = `${window.location.origin}/${username}`;
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = profileUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -371,13 +394,33 @@ export default function CreatorAnalyticsPage() {
             Track your earnings, subscribers, and content performance
           </p>
         </div>
-        <button
-          onClick={fetchData}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {state.profile?.username && (
+            <button
+              onClick={handleCopyProfileLink}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Share2 className="h-3.5 w-3.5" />
+                  Copy Profile Link
+                </>
+              )}
+            </button>
+          )}
+          <button
+            onClick={fetchData}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ===================== SUMMARY CARDS ===================== */}

@@ -13,6 +13,9 @@ import {
   Compass,
   Heart,
   MessageSquare,
+  Share2,
+  Check,
+  Copy,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,8 +91,28 @@ export default function DashboardPage() {
   const [hasBio, setHasBio] = useState(false);
   const [postCount, setPostCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const isCreator = userRole === "creator" || userRole === "admin";
+
+  const handleCopyProfileLink = async () => {
+    if (!username) return;
+    const profileUrl = `${window.location.origin}/${username}`;
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = profileUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -335,6 +358,25 @@ export default function DashboardPage() {
             Withdraw Funds
           </Link>
         </Button>
+        {username && (
+          <Button
+            variant="outline"
+            className="border-gray-200"
+            onClick={handleCopyProfileLink}
+          >
+            {linkCopied ? (
+              <>
+                <Check className="mr-2 h-4 w-4 text-emerald-500" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Share2 className="mr-2 h-4 w-4" />
+                Copy Profile Link
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">

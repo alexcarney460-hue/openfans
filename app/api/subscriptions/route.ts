@@ -13,6 +13,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
 import { createNotification } from "@/utils/notifications";
+import { sendNewSubscriberEmail } from "@/utils/email";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
@@ -297,11 +298,12 @@ export async function POST(request: NextRequest) {
 
     // Notify the creator about the new subscriber
     const subscriberInfo = await db
-      .select({ display_name: usersTable.display_name })
+      .select({ display_name: usersTable.display_name, username: usersTable.username })
       .from(usersTable)
       .where(eq(usersTable.id, user.id))
       .limit(1);
     const subscriberName = subscriberInfo[0]?.display_name ?? "Someone";
+    const subscriberUsername = subscriberInfo[0]?.username ?? "someone";
 
     createNotification(
       creator_id,
@@ -310,6 +312,16 @@ export async function POST(request: NextRequest) {
       `${subscriberName} just subscribed to your content.`,
       String(newSub[0].id),
     );
+
+    // Send email notification to the creator (fire-and-forget)
+    const creatorInfo = await db
+      .select({ email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, creator_id))
+      .limit(1);
+    if (creatorInfo[0]?.email) {
+      sendNewSubscriberEmail(creatorInfo[0].email, subscriberUsername);
+    }
 
     return NextResponse.json({ data: newSub[0] }, { status: 201 });
   } catch (error) {

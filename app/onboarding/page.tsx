@@ -888,26 +888,6 @@ export default function OnboardingPage() {
               </button>
             </div>
           )}
-
-          {/* Skip on wallet step */}
-          {step === 3 && wallet.connected && (
-            <div className="mt-8 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={handleNext}
-                className="bg-[#00AFF0] hover:bg-[#009dd8] flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              >
-                Continue
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

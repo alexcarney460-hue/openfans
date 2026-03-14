@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { ChevronDown, Mail } from "lucide-react";
+import { ChevronDown, Mail, Wallet, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FaqItem {
@@ -115,6 +116,23 @@ export default function HelpPage() {
               Find answers to common questions about OpenFans.
             </p>
           </div>
+
+          {/* Wallet setup guide link */}
+          <Link
+            href="/help/wallet-setup"
+            className="mb-8 flex items-center justify-between rounded-xl border border-[#00AFF0]/20 bg-gradient-to-r from-[#00AFF0]/5 via-white to-white p-5 transition-colors hover:border-[#00AFF0]/40"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#00AFF0]/10">
+                <Wallet className="h-5 w-5 text-[#00AFF0]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Wallet Setup Guide</p>
+                <p className="text-xs text-gray-500">Learn how to set up Phantom wallet and connect it to OpenFans</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-gray-400" />
+          </Link>
 
           {/* Category filter */}
           <div className="mb-8 flex flex-wrap gap-2">

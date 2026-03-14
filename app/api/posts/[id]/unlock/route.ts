@@ -7,12 +7,14 @@ import {
   ppvPurchasesTable,
   creatorProfilesTable,
   notificationsTable,
+  usersTable,
   walletsTable,
   walletTransactionsTable,
 } from "@/utils/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
+import { sendPpvPurchaseEmail } from "@/utils/email";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 const PLATFORM_FEE_PERCENT = 5;
@@ -222,13 +224,24 @@ export async function POST(
       .where(eq(creatorProfilesTable.user_id, post.creator_id));
 
     // Send notification to the creator
+    const ppvDollars = (post.ppv_price_usdc / 100).toFixed(2);
     await db.insert(notificationsTable).values({
       user_id: post.creator_id,
       type: "ppv_purchase",
       title: "New PPV Purchase",
-      body: `Someone unlocked your post "${post.title ?? "Untitled"}" for $${(post.ppv_price_usdc / 100).toFixed(2)}`,
+      body: `Someone unlocked your post "${post.title ?? "Untitled"}" for $${ppvDollars}`,
       reference_id: String(purchase.id),
     });
+
+    // Send email notification to the creator (fire-and-forget)
+    const creatorInfo = await db
+      .select({ email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, post.creator_id))
+      .limit(1);
+    if (creatorInfo[0]?.email) {
+      sendPpvPurchaseEmail(creatorInfo[0].email, post.title ?? "Untitled", ppvDollars);
+    }
 
     // Return the full unlocked post
     return NextResponse.json({

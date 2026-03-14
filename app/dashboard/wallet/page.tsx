@@ -297,9 +297,18 @@ export default function WalletPage() {
             )}
           </div>
           {!walletAddress && (
-            <p className="mt-3 text-xs text-gray-400">
-              You must connect a Solana wallet address in your profile settings before requesting a withdrawal.
-            </p>
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">
+                You must connect a Solana wallet address in your profile settings before requesting a withdrawal.
+              </p>
+              <Link
+                href="/help/wallet-setup"
+                className="mt-1 inline-flex items-center gap-1 text-xs text-[#00AFF0] transition-colors hover:text-[#009dd8]"
+              >
+                Need help setting up a wallet?
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
           )}
         </div>
       )}
