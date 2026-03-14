@@ -22,7 +22,17 @@ export function CreatorCard({ creator, className }: CreatorCardProps) {
     >
       {/* Banner */}
       <Link href={`/${creator.username}`} className="block">
-        <div className="relative h-24 overflow-hidden bg-gradient-to-br from-[#d0e8f2] to-[#e0e0f0] sm:h-36">
+        <div className="relative h-24 overflow-hidden sm:h-36">
+          {creator.bannerUrl && creator.bannerUrl !== "" ? (
+            <img
+              src={creator.bannerUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-[#00AFF0]/20 via-[#00AFF0]/10 to-[#0A1628]/10" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
         </div>
       </Link>
@@ -40,7 +50,7 @@ export function CreatorCard({ creator, className }: CreatorCardProps) {
                 loading="lazy"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-100 text-base font-bold text-gray-900 sm:text-lg">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#00AFF0] to-[#0A1628] text-base font-bold text-white sm:text-lg">
                 {creator.displayName.charAt(0)}
               </div>
             )}

@@ -125,12 +125,13 @@ export default function ExplorePage() {
       setError(null);
       const json = await res.json();
       const mapped: MappedCreator[] = (json.data ?? []).map(mapApiCreator);
-      // If database has no creators, show mock data instead of empty state
-      if (mapped.length === 0) {
-        setCreators(getFilteredMockCreators(activeCategory, searchQuery));
-      } else {
-        setCreators(mapped);
-      }
+      const mockCreators = getFilteredMockCreators(activeCategory, searchQuery);
+      // Show real creators first, then fill with mock data so the page looks populated
+      const realUsernames = new Set(mapped.map((c) => c.username.toLowerCase()));
+      const filteredMock = mockCreators.filter(
+        (c) => !realUsernames.has(c.username.toLowerCase()),
+      );
+      setCreators([...mapped, ...filteredMock]);
     } catch {
       // Network error -- fall back to mock data
       setError(null);
