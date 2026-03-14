@@ -31,7 +31,7 @@ import {
 export const metadata: Metadata = {
   title: "Invest in OpenFans — Pre-Seed Round Open",
   description:
-    "OpenFans is raising $750K at a $5M cap. Join the creator economy revolution. 95% payouts, instant Solana settlement, $7.2B proven market.",
+    "OpenFans is raising $750K at a $5M cap. Join the creator economy revolution. 90–95% payouts, instant Solana settlement, $7.2B proven market.",
 };
 
 /* ─── data ─── */
@@ -77,8 +77,8 @@ const USE_OF_FUNDS = [
 ];
 
 const COMPARISON = [
-  { feature: "Creator Payout", of: "80%", us: "95%", win: true },
-  { feature: "Platform Fee", of: "20%", us: "5%", win: true },
+  { feature: "Creator Payout", of: "80%", us: "90–95%", win: true },
+  { feature: "Platform Fee", of: "20%", us: "5–10%", win: true },
   { feature: "Payout Speed", of: "7\u201321 days", us: "Instant", win: true },
   { feature: "Payout Method", of: "Bank (limited)", us: "USDC (global)", win: true },
   { feature: "Transaction Cost", of: "High (cards)", us: "<$0.01", win: true },
@@ -91,7 +91,7 @@ const COMPARISON = [
 
 const BUILT_FEATURES = [
   { icon: Wallet, title: "Solana USDC Payments", desc: "Subscriptions, tips, and pay-per-view content. All settled on Solana mainnet via Helius RPC." },
-  { icon: DollarSign, title: "5% Platform Fee Model", desc: "Payments route through platform hot wallet. Creators withdraw to their own Solana wallets." },
+  { icon: DollarSign, title: "5–10% Platform Fee", desc: "5% fee on general content, 10% on adult categories. Still 2–4x cheaper than OnlyFans' 20%." },
   { icon: UserCheck, title: "Creator KYC / Age Verification", desc: "Government ID + selfie upload with admin review queue. Required before monetization." },
   { icon: BarChart3, title: "Admin Dashboard", desc: "Real-time analytics, revenue charts, creator management, and payout processing tools." },
   { icon: TrendingUp, title: "Creator Analytics", desc: "Earnings dashboard, subscriber counts, withdrawal requests, and referral program tracking." },
@@ -182,8 +182,8 @@ const RISKS = [
   },
   {
     severity: "High",
-    title: "5% take rate sustainability",
-    mitigation: "Volume thesis \u2014 at $100M GMV, 5% = $5M revenue. Adult content at 10% drives higher margin.",
+    title: "5–10% take rate sustainability",
+    mitigation: "Volume thesis — at $100M GMV, blended 7–8% = $7–8M revenue. Adult content at 10% drives the majority of margin.",
     color: "bg-orange-100 text-orange-700",
   },
   {
@@ -245,7 +245,7 @@ export default function InvestPage() {
             Invest in Open<span className="text-[#00AFF0]">Fans</span>
           </h1>
           <p className="mb-10 max-w-2xl text-lg leading-relaxed text-white/60 sm:text-xl">
-            The creator platform that gives back. OnlyFans takes 20%. We take 5%.
+            The creator platform that gives back. OnlyFans takes 20%. We take 5–10%.
             A $7.2 billion market with one dominant player charging creators 4x too much.
           </p>
 
@@ -475,9 +475,9 @@ export default function InvestPage() {
           <div className="mt-8 rounded-xl border-l-4 border-emerald-500 bg-emerald-50 p-5">
             <h4 className="mb-1 text-sm font-bold text-gray-900">Revenue Model</h4>
             <p className="text-sm text-gray-700">
-              5% platform fee on every transaction (subscriptions, tips, PPV). Payments flow through a platform hot wallet
-              on Solana mainnet. Creators withdraw their earnings to personal Solana wallets at any time.
-              No banks, no payment processors, no chargebacks.
+              5% platform fee on general content, 10% on adult categories — on every transaction (subscriptions, tips, PPV).
+              Payments flow through a platform hot wallet on Solana mainnet. Creators withdraw their earnings to personal
+              Solana wallets at any time. No banks, no payment processors, no chargebacks.
             </p>
           </div>
 
