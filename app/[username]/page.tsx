@@ -428,13 +428,58 @@ export default function CreatorProfilePage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="px-4 pb-3">
-                        {post.title && (
-                          <p className="mb-1 text-sm font-semibold text-gray-900">{post.title}</p>
+                      <div className="pb-3">
+                        {/* Text content */}
+                        <div className="px-4">
+                          {post.title && (
+                            <p className="mb-1 text-sm font-semibold text-gray-900">{post.title}</p>
+                          )}
+                          {post.body && (
+                            <p className="text-sm leading-relaxed text-gray-600">
+                              {post.body}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Media */}
+                        {post.media_urls && post.media_urls.length > 0 && (
+                          <div className={`mt-3 ${
+                            post.media_urls.length === 1
+                              ? ""
+                              : post.media_urls.length === 2
+                                ? "grid grid-cols-2 gap-0.5"
+                                : "grid grid-cols-2 gap-0.5"
+                          }`}>
+                            {post.media_urls.map((url, idx) => (
+                              <div
+                                key={idx}
+                                className={`overflow-hidden bg-gray-100 ${
+                                  post.media_urls.length === 1
+                                    ? "aspect-[4/3]"
+                                    : post.media_urls.length === 3 && idx === 0
+                                      ? "row-span-2 aspect-square"
+                                      : "aspect-square"
+                                }`}
+                              >
+                                {post.media_type === "video" ? (
+                                  <video
+                                    src={url}
+                                    className="h-full w-full object-cover"
+                                    controls
+                                    preload="metadata"
+                                  />
+                                ) : (
+                                  <img
+                                    src={url}
+                                    alt={post.title ?? "Post media"}
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         )}
-                        <p className="text-sm leading-relaxed text-gray-600">
-                          {post.body ?? ""}
-                        </p>
                       </div>
                     )}
 

@@ -189,8 +189,17 @@ export default function PostsPage() {
                   >
                     {/* Post info */}
                     <div className="col-span-5 flex items-center gap-3">
-                      <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-md bg-gray-100">
-                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex h-10 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-100">
+                        {post.media_urls && post.media_urls.length > 0 ? (
+                          <img
+                            src={post.media_urls[0]}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
