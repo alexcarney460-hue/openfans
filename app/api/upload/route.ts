@@ -19,7 +19,7 @@ const ALLOWED_TYPES = new Set<string>([
   ...ALLOWED_VIDEO_TYPES,
 ]);
 
-const ALLOWED_BUCKETS = new Set(["avatars", "banners", "posts"]);
+const ALLOWED_BUCKETS = new Set(["avatars", "banners", "posts", "verification-docs"]);
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 

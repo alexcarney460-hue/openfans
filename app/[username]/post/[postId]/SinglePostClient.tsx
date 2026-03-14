@@ -57,6 +57,7 @@ export default function SinglePostClient() {
   const track = useTrack();
   const [post, setPost] = useState<ApiPost | null>(null);
   const [creator, setCreator] = useState<ApiCreator | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -86,6 +87,17 @@ export default function SinglePostClient() {
         const creatorJson = await creatorRes.json();
         setPost(postJson.data);
         setCreator(creatorJson.data);
+
+        // Fetch current user ID for comment/like features
+        try {
+          const meRes = await fetch("/api/me");
+          if (meRes.ok) {
+            const meJson = await meRes.json();
+            setCurrentUserId(meJson.data?.id ?? null);
+          }
+        } catch {
+          // Not logged in
+        }
       } catch {
         setNotFound(true);
       } finally {
@@ -255,12 +267,13 @@ export default function SinglePostClient() {
 
         {/* Interactive actions and comments */}
         <PostInteractions
+          postId={post.id}
           initialLikes={post.likes_count}
           initialCommentCount={post.comments_count}
           initialViewCount={post.views_count}
-          initialComments={[]}
           isLocked={isLocked}
           postUrl={`/${creator.username}/post/${post.id}`}
+          currentUserId={currentUserId}
         />
       </div>
     </div>

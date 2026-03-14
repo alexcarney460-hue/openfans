@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock } from "lucide-react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -81,6 +81,7 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   const { publicKey, connected, connecting, select, connect, wallets } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const track = useTrack();
@@ -150,12 +151,21 @@ export default function SettingsPage() {
           // Load creator profile data if creator
           if (user.role === "creator" || user.role === "admin") {
             try {
-              const cpRes = await fetch("/api/creator-profile");
-              if (cpRes.ok) {
-                const cpJson = await cpRes.json();
+              const [cpRes, vRes] = await Promise.allSettled([
+                fetch("/api/creator-profile"),
+                fetch("/api/verification"),
+              ]);
+              if (cpRes.status === "fulfilled" && cpRes.value.ok) {
+                const cpJson = await cpRes.value.json();
                 if (cpJson.data) {
                   setSubscriptionPrice(cpJson.data.subscription_price?.toString() ?? "");
                   setCategories(cpJson.data.categories ?? []);
+                }
+              }
+              if (vRes.status === "fulfilled" && vRes.value.ok) {
+                const vJson = await vRes.value.json();
+                if (vJson.data) {
+                  setVerificationStatus(vJson.data.verification_status);
                 }
               }
             } catch {
@@ -530,6 +540,80 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Verification Status (creators only) */}
+      {isCreator && verificationStatus && (
+        <Card className={`bg-white ${
+          verificationStatus === "verified"
+            ? "border-emerald-200"
+            : verificationStatus === "rejected"
+              ? "border-red-200"
+              : verificationStatus === "pending"
+                ? "border-amber-200"
+                : "border-gray-200"
+        }`}>
+          <CardContent className="p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Identity Verification</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {verificationStatus === "verified" ? (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                    <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                  </div>
+                ) : verificationStatus === "pending" ? (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                ) : verificationStatus === "rejected" ? (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                    <ShieldAlert className="h-5 w-5 text-red-600" />
+                  </div>
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                    <Shield className="h-5 w-5 text-gray-500" />
+                  </div>
+                )}
+                <div>
+                  <p className={`text-sm font-medium ${
+                    verificationStatus === "verified"
+                      ? "text-emerald-700"
+                      : verificationStatus === "rejected"
+                        ? "text-red-700"
+                        : verificationStatus === "pending"
+                          ? "text-amber-700"
+                          : "text-foreground"
+                  }`}>
+                    {verificationStatus === "verified"
+                      ? "Verified"
+                      : verificationStatus === "pending"
+                        ? "Under Review"
+                        : verificationStatus === "rejected"
+                          ? "Rejected"
+                          : "Not Verified"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {verificationStatus === "verified"
+                      ? "Your identity has been confirmed."
+                      : verificationStatus === "pending"
+                        ? "Your documents are being reviewed."
+                        : verificationStatus === "rejected"
+                          ? "Your verification was not approved. Please resubmit."
+                          : "Complete verification to publish content."}
+                  </p>
+                </div>
+              </div>
+              {verificationStatus !== "verified" && verificationStatus !== "pending" && (
+                <Button asChild size="sm" className="bg-[#00AFF0] hover:bg-[#009dd8]">
+                  <Link href="/dashboard/verification">
+                    {verificationStatus === "rejected" ? "Resubmit" : "Verify Now"}
+                    <ArrowRight className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Account Settings */}
       <Card className="border-gray-200 bg-white">

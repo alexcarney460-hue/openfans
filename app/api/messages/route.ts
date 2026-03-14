@@ -88,9 +88,16 @@ export async function GET(request: NextRequest) {
         rm.partner_id,
         u.username AS partner_username,
         u.display_name AS partner_display_name,
-        u.avatar_url AS partner_avatar_url
+        u.avatar_url AS partner_avatar_url,
+        COALESCE(unread.cnt, 0)::int AS unread_count
       FROM ranked_messages rm
       JOIN users_table u ON u.id = rm.partner_id
+      LEFT JOIN (
+        SELECT sender_id, COUNT(*)::int AS cnt
+        FROM messages
+        WHERE receiver_id = ${user.id} AND is_read = false
+        GROUP BY sender_id
+      ) unread ON unread.sender_id = rm.partner_id
       WHERE rm.rn = 1
       ORDER BY rm.created_at DESC
       LIMIT ${limit}

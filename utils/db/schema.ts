@@ -7,6 +7,7 @@ import {
   serial,
   text,
   timestamp,
+  unique,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -53,6 +54,15 @@ export const creatorProfilesTable = pgTable('creator_profiles', {
     .notNull()
     .default(sql`'{}'::text[]`),
   is_featured: boolean('is_featured').notNull().default(false),
+  verification_status: text('verification_status', {
+    enum: ['unverified', 'pending', 'verified', 'rejected'],
+  }).notNull().default('unverified'),
+  verification_submitted_at: timestamp('verification_submitted_at', { withTimezone: true }),
+  verification_document_url: text('verification_document_url'),
+  verification_selfie_url: text('verification_selfie_url'),
+  verification_notes: text('verification_notes'),
+  date_of_birth: text('date_of_birth'),
+  legal_name: text('legal_name'),
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -458,3 +468,46 @@ export const contactMessagesTable = pgTable('contact_messages', {
 
 export type InsertContactMessage = typeof contactMessagesTable.$inferInsert;
 export type SelectContactMessage = typeof contactMessagesTable.$inferSelect;
+
+// ─── Likes ──────────────────────────────────────────────────────────────────
+
+export const likesTable = pgTable('likes', {
+  id: serial('id').primaryKey(),
+  user_id: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  post_id: integer('post_id')
+    .notNull()
+    .references(() => postsTable.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}, (table) => ({
+  uniqueLike: unique().on(table.user_id, table.post_id),
+  userIdIdx: index('likes_user_id_idx').on(table.user_id),
+  postIdIdx: index('likes_post_id_idx').on(table.post_id),
+}));
+
+export type InsertLike = typeof likesTable.$inferInsert;
+export type SelectLike = typeof likesTable.$inferSelect;
+
+// ─── Comments ───────────────────────────────────────────────────────────────
+
+export const commentsTable = pgTable('comments', {
+  id: serial('id').primaryKey(),
+  user_id: text('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  post_id: integer('post_id')
+    .notNull()
+    .references(() => postsTable.id, { onDelete: 'cascade' }),
+  body: text('body').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}, (table) => ({
+  postIdIdx: index('comments_post_id_idx').on(table.post_id),
+}));
+
+export type InsertComment = typeof commentsTable.$inferInsert;
+export type SelectComment = typeof commentsTable.$inferSelect;

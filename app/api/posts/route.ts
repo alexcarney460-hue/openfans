@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { postsTable, usersTable, subscriptionsTable, ppvPurchasesTable } from "@/utils/db/schema";
+import { postsTable, usersTable, subscriptionsTable, ppvPurchasesTable, creatorProfilesTable } from "@/utils/db/schema";
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { isValidStorageUrl } from "@/utils/validation";
@@ -221,6 +221,26 @@ export async function POST(request: NextRequest) {
     if (userResult.length === 0 || userResult[0].role !== "creator") {
       return NextResponse.json(
         { error: "Only creators can publish posts", code: "NOT_CREATOR" },
+        { status: 403 },
+      );
+    }
+
+    // Check verification status — creators must be verified to publish
+    const creatorProfile = await db
+      .select({ verification_status: creatorProfilesTable.verification_status })
+      .from(creatorProfilesTable)
+      .where(eq(creatorProfilesTable.user_id, user.id))
+      .limit(1);
+
+    if (
+      creatorProfile.length === 0 ||
+      creatorProfile[0].verification_status !== "verified"
+    ) {
+      return NextResponse.json(
+        {
+          error: "You must verify your identity before publishing content",
+          code: "NOT_VERIFIED",
+        },
         { status: 403 },
       );
     }

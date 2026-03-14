@@ -6,14 +6,25 @@ import {
   DollarSign,
   MessageSquare,
   UserPlus,
-  Wallet,
   Clock,
+  CheckCircle,
+  Unlock,
   Check,
 } from "lucide-react";
 
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+type NotificationType =
+  | "new_subscriber"
+  | "new_tip"
+  | "new_message"
+  | "subscription_expiring"
+  | "payout_completed"
+  | "ppv_purchase";
+
 interface Notification {
   readonly id: number;
-  readonly type: "new_subscriber" | "new_tip" | "new_message" | "subscription_expiring" | "payout_completed";
+  readonly type: NotificationType;
   readonly title: string;
   readonly body: string | null;
   readonly is_read: boolean;
@@ -21,21 +32,29 @@ interface Notification {
   readonly created_at: string;
 }
 
-const ICON_MAP = {
+type FilterTab = "all" | "unread";
+
+// ─── Icon Mapping ───────────────────────────────────────────────────────────
+
+const ICON_MAP: Record<NotificationType, typeof Bell> = {
   new_subscriber: UserPlus,
   new_tip: DollarSign,
   new_message: MessageSquare,
   subscription_expiring: Clock,
-  payout_completed: Wallet,
-} as const;
+  payout_completed: CheckCircle,
+  ppv_purchase: Unlock,
+};
 
-const ICON_COLOR_MAP = {
+const ICON_COLOR_MAP: Record<NotificationType, string> = {
   new_subscriber: "text-[#00AFF0] bg-[#00AFF0]/10",
-  new_tip: "text-[#10b981] bg-[#10b981]/10",
+  new_tip: "text-emerald-500 bg-emerald-500/10",
   new_message: "text-[#00AFF0] bg-[#00AFF0]/10",
-  subscription_expiring: "text-[#f59e0b] bg-[#f59e0b]/10",
-  payout_completed: "text-[#10b981] bg-[#10b981]/10",
-} as const;
+  subscription_expiring: "text-amber-500 bg-amber-500/10",
+  payout_completed: "text-emerald-500 bg-emerald-500/10",
+  ppv_purchase: "text-violet-500 bg-violet-500/10",
+};
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function timeAgo(dateString: string): string {
   const now = new Date();
@@ -61,68 +80,88 @@ function LoadingSpinner() {
   );
 }
 
-export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<readonly Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+// ─── Component ──────────────────────────────────────────────────────────────
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notifications");
-      if (res.ok) {
-        const json = await res.json();
-        setNotifications(json.data ?? []);
+export default function NotificationsPage() {
+  const [notifications, setNotifications] = useState<readonly Notification[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = useCallback(
+    async (filter: FilterTab = "all") => {
+      try {
+        const params = new URLSearchParams({ limit: "50" });
+        if (filter === "unread") {
+          params.set("unread_only", "true");
+        }
+        const res = await fetch(`/api/notifications?${params.toString()}`);
+        if (res.ok) {
+          const json = await res.json();
+          setNotifications(json.data ?? []);
+          setUnreadCount(json.unread_count ?? 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    fetchNotifications(activeTab);
+  }, [fetchNotifications, activeTab]);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const handleTabChange = useCallback((tab: FilterTab) => {
+    setActiveTab(tab);
+    setLoading(true);
+  }, []);
 
   const handleMarkAllRead = useCallback(async () => {
     // Optimistic update
     setNotifications((prev) =>
       prev.map((n) => (n.is_read ? n : { ...n, is_read: true })),
     );
+    setUnreadCount(0);
 
     try {
       await fetch("/api/notifications", {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mark_all_read: true }),
+        body: JSON.stringify({ all: true }),
       });
     } catch (err) {
       console.error("Failed to mark all as read:", err);
-      // Re-fetch on failure to restore correct state
-      fetchNotifications();
+      fetchNotifications(activeTab);
     }
-  }, [fetchNotifications]);
+  }, [fetchNotifications, activeTab]);
 
   const handleMarkRead = useCallback(
     async (id: number) => {
       // Optimistic update
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id && !n.is_read ? { ...n, is_read: true } : n)),
+        prev.map((n) =>
+          n.id === id && !n.is_read ? { ...n, is_read: true } : n,
+        ),
       );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
 
       try {
         await fetch("/api/notifications", {
-          method: "POST",
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ ids: [id] }),
         });
       } catch (err) {
         console.error("Failed to mark as read:", err);
-        fetchNotifications();
+        fetchNotifications(activeTab);
       }
     },
-    [fetchNotifications],
+    [fetchNotifications, activeTab],
   );
 
   if (loading) return <LoadingSpinner />;
@@ -131,9 +170,11 @@ export default function NotificationsPage() {
     <main className="min-h-[calc(100vh-57px)] bg-gray-50">
       <div className="mx-auto max-w-2xl px-4 py-6">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Notifications
+            </h1>
             {unreadCount > 0 && (
               <span className="rounded-full bg-[#00AFF0] px-2.5 py-0.5 text-xs font-bold text-white">
                 {unreadCount}
@@ -152,6 +193,28 @@ export default function NotificationsPage() {
           )}
         </div>
 
+        {/* Filter tabs */}
+        <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
+          {(["all", "unread"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "all" ? "All" : "Unread"}
+              {tab === "unread" && unreadCount > 0 && (
+                <span className="ml-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00AFF0]/15 px-1.5 text-[11px] font-semibold text-[#00AFF0]">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Notification List */}
         {notifications.length > 0 ? (
           <div className="space-y-1" role="list" aria-label="Notifications">
@@ -164,14 +227,11 @@ export default function NotificationsPage() {
                   key={notification.id}
                   onClick={() => handleMarkRead(notification.id)}
                   role="listitem"
-                  className={`
-                    flex w-full items-start gap-3.5 rounded-xl px-4 py-3.5 text-left transition-colors
-                    ${
-                      notification.is_read
-                        ? "hover:bg-gray-50"
-                        : "bg-[#00AFF0]/[0.04] hover:bg-[#00AFF0]/[0.07]"
-                    }
-                  `}
+                  className={`flex w-full items-start gap-3.5 rounded-xl px-4 py-3.5 text-left transition-colors ${
+                    notification.is_read
+                      ? "hover:bg-gray-50"
+                      : "border-l-2 border-[#00AFF0] bg-[#00AFF0]/[0.04] hover:bg-[#00AFF0]/[0.07]"
+                  }`}
                 >
                   {/* Icon */}
                   <div
@@ -183,7 +243,11 @@ export default function NotificationsPage() {
                   {/* Content */}
                   <div className="min-w-0 flex-1">
                     <p
-                      className={`text-sm ${notification.is_read ? "text-gray-600" : "font-medium text-gray-900"}`}
+                      className={`text-sm ${
+                        notification.is_read
+                          ? "text-gray-600"
+                          : "font-medium text-gray-900"
+                      }`}
                     >
                       {notification.title}
                     </p>
@@ -207,14 +271,18 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 border border-gray-200">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-gray-200 bg-gray-100">
               <Bell className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="mb-1 text-base font-medium text-gray-500">
-              No notifications yet
+              {activeTab === "unread"
+                ? "All caught up!"
+                : "No notifications yet"}
             </h3>
             <p className="text-sm text-gray-400">
-              You will see activity here when it happens
+              {activeTab === "unread"
+                ? "You have no unread notifications"
+                : "You will see activity here when it happens"}
             </p>
           </div>
         )}

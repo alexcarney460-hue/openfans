@@ -16,6 +16,9 @@ import {
   Share2,
   Check,
   Copy,
+  ShieldAlert,
+  ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,6 +95,7 @@ export default function DashboardPage() {
   const [postCount, setPostCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
 
   const isCreator = userRole === "creator" || userRole === "admin";
 
@@ -131,10 +135,11 @@ export default function DashboardPage() {
         const isCreatorRole = role === "creator" || role === "admin";
 
         if (isCreatorRole) {
-          const [earningsRes, subscribersRes, postsRes] = await Promise.allSettled([
+          const [earningsRes, subscribersRes, postsRes, verificationRes] = await Promise.allSettled([
             fetch("/api/earnings").then((r) => r.json()),
             fetch("/api/subscribers").then((r) => r.json()),
             fetch(`/api/posts?creator_id=${meRes.data.id}&limit=1`).then((r) => r.ok ? r.json() : null),
+            fetch("/api/verification").then((r) => r.ok ? r.json() : null),
           ]);
 
           if (earningsRes.status === "fulfilled" && earningsRes.value.data) {
@@ -150,6 +155,10 @@ export default function DashboardPage() {
 
           if (postsRes.status === "fulfilled" && postsRes.value?.data) {
             setPostCount(postsRes.value.data.length);
+          }
+
+          if (verificationRes.status === "fulfilled" && verificationRes.value?.data) {
+            setVerificationStatus(verificationRes.value.data.verification_status);
           }
         }
       } catch {
@@ -296,6 +305,57 @@ export default function DashboardPage() {
         postCount={postCount}
         username={username}
       />
+
+      {/* Verification banner */}
+      {verificationStatus && verificationStatus !== "verified" && (
+        <Card className={`border ${
+          verificationStatus === "rejected"
+            ? "border-red-200 bg-red-50"
+            : verificationStatus === "pending"
+              ? "border-amber-200 bg-amber-50"
+              : "border-[#00AFF0]/20 bg-[#00AFF0]/5"
+        }`}>
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              {verificationStatus === "rejected" ? (
+                <ShieldAlert className="h-5 w-5 text-red-500 shrink-0" />
+              ) : verificationStatus === "pending" ? (
+                <ShieldCheck className="h-5 w-5 text-amber-500 shrink-0" />
+              ) : (
+                <ShieldAlert className="h-5 w-5 text-[#00AFF0] shrink-0" />
+              )}
+              <div>
+                <p className={`text-sm font-medium ${
+                  verificationStatus === "rejected"
+                    ? "text-red-700"
+                    : verificationStatus === "pending"
+                      ? "text-amber-700"
+                      : "text-foreground"
+                }`}>
+                  {verificationStatus === "rejected"
+                    ? "Verification rejected -- please resubmit"
+                    : verificationStatus === "pending"
+                      ? "Verification under review"
+                      : "Complete identity verification to start posting"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {verificationStatus === "pending"
+                    ? "Your documents are being reviewed. This usually takes 24-48 hours."
+                    : "You must verify your identity before you can publish content or receive payments."}
+                </p>
+              </div>
+            </div>
+            {verificationStatus !== "pending" && (
+              <Button asChild size="sm" className="bg-[#00AFF0] hover:bg-[#009dd8] shrink-0">
+                <Link href="/dashboard/verification">
+                  Verify Now
+                  <ArrowRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Page header */}
       <div>

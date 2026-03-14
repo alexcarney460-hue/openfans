@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
-import ConversationList from "@/components/ConversationList";
-import MessageBubble from "@/components/MessageBubble";
-import MessageInput from "@/components/MessageInput";
-import {
-  CURRENT_USER,
-  type Conversation,
-  type Message,
-} from "./mock-data";
+import { ArrowLeft, Plus, Search, X } from "lucide-react";
+import ConversationList from "@/components/messages/ConversationList";
+import MessageBubble from "@/components/messages/MessageBubble";
+import MessageInput from "@/components/messages/MessageInput";
+import UserSearchPanel from "@/components/messages/UserSearchPanel";
+import EmptyState from "@/components/messages/EmptyState";
+import DateSeparator from "@/components/messages/DateSeparator";
+import type {
+  Conversation,
+  Message,
+  ApiConversation,
+  ApiMessage,
+} from "./types";
 
 function LoadingSpinner() {
   return (
@@ -28,87 +32,127 @@ function formatTimestamp(iso: string): string {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} min ago`;
-  if (diffHrs < 24) return `${diffHrs} hr ago`;
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHrs < 24) return `${diffHrs}h ago`;
   if (diffDays === 1) return "Yesterday";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-interface ApiConversation {
-  readonly id: number;
-  readonly sender_id: string;
-  readonly receiver_id: string;
-  readonly body: string;
-  readonly media_url: string | null;
-  readonly is_read: boolean;
-  readonly created_at: string;
-  readonly partner_id: string;
-  readonly partner_username: string;
-  readonly partner_display_name: string;
-  readonly partner_avatar_url: string | null;
+function shouldShowDateSeparator(
+  currentIso: string,
+  previousIso: string | null,
+): boolean {
+  if (!previousIso) return true;
+  return (
+    new Date(currentIso).toDateString() !== new Date(previousIso).toDateString()
+  );
 }
 
-interface ApiMessage {
-  readonly id: number;
-  readonly sender_id: string;
-  readonly receiver_id: string;
-  readonly body: string;
-  readonly media_url: string | null;
-  readonly is_paid: boolean;
-  readonly price_usdc: number | null;
-  readonly is_read: boolean;
-  readonly created_at: string;
-}
+let optimisticCounter = -1;
 
 export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | null
+  >(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string>(CURRENT_USER);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [showNewMessage, setShowNewMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Fetch conversation list
+  // ── Fetch current user ──────────────────────────────────────────────────
+
   useEffect(() => {
-    fetch("/api/messages")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
+    fetch("/api/me")
+      .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
-        if (json.data && Array.isArray(json.data)) {
-          const apiConvs = json.data as ApiConversation[];
-          // Determine current user id from the first conversation
-          if (apiConvs.length > 0) {
-            const first = apiConvs[0];
-            const userId = first.sender_id === first.partner_id ? first.receiver_id : first.sender_id;
-            setCurrentUserId(userId);
-          }
+        if (json?.data?.id) setCurrentUserId(json.data.id);
+      })
+      .catch(() => {});
+  }, []);
 
-          const mapped: Conversation[] = apiConvs.map((c) => ({
+  // ── Fetch conversations ─────────────────────────────────────────────────
+
+  const fetchConversations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/messages?limit=50");
+      if (!res.ok) throw new Error("Failed to load");
+      const json = await res.json();
+      const rawData = json.data;
+      const apiConvs: ApiConversation[] = Array.isArray(rawData)
+        ? rawData
+        : rawData?.rows ?? [];
+
+      // Determine current user from first conversation if not yet set
+      if (apiConvs.length > 0 && !currentUserId) {
+        const first = apiConvs[0];
+        const userId =
+          first.sender_id === first.partner_id
+            ? first.receiver_id
+            : first.sender_id;
+        setCurrentUserId(userId);
+      }
+
+      setConversations((prev) => {
+        const mapped: Conversation[] = apiConvs.map((c) => {
+          // Preserve existing messages if the conversation was already loaded
+          const existing = prev.find((p) => p.id === c.partner_id);
+          return {
             id: c.partner_id,
             userId: c.partner_id,
-            userName: c.partner_display_name || c.partner_username,
-            userAvatar: c.partner_avatar_url || `https://api.dicebear.com/9.x/notionists/svg?seed=${c.partner_username}&backgroundColor=00AFF0`,
+            userName:
+              c.partner_display_name || c.partner_username,
+            userUsername: c.partner_username,
+            userAvatar:
+              c.partner_avatar_url ||
+              `https://api.dicebear.com/9.x/notionists/svg?seed=${c.partner_username}&backgroundColor=00AFF0`,
             lastMessage: c.body,
             lastMessageTime: formatTimestamp(c.created_at),
-            unreadCount: c.is_read ? 0 : 1,
-            messages: [],
-          }));
-          setConversations(mapped);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to load messages. Please try again.");
-        setLoading(false);
+            unreadCount: c.unread_count ?? (c.is_read ? 0 : 1),
+            messages: existing?.messages ?? [],
+          };
+        });
+        return mapped;
       });
-  }, []);
+    } catch {
+      setError("Failed to load messages. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // ── Poll for updates ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    pollTimerRef.current = setInterval(() => {
+      fetchConversations();
+      // If viewing a conversation, also refresh its messages
+      if (activeConversationId) {
+        fetchMessagesForConversation(activeConversationId, true);
+      }
+    }, 5000);
+
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversationId]);
+
+  // ── Active conversation ─────────────────────────────────────────────────
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeConversationId) ?? null,
-    [conversations, activeConversationId]
+    [conversations, activeConversationId],
   );
+
+  // ── Auto-scroll ─────────────────────────────────────────────────────────
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -118,55 +162,125 @@ export default function MessagesPage() {
     scrollToBottom();
   }, [activeConversation?.messages.length, scrollToBottom]);
 
-  // When a conversation is selected, fetch its messages
-  const handleSelectConversation = useCallback((conversationId: string) => {
-    setActiveConversationId(conversationId);
+  // ── Fetch messages for a conversation ───────────────────────────────────
 
-    fetch(`/api/messages?with=${conversationId}&limit=50`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.data && Array.isArray(json.data)) {
-          const apiMessages = json.data as ApiMessage[];
-          const mapped: Message[] = apiMessages
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            .map((m) => ({
-              id: `msg-${m.id}`,
-              senderId: m.sender_id,
-              text: m.body,
-              timestamp: formatTimestamp(m.created_at),
-              mediaUrl: m.media_url ?? undefined,
-              tipAmount: m.price_usdc ? m.price_usdc / 100 : undefined,
-            }));
+  const fetchMessagesForConversation = useCallback(
+    async (partnerId: string, silent = false) => {
+      if (!silent) setLoadingMessages(true);
+      try {
+        const res = await fetch(`/api/messages/${partnerId}?limit=100`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json.data || !Array.isArray(json.data)) return;
 
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === conversationId
-                ? { ...conv, messages: mapped }
-                : conv
-            )
-          );
-        }
-      })
-      .catch(() => {
-        // Silently fail - conversation stays with empty messages
-      });
-  }, []);
+        const apiMessages = json.data as ApiMessage[];
+        const mapped: Message[] = apiMessages.map((m) => ({
+          id: `msg-${m.id}`,
+          numericId: m.id,
+          senderId: m.sender_id,
+          text: m.body,
+          timestamp: formatTimestamp(m.created_at),
+          rawTimestamp: m.created_at,
+          mediaUrl: m.media_url ?? undefined,
+          tipAmount: m.price_usdc ? m.price_usdc / 100 : undefined,
+          isRead: m.is_read,
+          isFailed: false,
+          isOptimistic: false,
+        }));
+
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === partnerId
+              ? { ...conv, messages: mapped, unreadCount: 0 }
+              : conv,
+          ),
+        );
+      } catch {
+        // Silently fail on poll
+      } finally {
+        if (!silent) setLoadingMessages(false);
+      }
+    },
+    [],
+  );
+
+  // ── Select conversation ─────────────────────────────────────────────────
+
+  const handleSelectConversation = useCallback(
+    (conversationId: string) => {
+      setActiveConversationId(conversationId);
+      setShowNewMessage(false);
+      fetchMessagesForConversation(conversationId);
+    },
+    [fetchMessagesForConversation],
+  );
+
+  // ── Start new conversation with user ────────────────────────────────────
+
+  const handleSelectUser = useCallback(
+    (user: {
+      id: string;
+      username: string;
+      display_name: string;
+      avatar_url: string | null;
+    }) => {
+      setShowNewMessage(false);
+
+      // Check if conversation already exists
+      const existing = conversations.find((c) => c.id === user.id);
+      if (existing) {
+        handleSelectConversation(user.id);
+        return;
+      }
+
+      // Create a synthetic conversation
+      const newConvo: Conversation = {
+        id: user.id,
+        userId: user.id,
+        userName: user.display_name || user.username,
+        userUsername: user.username,
+        userAvatar:
+          user.avatar_url ||
+          `https://api.dicebear.com/9.x/notionists/svg?seed=${user.username}&backgroundColor=00AFF0`,
+        lastMessage: "",
+        lastMessageTime: "",
+        unreadCount: 0,
+        messages: [],
+      };
+
+      setConversations((prev) => [newConvo, ...prev]);
+      setActiveConversationId(user.id);
+    },
+    [conversations, handleSelectConversation],
+  );
+
+  // ── Back to list (mobile) ───────────────────────────────────────────────
 
   const handleBackToList = useCallback(() => {
     setActiveConversationId(null);
   }, []);
 
-  const handleSendMessage = useCallback(
-    (text: string, tipAmount?: number) => {
-      if (!activeConversationId) return;
+  // ── Send message ────────────────────────────────────────────────────────
 
-      // Optimistically add message to UI
-      const newMessage: Message = {
-        id: `msg-${Date.now()}`,
+  const handleSendMessage = useCallback(
+    async (text: string, tipAmount?: number) => {
+      if (!activeConversationId || !currentUserId) return;
+
+      const optimisticId = `msg-opt-${optimisticCounter--}`;
+      const now = new Date().toISOString();
+
+      // Optimistic message
+      const optimisticMsg: Message = {
+        id: optimisticId,
+        numericId: optimisticCounter,
         senderId: currentUserId,
         text,
         timestamp: "Just now",
+        rawTimestamp: now,
         tipAmount,
+        isRead: false,
+        isFailed: false,
+        isOptimistic: true,
       };
 
       setConversations((prev) =>
@@ -174,58 +288,134 @@ export default function MessagesPage() {
           conv.id === activeConversationId
             ? {
                 ...conv,
-                messages: [...conv.messages, newMessage],
+                messages: [...conv.messages, optimisticMsg],
                 lastMessage: text,
                 lastMessageTime: "Just now",
               }
-            : conv
-        )
+            : conv,
+        ),
       );
 
-      // Send to API
-      fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receiver_id: activeConversationId,
-          body: text,
-          is_paid: tipAmount != null && tipAmount > 0,
-          price_usdc: tipAmount ? Math.round(tipAmount * 100) : undefined,
-        }),
-      }).catch(() => {
-        // Message send failed - could show error toast
-      });
+      try {
+        const res = await fetch(`/api/messages/${activeConversationId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            body: text,
+            is_paid: tipAmount != null && tipAmount > 0,
+            price_usdc: tipAmount ? Math.round(tipAmount * 100) : undefined,
+          }),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const real = json.data as ApiMessage;
+
+          // Replace optimistic with real message
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.id === activeConversationId
+                ? {
+                    ...conv,
+                    messages: conv.messages.map((m) =>
+                      m.id === optimisticId
+                        ? {
+                            ...m,
+                            id: `msg-${real.id}`,
+                            numericId: real.id,
+                            timestamp: formatTimestamp(real.created_at),
+                            rawTimestamp: real.created_at,
+                            isOptimistic: false,
+                          }
+                        : m,
+                    ),
+                  }
+                : conv,
+            ),
+          );
+
+          // Refresh conversation list
+          fetchConversations();
+        } else {
+          // Mark as failed
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.id === activeConversationId
+                ? {
+                    ...conv,
+                    messages: conv.messages.map((m) =>
+                      m.id === optimisticId ? { ...m, isFailed: true } : m,
+                    ),
+                  }
+                : conv,
+            ),
+          );
+        }
+      } catch {
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === activeConversationId
+              ? {
+                  ...conv,
+                  messages: conv.messages.map((m) =>
+                    m.id === optimisticId ? { ...m, isFailed: true } : m,
+                  ),
+                }
+              : conv,
+          ),
+        );
+      }
     },
-    [activeConversationId, currentUserId]
+    [activeConversationId, currentUserId, fetchConversations],
   );
+
+  // ── Render ──────────────────────────────────────────────────────────────
 
   if (loading) return <LoadingSpinner />;
 
   if (error) {
     return (
-      <main className="flex h-[calc(100vh-57px)] items-center justify-center bg-gray-50">
+      <main className="flex h-[calc(100vh-5rem)] items-center justify-center">
         <div className="text-center">
           <p className="text-sm text-red-400">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              fetchConversations();
+            }}
+            className="mt-2 text-sm text-[#00AFF0] hover:underline"
+          >
+            Retry
+          </button>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="flex h-[calc(100vh-57px)] overflow-hidden bg-gray-50">
+    <main className="flex h-[calc(100vh-5rem)] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       {/* Left Panel - Conversation List */}
       <div
         className={`
           w-full flex-shrink-0 border-r border-gray-200 bg-white
-          md:w-[340px] lg:w-[380px]
+          md:w-[320px] md:min-w-[320px]
           ${activeConversationId ? "hidden md:flex md:flex-col" : "flex flex-col"}
         `}
       >
-        <ConversationList
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          onSelectConversation={handleSelectConversation}
-        />
+        {showNewMessage ? (
+          <UserSearchPanel
+            onSelectUser={handleSelectUser}
+            onClose={() => setShowNewMessage(false)}
+          />
+        ) : (
+          <ConversationList
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewMessage={() => setShowNewMessage(true)}
+          />
+        )}
       </div>
 
       {/* Right Panel - Active Conversation */}
@@ -238,7 +428,7 @@ export default function MessagesPage() {
         {activeConversation ? (
           <>
             {/* Conversation Header */}
-            <div className="flex items-center gap-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-gray-100 bg-white/80 px-4 py-3 backdrop-blur-sm">
               <button
                 onClick={handleBackToList}
                 className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
@@ -255,10 +445,14 @@ export default function MessagesPage() {
               />
 
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold text-gray-900 truncate">
+                <h3 className="truncate text-sm font-semibold text-gray-900">
                   {activeConversation.userName}
                 </h3>
-                <p className="text-xs text-gray-500">Online</p>
+                {activeConversation.userUsername && (
+                  <p className="truncate text-xs text-gray-500">
+                    @{activeConversation.userUsername}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -268,13 +462,46 @@ export default function MessagesPage() {
               role="list"
               aria-label="Messages"
             >
-              {activeConversation.messages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  isSent={message.senderId === currentUserId}
-                />
-              ))}
+              {loadingMessages && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#00AFF0]" />
+                </div>
+              )}
+
+              {!loadingMessages &&
+                activeConversation.messages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <p className="text-sm text-gray-400">
+                      No messages yet. Say hello!
+                    </p>
+                  </div>
+                )}
+
+              {!loadingMessages &&
+                activeConversation.messages.map((message, idx) => {
+                  const prevMsg =
+                    idx > 0
+                      ? activeConversation.messages[idx - 1]
+                      : null;
+                  const showDate =
+                    message.rawTimestamp &&
+                    shouldShowDateSeparator(
+                      message.rawTimestamp,
+                      prevMsg?.rawTimestamp ?? null,
+                    );
+
+                  return (
+                    <div key={message.id}>
+                      {showDate && message.rawTimestamp && (
+                        <DateSeparator dateIso={message.rawTimestamp} />
+                      )}
+                      <MessageBubble
+                        message={message}
+                        isSent={message.senderId === currentUserId}
+                      />
+                    </div>
+                  );
+                })}
               <div ref={messagesEndRef} />
             </div>
 
@@ -282,30 +509,7 @@ export default function MessagesPage() {
             <MessageInput onSendMessage={handleSendMessage} />
           </>
         ) : (
-          /* Empty State */
-          <div className="flex flex-1 flex-col items-center justify-center px-4">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 border border-gray-200">
-              <svg
-                className="h-8 w-8 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
-                />
-              </svg>
-            </div>
-            <h3 className="mb-1 text-base font-medium text-gray-500">
-              Select a conversation
-            </h3>
-            <p className="text-sm text-gray-400">
-              Choose someone from the left to start chatting
-            </p>
-          </div>
+          <EmptyState />
         )}
       </div>
     </main>

@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Analytics", icon: BarChart3 },
   { href: "/admin/payouts", label: "Payouts", icon: Wallet },
   { href: "/admin/creators", label: "Creators", icon: Users },
+  { href: "/admin/verification", label: "Verification", icon: Shield },
 ] as const;
 
 export default function AdminLayout({

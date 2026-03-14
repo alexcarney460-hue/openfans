@@ -50,6 +50,7 @@ export type TranslationKey =
   | "dash.affiliates"
   | "dash.referrals"
   | "dash.notifications"
+  | "dash.verification"
   | "dash.settings"
   | "dash.accountType"
   | "dash.admin"
@@ -113,6 +114,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "Affiliates",
     "dash.referrals": "Referrals",
     "dash.notifications": "Notifications",
+    "dash.verification": "Verification",
     "dash.settings": "Settings",
     "dash.accountType": "Account Type",
     "dash.admin": "Admin",
@@ -174,6 +176,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "Afiliados",
     "dash.referrals": "Referidos",
     "dash.notifications": "Notificaciones",
+    "dash.verification": "Verificacion",
     "dash.settings": "Configuracion",
     "dash.accountType": "Tipo de cuenta",
     "dash.admin": "Administrador",
@@ -235,6 +238,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "Affilies",
     "dash.referrals": "Parrainages",
     "dash.notifications": "Notifications",
+    "dash.verification": "Verification",
     "dash.settings": "Parametres",
     "dash.accountType": "Type de compte",
     "dash.admin": "Administrateur",
@@ -296,6 +300,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "Afiliados",
     "dash.referrals": "Indicacoes",
     "dash.notifications": "Notificacoes",
+    "dash.verification": "Verificacao",
     "dash.settings": "Configuracoes",
     "dash.accountType": "Tipo de conta",
     "dash.admin": "Administrador",
@@ -357,6 +362,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "Affiliates",
     "dash.referrals": "Empfehlungen",
     "dash.notifications": "Benachrichtigungen",
+    "dash.verification": "Verifizierung",
     "dash.settings": "Einstellungen",
     "dash.accountType": "Kontotyp",
     "dash.admin": "Administrator",
@@ -418,6 +424,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "\u30A2\u30D5\u30A3\u30EA\u30A8\u30A4\u30C8",
     "dash.referrals": "\u7D39\u4ECB",
     "dash.notifications": "\u901A\u77E5",
+    "dash.verification": "\u672C\u4EBA\u78BA\u8A8D",
     "dash.settings": "\u8A2D\u5B9A",
     "dash.accountType": "\u30A2\u30AB\u30A6\u30F3\u30C8\u30BF\u30A4\u30D7",
     "dash.admin": "\u7BA1\u7406\u8005",
@@ -478,6 +485,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "\u8054\u76DF",
     "dash.referrals": "\u63A8\u8350",
     "dash.notifications": "\u901A\u77E5",
+    "dash.verification": "\u8EAB\u4EFD\u9A8C\u8BC1",
     "dash.settings": "\u8BBE\u7F6E",
     "dash.accountType": "\u8D26\u6237\u7C7B\u578B",
     "dash.admin": "\u7BA1\u7406\u5458",
@@ -539,6 +547,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "\uC81C\uD734",
     "dash.referrals": "\uCD94\uCC9C",
     "dash.notifications": "\uC54C\uB9BC",
+    "dash.verification": "\uBCF8\uC778\uC778\uC99D",
     "dash.settings": "\uC124\uC815",
     "dash.accountType": "\uACC4\uC815 \uC720\uD615",
     "dash.admin": "\uAD00\uB9AC\uC790",
@@ -600,6 +609,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "\u0627\u0644\u062A\u0633\u0648\u064A\u0642 \u0628\u0627\u0644\u0639\u0645\u0648\u0644\u0629",
     "dash.referrals": "\u0627\u0644\u0625\u062D\u0627\u0644\u0627\u062A",
     "dash.notifications": "\u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A",
+    "dash.verification": "\u0627\u0644\u062A\u062D\u0642\u0642",
     "dash.settings": "\u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A",
     "dash.accountType": "\u0646\u0648\u0639 \u0627\u0644\u062D\u0633\u0627\u0628",
     "dash.admin": "\u0645\u0633\u0624\u0648\u0644",
@@ -661,6 +671,7 @@ const translations: Record<LanguageCode, TranslationMap> = {
     "dash.affiliates": "\u041F\u0430\u0440\u0442\u043D\u0435\u0440\u044B",
     "dash.referrals": "\u0420\u0435\u0444\u0435\u0440\u0430\u043B\u044B",
     "dash.notifications": "\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F",
+    "dash.verification": "\u0412\u0435\u0440\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F",
     "dash.settings": "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438",
     "dash.accountType": "\u0422\u0438\u043F \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430",
     "dash.admin": "\u0410\u0434\u043C\u0438\u043D\u0438\u0441\u0442\u0440\u0430\u0442\u043E\u0440",

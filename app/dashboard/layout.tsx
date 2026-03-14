@@ -25,11 +25,13 @@ import {
   Compass,
   Heart,
   Share2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
 import { useLanguage } from "@/utils/i18n/context";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import NotificationBell from "@/components/NotificationBell";
 import type { TranslationKey } from "@/utils/i18n/translations";
 
 type NavItem = {
@@ -53,6 +55,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/wallet", labelKey: "dash.wallet", icon: Wallet },
   { href: "/dashboard/affiliate", labelKey: "dash.affiliates", icon: Gift, creatorOnly: true },
   { href: "/dashboard/referrals", labelKey: "dash.referrals", icon: Share2, creatorOnly: true },
+  { href: "/dashboard/verification", labelKey: "dash.verification", icon: ShieldCheck, creatorOnly: true },
   { href: "/dashboard/notifications", labelKey: "dash.notifications", icon: Bell },
   { href: "/dashboard/settings", labelKey: "dash.settings", icon: Settings },
 ];
@@ -69,7 +72,8 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [sidebarUnreadCount, setSidebarUnreadCount] = useState(0);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<{
     username: string;
     display_name: string;
@@ -94,20 +98,40 @@ export default function DashboardLayout({
     loadUser();
   }, []);
 
-  // Fetch unread notification count on mount and when path changes
+  // Poll unread notification count for sidebar badge
   useEffect(() => {
-    async function loadUnreadCount() {
+    async function fetchCount() {
       try {
-        const res = await fetch("/api/notifications?unread_only=true");
+        const res = await fetch("/api/notifications?count_only=true");
         if (res.ok) {
           const json = await res.json();
-          setUnreadNotifCount(Array.isArray(json.data) ? json.data.length : 0);
+          setSidebarUnreadCount(json.data?.unread_count ?? 0);
         }
-      } catch (err) {
-        console.error("Failed to load notification count:", err);
+      } catch {
+        // Silently ignore polling failures
       }
     }
-    loadUnreadCount();
+    fetchCount();
+    const interval = setInterval(fetchCount, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Poll unread message count for sidebar badge
+  useEffect(() => {
+    async function fetchMsgCount() {
+      try {
+        const res = await fetch("/api/messages/unread");
+        if (res.ok) {
+          const json = await res.json();
+          setUnreadMsgCount(json.data?.count ?? 0);
+        }
+      } catch {
+        // Silently ignore polling failures
+      }
+    }
+    fetchMsgCount();
+    const interval = setInterval(fetchMsgCount, 15_000);
+    return () => clearInterval(interval);
   }, [pathname]);
 
   // Close user menu when clicking outside
@@ -217,7 +241,32 @@ export default function DashboardLayout({
                   )}
                 />
                 {!collapsed && <span>{t(item.labelKey)}</span>}
-                {active && !collapsed && (
+                {/* Unread badge for notifications nav item */}
+                {!collapsed &&
+                  item.href === "/dashboard/notifications" &&
+                  sidebarUnreadCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00AFF0] px-1.5 text-[10px] font-bold text-white">
+                      {sidebarUnreadCount > 99
+                        ? "99+"
+                        : sidebarUnreadCount}
+                    </span>
+                  )}
+                {/* Unread badge for messages nav item */}
+                {!collapsed &&
+                  item.href === "/dashboard/messages" &&
+                  unreadMsgCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00AFF0] px-1.5 text-[10px] font-bold text-white">
+                      {unreadMsgCount > 99
+                        ? "99+"
+                        : unreadMsgCount}
+                    </span>
+                  )}
+                {active && !collapsed && (() => {
+                  // Don't show the active dot if a badge is already shown
+                  if (item.href === "/dashboard/notifications" && sidebarUnreadCount > 0) return false;
+                  if (item.href === "/dashboard/messages" && unreadMsgCount > 0) return false;
+                  return true;
+                })() && (
                   <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#00AFF0]" />
                 )}
               </Link>
@@ -266,21 +315,7 @@ export default function DashboardLayout({
             <LanguageSelector compact />
 
             {/* Notifications */}
-            <Link href="/dashboard/notifications">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative text-muted-foreground hover:text-foreground"
-                aria-label={t("dash.notifications")}
-              >
-                <Bell className="h-5 w-5" />
-                {unreadNotifCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#00AFF0] text-[10px] font-bold text-white">
-                    {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
+            <NotificationBell label={t("dash.notifications")} />
 
             {/* User avatar with dropdown */}
             <div className="relative" ref={userMenuRef}>

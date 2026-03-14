@@ -12,6 +12,7 @@ import {
   Lock,
   DollarSign,
   Eye,
+  MessageCircle,
 } from "lucide-react";
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 import { TipModal } from "@/components/TipModal";
@@ -500,6 +501,13 @@ export default function CreatorProfileClient() {
                         <Heart className="h-4 w-4" />
                         <span className="text-xs">{formatNumber(post.likes_count)}</span>
                       </span>
+                      <Link
+                        href={`/${creator.username}/post/${post.id}`}
+                        className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-[#00AFF0]"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        <span className="text-xs">{formatNumber(post.comments_count)}</span>
+                      </Link>
                       <span className="flex items-center gap-1.5 text-gray-400">
                         <Eye className="h-4 w-4" />
                         <span className="text-xs">{formatNumber(post.views_count)}</span>
