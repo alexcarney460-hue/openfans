@@ -237,11 +237,32 @@ export default function AdminDashboard() {
       const res = await fetch("/api/admin/analytics");
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        setError(json.error ?? `Error ${res.status}`);
+        setError(json.debug ?? json.error ?? `Error ${res.status}`);
         return;
       }
       const json = await res.json();
       setData(json.data);
+
+      // Fetch wallet balance separately (slower RPC call)
+      fetch("/api/admin/wallet-balance")
+        .then((r) => r.json())
+        .then((wj) => {
+          if (wj.data) {
+            setData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    revenue: {
+                      ...prev.revenue,
+                      hot_wallet_balance_usdc: wj.data.balance_usdc,
+                      hot_wallet_configured: wj.data.configured,
+                    },
+                  }
+                : prev,
+            );
+          }
+        })
+        .catch(() => {});
     } catch {
       setError("Failed to load analytics");
     } finally {
