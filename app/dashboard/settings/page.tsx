@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Wallet, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletReadyState } from "@solana/wallet-adapter-base";
 
 interface ToggleSwitchProps {
   enabled: boolean;
@@ -76,26 +77,37 @@ export default function SettingsPage() {
   const { publicKey, connected, connecting, wallet, wallets, select, connect } = useWallet();
 
   const handleConnectWallet = useCallback(async () => {
+    const installed = wallets.filter(
+      (w) =>
+        w.readyState === WalletReadyState.Installed ||
+        w.readyState === WalletReadyState.Loadable,
+    );
+    const phantom = installed.find((w) =>
+      w.adapter.name.toLowerCase().includes("phantom"),
+    );
+    const target = phantom ?? installed[0];
+
+    if (!target) {
+      setSaveMessage("No wallet found. Install the Phantom browser extension to continue.");
+      return;
+    }
+
     try {
-      const phantom = wallets.find((w) =>
-        w.adapter.name.toLowerCase().includes("phantom"),
-      );
-      const target = phantom ?? wallets[0];
-
-      if (!target) {
-        window.open("https://phantom.app/", "_blank");
-        return;
-      }
-
       select(target.adapter.name);
     } catch {
       setSaveMessage("Failed to connect wallet.");
     }
   }, [wallets, select]);
 
-  // Auto-connect after selecting a wallet
+  // Auto-connect after selecting a wallet (only if actually installed)
   useEffect(() => {
-    if (wallet && !connected && !connecting) {
+    if (
+      wallet &&
+      !connected &&
+      !connecting &&
+      (wallet.readyState === WalletReadyState.Installed ||
+        wallet.readyState === WalletReadyState.Loadable)
+    ) {
       connect().catch(() => {});
     }
   }, [wallet, connected, connecting, connect]);

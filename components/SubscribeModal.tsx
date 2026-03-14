@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useConnection } from "@solana/wallet-adapter-react";
+import { WalletReadyState } from "@solana/wallet-adapter-base";
 import {
   PublicKey,
   Transaction,
@@ -93,9 +94,15 @@ export function SubscribeModal({
     }
   }, [isOpen]);
 
-  // Auto-connect after selecting a wallet
+  // Auto-connect after selecting a wallet (only if actually installed)
   useEffect(() => {
-    if (wallet && !connected && !connecting) {
+    if (
+      wallet &&
+      !connected &&
+      !connecting &&
+      (wallet.readyState === WalletReadyState.Installed ||
+        wallet.readyState === WalletReadyState.Loadable)
+    ) {
       connect().catch(() => {});
     }
   }, [wallet, connected, connecting, connect]);
@@ -113,20 +120,24 @@ export function SubscribeModal({
       return;
     }
 
+    // Find an installed wallet (Phantom preferred)
+    const installed = wallets.filter(
+      (w) =>
+        w.readyState === WalletReadyState.Installed ||
+        w.readyState === WalletReadyState.Loadable,
+    );
+    const phantom = installed.find((w) =>
+      w.adapter.name.toLowerCase().includes("phantom"),
+    );
+    const target = phantom ?? installed[0];
+
+    if (!target) {
+      setTxState({ status: "error", message: "No wallet found. Install the Phantom browser extension to continue." });
+      return;
+    }
+
     try {
-      // Direct connect — find Phantom or first available wallet, skip modal
-      const phantom = wallets.find((w) =>
-        w.adapter.name.toLowerCase().includes("phantom"),
-      );
-      const target = phantom ?? wallets[0];
-
-      if (!target) {
-        window.open("https://phantom.app/", "_blank");
-        return;
-      }
-
       select(target.adapter.name);
-      // connect() is triggered by the useEffect below after select
     } catch {
       setTxState({ status: "error", message: "Failed to connect wallet" });
     }

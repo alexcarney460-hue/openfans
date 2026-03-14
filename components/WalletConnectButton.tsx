@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { cn } from "@/lib/utils";
 
 interface WalletConnectButtonProps {
@@ -45,31 +46,40 @@ export default function WalletConnectButton({
       return;
     }
 
+    // Find an installed wallet (Phantom preferred)
+    const installed = wallets.filter(
+      (w) =>
+        w.readyState === WalletReadyState.Installed ||
+        w.readyState === WalletReadyState.Loadable,
+    );
+    const phantom = installed.find((w) =>
+      w.adapter.name.toLowerCase().includes("phantom"),
+    );
+    const target = phantom ?? installed[0];
+
+    if (!target) {
+      // No wallet extension found — show install prompt, don't redirect
+      setError("No wallet found. Install the Phantom browser extension to continue.");
+      return;
+    }
+
     try {
-      // Try to find Phantom first, fall back to any available wallet
-      const phantom = wallets.find((w) =>
-        w.adapter.name.toLowerCase().includes("phantom"),
-      );
-      const target = phantom ?? wallets[0];
-
-      if (!target) {
-        // No wallets detected at all — send them to install Phantom
-        window.open("https://phantom.app/", "_blank");
-        return;
-      }
-
-      // Select + connect in one flow — no modal needed
       select(target.adapter.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to connect");
     }
   }, [wallets, select]);
 
-  // Auto-connect after selecting a wallet
+  // Auto-connect after selecting a wallet (only if it's actually installed)
   useEffect(() => {
-    if (wallet && !connected && !connecting) {
+    if (
+      wallet &&
+      !connected &&
+      !connecting &&
+      (wallet.readyState === WalletReadyState.Installed ||
+        wallet.readyState === WalletReadyState.Loadable)
+    ) {
       connect().catch((err) => {
-        // User rejected or wallet error
         if (err instanceof Error && !err.message.includes("User rejected")) {
           setError(err.message);
         }
