@@ -81,14 +81,36 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
-  const { publicKey, connected, connecting } = useWallet();
+  const { publicKey, connected, connecting, select, connect, wallets } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const track = useTrack();
+  const [walletError, setWalletError] = useState<string | null>(null);
 
-  const handleConnectWallet = useCallback(() => {
+  const handleConnectWallet = useCallback(async () => {
     track("wallet_connect_click");
+    setWalletError(null);
+
+    // Try direct connect to Phantom first (most common)
+    const phantom = wallets.find(
+      (w) => w.adapter.name === "Phantom" && w.adapter.readyState === "Installed"
+    );
+
+    if (phantom) {
+      try {
+        select(phantom.adapter.name);
+        // Small delay to let select() update state
+        await new Promise((r) => setTimeout(r, 100));
+        await connect();
+        return;
+      } catch (err) {
+        console.error("Direct connect failed:", err);
+        // Fall through to modal
+      }
+    }
+
+    // Fallback: open the wallet selection modal
     setWalletModalVisible(true);
-  }, [setWalletModalVisible, track]);
+  }, [wallets, select, connect, setWalletModalVisible, track]);
 
   // When wallet connects via adapter, save the address to the user profile
   useEffect(() => {

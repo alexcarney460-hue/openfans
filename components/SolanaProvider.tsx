@@ -31,7 +31,13 @@ export default function SolanaProvider({ children }: SolanaProviderProps) {
 
   return (
     <ConnectionProvider endpoint={SOLANA_RPC_ENDPOINT}>
-      <WalletProvider wallets={wallets}>
+      <WalletProvider
+        wallets={wallets}
+        autoConnect={false}
+        onError={(error) => {
+          console.error("Wallet error:", error.message);
+        }}
+      >
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
