@@ -315,17 +315,15 @@ export async function GET() {
     const dailyPlatformFees = actualPlatformFeesTodayResult[0]?.total ?? 0;
     const dailyCreatorEarnings = dailyTotalRevenue - dailyPlatformFees;
 
-    // On-chain hot wallet balance
+    // On-chain hot wallet balance (non-blocking — don't let RPC delays kill the response)
     const platformWalletAddress = process.env.NEXT_PUBLIC_PLATFORM_WALLET;
     let hotWalletBalanceUsdc = 0;
-    let hotWalletConfigured = false;
+    const hotWalletConfigured = !!platformWalletAddress;
     if (platformWalletAddress) {
-      hotWalletConfigured = true;
       try {
         hotWalletBalanceUsdc = await getOnChainUsdcBalance(platformWalletAddress);
-      } catch (err) {
-        console.error("Failed to fetch on-chain wallet balance:", err);
-        // Return 0 balance but still mark as configured
+      } catch {
+        // Silently fall back to 0 — RPC may be slow or rate-limited
       }
     }
 

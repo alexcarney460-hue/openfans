@@ -16,9 +16,14 @@ export async function getOnChainUsdcBalance(
   const wallet = new PublicKey(walletAddress);
   const mint = new PublicKey(USDC_MINT);
 
-  const tokenAccounts = await connection.getParsedTokenAccountsByOwner(wallet, {
-    mint,
-  });
+  // Add a timeout to prevent hanging in serverless environments
+  const timeoutMs = 5_000;
+  const tokenAccounts = await Promise.race([
+    connection.getParsedTokenAccountsByOwner(wallet, { mint }),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Solana RPC timeout")), timeoutMs),
+    ),
+  ]);
 
   // Use raw integer amounts via BigInt to avoid floating point precision errors.
   // USDC has 6 decimals, so 1 USDC = 1_000_000 raw units.
