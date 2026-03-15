@@ -10,6 +10,14 @@
  */
 
 // ---------------------------------------------------------------------------
+// HTML escaping — prevents injection of user-controlled values into templates
+// ---------------------------------------------------------------------------
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ---------------------------------------------------------------------------
 // Template
 // ---------------------------------------------------------------------------
 
@@ -129,7 +137,7 @@ export function sendNewSubscriberEmail(
   sendEmail({
     to: creatorEmail,
     subject: "You have a new subscriber!",
-    body: `<strong>@${subscriberName}</strong> just subscribed to your page. Keep creating great content!`,
+    body: `<strong>@${escapeHtml(subscriberName)}</strong> just subscribed to your page. Keep creating great content!`,
   }).catch(() => {});
 }
 
@@ -143,8 +151,8 @@ export function sendNewTipEmail(
 ): void {
   sendEmail({
     to: creatorEmail,
-    subject: `You received a $${amountDollars} tip!`,
-    body: `<strong>@${tipperName}</strong> tipped you <strong>$${amountDollars} USDC</strong>. Nice work!`,
+    subject: `You received a $${escapeHtml(amountDollars)} tip!`,
+    body: `<strong>@${escapeHtml(tipperName)}</strong> tipped you <strong>$${escapeHtml(amountDollars)} USDC</strong>. Nice work!`,
   }).catch(() => {});
 }
 
@@ -157,8 +165,8 @@ export function sendPayoutCompletedEmail(
 ): void {
   sendEmail({
     to: creatorEmail,
-    subject: `Your payout of $${amountDollars} has been sent`,
-    body: `Your payout of <strong>$${amountDollars} USDC</strong> has been sent to your wallet. It should arrive shortly.`,
+    subject: `Your payout of $${escapeHtml(amountDollars)} has been sent`,
+    body: `Your payout of <strong>$${escapeHtml(amountDollars)} USDC</strong> has been sent to your wallet. It should arrive shortly.`,
   }).catch(() => {});
 }
 
@@ -173,6 +181,6 @@ export function sendPpvPurchaseEmail(
   sendEmail({
     to: creatorEmail,
     subject: "Someone purchased your post!",
-    body: `Someone just unlocked your post "<strong>${postTitle}</strong>" for <strong>$${amountDollars} USDC</strong>.`,
+    body: `Someone just unlocked your post "<strong>${escapeHtml(postTitle)}</strong>" for <strong>$${escapeHtml(amountDollars)} USDC</strong>.`,
   }).catch(() => {});
 }

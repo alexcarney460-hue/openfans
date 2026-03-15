@@ -32,7 +32,7 @@ USER_AGENT = (
 )
 BROWSER_PROFILE = str(Path.home() / ".ig_of_bot")
 BASE = Path(__file__).resolve().parent.parent
-HANDLES_FILE = str(BASE / "content" / "ig-of-handles.txt")
+HANDLES_FILE = str(BASE / "content" / "ig-high-traffic.txt")
 COMMENT_LOG = str(BASE / "logs" / "comment-outreach.jsonl")
 DM_LOG = str(BASE / "logs" / "dm-outreach.jsonl")
 

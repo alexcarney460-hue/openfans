@@ -43,8 +43,8 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/131.0.0.0 Safari/537.36"
 )
-MIN_DELAY = 42    # 42 seconds between comments
-MAX_DELAY = 48    # slight randomization
+MIN_DELAY = 30    # 30 seconds between comments
+MAX_DELAY = 36    # slight randomization
 MAX_COMMENTS = 100  # per batch
 BATCH_PAUSE = 300  # 5 min pause between batches of 100
 LOG_FILE = str(Path(__file__).parent.parent / "logs" / "comment-outreach.jsonl")
@@ -376,7 +376,7 @@ if __name__ == "__main__":
         targets = [args.target]
     else:
         # Load from scraped handles file if it exists, otherwise use built-in list
-        handles_file = Path(__file__).parent.parent / "content" / "ig-of-handles.txt"
+        handles_file = Path(__file__).parent.parent / "content" / "ig-high-traffic.txt"
         if handles_file.exists():
             with open(handles_file, "r") as f:
                 file_targets = [line.strip() for line in f if line.strip()]

@@ -159,6 +159,11 @@ export async function POST(
           VALUES (${streamId}, ${user.id}, ${ticketPrice}, ${purchaseTx})
         `);
 
+        // 3b. Record in used_payment_transactions for cross-table dedup
+        await tx.execute(sql`
+          INSERT INTO used_payment_transactions (payment_tx, type, user_id) VALUES (${purchaseTx}, 'stream_ticket', ${user.id})
+        `);
+
         // 4. Ensure creator wallet exists
         const existingCreatorWallet = await tx
           .select()

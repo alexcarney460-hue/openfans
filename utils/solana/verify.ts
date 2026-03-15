@@ -31,7 +31,7 @@ function getConnection(): Connection {
   const rpcUrl =
     process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
     "https://api.mainnet-beta.solana.com";
-  return new Connection(rpcUrl, "confirmed");
+  return new Connection(rpcUrl, "finalized");
 }
 
 /**
@@ -99,7 +99,7 @@ export async function verifyTransaction(
   try {
     parsedTx = await connection.getParsedTransaction(txSignature.trim(), {
       maxSupportedTransactionVersion: 0,
-      commitment: "confirmed",
+      commitment: "finalized",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -203,9 +203,9 @@ export async function POST(request: NextRequest) {
     let validatedPrice: number | null = null;
 
     if (isPaid) {
-      if (typeof price_usdc !== "number" || price_usdc <= 0) {
+      if (typeof price_usdc !== "number" || price_usdc <= 0 || !Number.isInteger(price_usdc)) {
         return NextResponse.json(
-          { error: "price_usdc must be a positive number for paid messages", code: "INVALID_PRICE" },
+          { error: "price_usdc must be a positive integer for paid messages", code: "INVALID_PRICE" },
           { status: 400 },
         );
       }

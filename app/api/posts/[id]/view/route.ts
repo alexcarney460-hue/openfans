@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import { postsTable } from "@/utils/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 /**
@@ -34,11 +34,17 @@ export async function POST(
     );
     if (rateLimitResponse) return rateLimitResponse;
 
-    // Atomically increment views_count
+    // Atomically increment views_count (only for published, non-hidden posts)
     const result = await db
       .update(postsTable)
       .set({ views_count: sql`${postsTable.views_count} + 1` })
-      .where(eq(postsTable.id, postId))
+      .where(
+        and(
+          eq(postsTable.id, postId),
+          eq(postsTable.is_published, true),
+          eq(postsTable.is_hidden, false),
+        ),
+      )
       .returning({ id: postsTable.id });
 
     if (result.length === 0) {

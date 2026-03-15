@@ -109,6 +109,14 @@ export async function POST(request: NextRequest) {
 
     const priceInCents = Math.round(Number(subscription_price) * 100);
 
+    // Upper bound: no price may exceed $1,000 (100000 cents)
+    if (priceInCents > 100000) {
+      return NextResponse.json(
+        { error: "subscription_price cannot exceed $1,000", code: "PRICE_TOO_HIGH" },
+        { status: 400 },
+      );
+    }
+
     // Validate and convert tier prices (null means tier not offered)
     let premiumCents: number | null = null;
     if (premium_price !== undefined && premium_price !== null) {
@@ -120,6 +128,12 @@ export async function POST(request: NextRequest) {
         );
       }
       premiumCents = Math.round(premVal * 100);
+      if (premiumCents > 100000) {
+        return NextResponse.json(
+          { error: "premium_price cannot exceed $1,000", code: "PRICE_TOO_HIGH" },
+          { status: 400 },
+        );
+      }
       if (premiumCents <= priceInCents) {
         return NextResponse.json(
           { error: "Premium price must be greater than Basic price", code: "INVALID_TIER_PRICING" },
@@ -138,6 +152,12 @@ export async function POST(request: NextRequest) {
         );
       }
       vipCents = Math.round(vipVal * 100);
+      if (vipCents > 100000) {
+        return NextResponse.json(
+          { error: "vip_price cannot exceed $1,000", code: "PRICE_TOO_HIGH" },
+          { status: 400 },
+        );
+      }
       const referencePrice = premiumCents ?? priceInCents;
       if (vipCents <= referencePrice) {
         return NextResponse.json(
@@ -269,7 +289,14 @@ export async function PATCH(request: NextRequest) {
       !isNaN(Number(body.subscription_price)) &&
       Number(body.subscription_price) > 0
     ) {
-      updates.subscription_price_usdc = Math.round(Number(body.subscription_price) * 100);
+      const subCents = Math.round(Number(body.subscription_price) * 100);
+      if (subCents > 100000) {
+        return NextResponse.json(
+          { error: "subscription_price cannot exceed $1,000", code: "PRICE_TOO_HIGH" },
+          { status: 400 },
+        );
+      }
+      updates.subscription_price_usdc = subCents;
     }
 
     // Handle premium_price (null to disable, number to set)
@@ -277,7 +304,14 @@ export async function PATCH(request: NextRequest) {
       if (body.premium_price === null) {
         updates.premium_price_usdc = null;
       } else if (!isNaN(Number(body.premium_price)) && Number(body.premium_price) > 0) {
-        updates.premium_price_usdc = Math.round(Number(body.premium_price) * 100);
+        const premCents = Math.round(Number(body.premium_price) * 100);
+        if (premCents > 100000) {
+          return NextResponse.json(
+            { error: "premium_price cannot exceed $1,000", code: "PRICE_TOO_HIGH" },
+            { status: 400 },
+          );
+        }
+        updates.premium_price_usdc = premCents;
       }
     }
 
@@ -286,7 +320,14 @@ export async function PATCH(request: NextRequest) {
       if (body.vip_price === null) {
         updates.vip_price_usdc = null;
       } else if (!isNaN(Number(body.vip_price)) && Number(body.vip_price) > 0) {
-        updates.vip_price_usdc = Math.round(Number(body.vip_price) * 100);
+        const vCents = Math.round(Number(body.vip_price) * 100);
+        if (vCents > 100000) {
+          return NextResponse.json(
+            { error: "vip_price cannot exceed $1,000", code: "PRICE_TOO_HIGH" },
+            { status: 400 },
+          );
+        }
+        updates.vip_price_usdc = vCents;
       }
     }
 

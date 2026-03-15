@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
@@ -273,6 +274,23 @@ export async function POST(request: NextRequest) {
 
     // ── Calculate effective price and expiry ────────────────────────────
     const isFreeTrial = validatedPromo?.type === "free_trial";
+
+    // CRITICAL-2: Prevent free trial reuse — any historical subscription blocks a new trial
+    if (isFreeTrial) {
+      const historicalSub = await db.execute(sql`
+        SELECT id FROM subscriptions WHERE subscriber_id = ${user.id} AND creator_id = ${creator_id} LIMIT 1
+      `);
+      if ((historicalSub as unknown as Array<unknown>).length > 0) {
+        return NextResponse.json(
+          { error: "Free trial already used for this creator", code: "TRIAL_ALREADY_USED" },
+          { status: 403 },
+        );
+      }
+    }
+
+    // CRITICAL-3: Generate server-side payment_tx for free trials to prevent dedup table poisoning
+    const effectivePaymentTx = isFreeTrial ? `free-trial-${crypto.randomUUID()}` : payment_tx.trim();
+
     let priceUsdc: number;
     const expiresAt = new Date();
 
@@ -299,7 +317,7 @@ export async function POST(request: NextRequest) {
       }
 
       const verification = await verifyTransaction(
-        payment_tx.trim(),
+        effectivePaymentTx,
         priceUsdc,
         platformWallet,
       );
@@ -324,13 +342,13 @@ export async function POST(request: NextRequest) {
       newSub = await db.transaction(async (tx) => {
       // Check global transaction uniqueness (cross-table replay prevention)
       const txUsed = await tx.execute(sql`
-        SELECT payment_tx FROM used_payment_transactions WHERE payment_tx = ${payment_tx.trim()}
+        SELECT payment_tx FROM used_payment_transactions WHERE payment_tx = ${effectivePaymentTx}
       `);
       if ((txUsed as unknown as Array<unknown>).length > 0) {
         throw new Error("DUPLICATE_TX");
       }
       await tx.execute(sql`
-        INSERT INTO used_payment_transactions (payment_tx, type, user_id) VALUES (${payment_tx.trim()}, 'subscription', ${user.id})
+        INSERT INTO used_payment_transactions (payment_tx, type, user_id) VALUES (${effectivePaymentTx}, 'subscription', ${user.id})
       `);
 
       // 1. Insert subscription record
@@ -341,7 +359,7 @@ export async function POST(request: NextRequest) {
           creator_id,
           tier: tier as SubscriptionTier,
           price_usdc: priceUsdc,
-          payment_tx: payment_tx.trim(),
+          payment_tx: effectivePaymentTx,
           status: "active",
           expires_at: expiresAt,
         })
@@ -399,7 +417,7 @@ export async function POST(request: NextRequest) {
           amount_usdc: creatorAmount,
           balance_after: updatedCreatorWallet.balance_usdc,
           description: `Subscription received (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`,
-          reference_id: payment_tx.trim(),
+          reference_id: effectivePaymentTx,
           related_user_id: user.id,
         });
 
@@ -412,7 +430,7 @@ export async function POST(request: NextRequest) {
             amount_usdc: -platformFee,
             balance_after: updatedCreatorWallet.balance_usdc,
             description: `Platform fee (${feeConfig.feePercent}%) on subscription`,
-            reference_id: payment_tx.trim(),
+            reference_id: effectivePaymentTx,
             related_user_id: user.id,
           });
         }
@@ -444,7 +462,7 @@ export async function POST(request: NextRequest) {
         creator_id,
         "subscription",
         creatorAmount,
-        payment_tx.trim(),
+        effectivePaymentTx,
         user.id,
       );
     }

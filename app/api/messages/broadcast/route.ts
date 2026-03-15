@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
@@ -140,6 +141,13 @@ export async function POST(request: NextRequest) {
           eq(subscriptionsTable.status, "active"),
         ),
       );
+
+    if (activeSubscribers.length > 10000) {
+      return NextResponse.json(
+        { error: "Too many subscribers for broadcast. Contact support.", code: "TOO_MANY_SUBSCRIBERS" },
+        { status: 400 },
+      );
+    }
 
     if (activeSubscribers.length === 0) {
       return NextResponse.json(

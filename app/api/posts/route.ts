@@ -321,6 +321,12 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+      if (ppv_price_usdc > 1000000) {
+        return NextResponse.json(
+          { error: "PPV price cannot exceed $10,000 (1000000 cents)", code: "PPV_PRICE_TOO_HIGH" },
+          { status: 400 },
+        );
+      }
       validatedPpvPrice = ppv_price_usdc;
     }
 
