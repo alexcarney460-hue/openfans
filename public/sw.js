@@ -20,10 +20,15 @@ const STATIC_EXTENSIONS = [
   ".eot",
 ];
 
+// ── Message handler: controlled skipWaiting via update banner ────────────────
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 // ── Install: pre-cache offline page and key routes ──────────────────────────
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
-
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRE_CACHE_URLS);

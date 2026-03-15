@@ -37,15 +37,20 @@ function buildTabs(username: string | null): NavTab[] {
   ];
 }
 
-export default function MobileBottomNav() {
+interface MobileBottomNavProps {
+  readonly initialUser?: { username: string; role: string } | null;
+}
+
+export default function MobileBottomNav({ initialUser }: MobileBottomNavProps) {
   const pathname = usePathname();
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] = useState<UserData | null>(initialUser ?? null);
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
-  // Fetch user on mount
+  // Only fetch if no initial user was provided
   useEffect(() => {
+    if (initialUser !== undefined) return;
     let cancelled = false;
     async function loadUser() {
       try {
@@ -67,7 +72,7 @@ export default function MobileBottomNav() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialUser]);
 
   // Hide on scroll down, show on scroll up
   const handleScroll = useCallback(() => {

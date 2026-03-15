@@ -13,16 +13,20 @@ const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function isDismissedRecently(): boolean {
   if (typeof window === "undefined") return true;
-  const raw = localStorage.getItem(DISMISS_KEY);
-  if (!raw) return false;
-  const dismissedAt = Number(raw);
-  return Date.now() - dismissedAt < DISMISS_DURATION_MS;
+  try {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    if (!raw) return false;
+    const dismissedAt = Number(raw);
+    return Date.now() - dismissedAt < DISMISS_DURATION_MS;
+  } catch {
+    return false;
+  }
 }
 
 function detectIOS(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
-  return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && "ontouchend" in document);
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
 }
 
 function detectStandalone(): boolean {
@@ -108,7 +112,7 @@ export function usePWAInstall(): UsePWAInstallReturn {
   }, []);
 
   const dismissPrompt = useCallback(() => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* private browsing */ }
     setIsInstallable(false);
     deferredPromptRef.current = null;
   }, []);

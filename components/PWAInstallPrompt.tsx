@@ -40,7 +40,7 @@ export default function PWAInstallPrompt() {
         visible ? "translate-y-0" : "translate-y-full"
       }`}
     >
-      <div className="mx-auto max-w-lg px-4 pb-4">
+      <div className="mx-auto max-w-lg px-4 pb-4" role="dialog" aria-label="Install OpenFans app">
         <div className="relative rounded-2xl bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.12)] border border-gray-100 p-4">
           {/* Dismiss button */}
           <button

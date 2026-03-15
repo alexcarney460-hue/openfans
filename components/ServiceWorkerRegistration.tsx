@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export default function ServiceWorkerRegistration() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(
-    null
-  );
+  const waitingWorkerRef = useRef<ServiceWorker | null>(null);
 
   useEffect(() => {
     if (
@@ -17,58 +15,57 @@ export default function ServiceWorkerRegistration() {
       return;
     }
 
-    registerServiceWorker();
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    async function register() {
+      try {
+        const registration = await navigator.serviceWorker.register("/sw.js", {
+          scope: "/",
+        });
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+
+          newWorker.addEventListener("statechange", () => {
+            if (
+              newWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              waitingWorkerRef.current = newWorker;
+              setUpdateAvailable(true);
+            }
+          });
+        });
+
+        // Periodically check for updates (every 60 minutes)
+        intervalId = setInterval(() => {
+          registration.update();
+        }, 60 * 60 * 1000);
+      } catch (error) {
+        console.error("Service worker registration failed:", error);
+      }
+    }
+
+    register();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
-  async function registerServiceWorker() {
-    try {
-      const registration = await navigator.serviceWorker.register("/sw.js", {
-        scope: "/",
-      });
-
-      // Check for updates on registration
-      registration.addEventListener("updatefound", () => {
-        const newWorker = registration.installing;
-        if (!newWorker) return;
-
-        newWorker.addEventListener("statechange", () => {
-          // A new SW is installed and waiting to activate
-          if (
-            newWorker.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            setWaitingWorker(newWorker);
-            setUpdateAvailable(true);
-          }
-        });
-      });
-
-      // Periodically check for updates (every 60 minutes)
-      setInterval(
-        () => {
-          registration.update();
-        },
-        60 * 60 * 1000
-      );
-    } catch (error) {
-      console.error("Service worker registration failed:", error);
-    }
-  }
-
   function handleUpdate() {
-    if (!waitingWorker) return;
+    const worker = waitingWorkerRef.current;
+    if (!worker) return;
 
-    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    worker.postMessage({ type: "SKIP_WAITING" });
 
-    // Reload once the new SW takes over
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      window.location.reload();
-    });
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      () => { window.location.reload(); },
+      { once: true },
+    );
 
-    setUpdateAvailable(false);
-  }
-
-  function handleDismiss() {
     setUpdateAvailable(false);
   }
 
@@ -117,7 +114,7 @@ export default function ServiceWorkerRegistration() {
         Update
       </button>
       <button
-        onClick={handleDismiss}
+        onClick={() => setUpdateAvailable(false)}
         aria-label="Dismiss"
         style={{
           background: "transparent",

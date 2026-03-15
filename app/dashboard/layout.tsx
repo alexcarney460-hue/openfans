@@ -395,7 +395,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Mobile-only bottom navigation */}
-      <MobileBottomNav />
+      <MobileBottomNav initialUser={currentUser ? { username: currentUser.username, role: currentUser.role } : undefined} />
 
       {/* Pull-to-refresh for touch devices */}
       <PullToRefresh />
