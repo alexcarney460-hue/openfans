@@ -19,10 +19,12 @@ interface StreamCreator {
 
 interface StreamData {
   readonly id: string;
+  readonly creator_id: string;
   readonly title: string;
   readonly description: string | null;
   readonly playback_url: string | null;
   readonly thumbnail_url: string | null;
+  readonly stream_key?: string;
   readonly status: "live" | "ended" | "scheduled";
   readonly chat_enabled: boolean;
   readonly is_subscriber_only: boolean;
@@ -190,7 +192,8 @@ export default function StreamClient({ streamId }: StreamClientProps) {
         const refreshRes = await fetch(`/api/streams/${streamId}/chat`);
         if (refreshRes.ok) {
           const data = await refreshRes.json();
-          setMessages(data.messages ?? data);
+          const refreshed = data.data ?? data.messages ?? data;
+          setMessages(Array.isArray(refreshed) ? refreshed : []);
         }
       }
     } catch {
@@ -279,6 +282,35 @@ export default function StreamClient({ streamId }: StreamClientProps) {
               allowFullScreen
               title={stream.title}
             />
+          ) : stream.stream_key ? (
+            <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+              <div className="rounded-full bg-[#00AFF0]/20 p-4">
+                <Users className="h-8 w-8 text-[#00AFF0]" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">Your Stream is Live</h2>
+              <p className="max-w-md text-center text-sm text-gray-400">
+                Connect your streaming software (OBS, Streamlabs) using the stream key below. Your viewers will see the stream once you start broadcasting.
+              </p>
+              <div className="w-full max-w-md space-y-2">
+                <label className="text-xs font-medium text-gray-500">Stream Key</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-xs text-gray-300 font-mono truncate">
+                    {stream.stream_key}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(stream.stream_key!);
+                    }}
+                    className="rounded-lg bg-[#00AFF0] px-3 py-2 text-xs font-medium text-white hover:bg-[#009dd8]"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-600">
+                  RTMP URL: rtmp://stream.openfans.online/live
+                </p>
+              </div>
+            </div>
           ) : (
             <div className="flex h-full items-center justify-center">
               <p className="text-sm text-gray-500">
