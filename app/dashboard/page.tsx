@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GettingStartedGuide } from "@/components/GettingStartedGuide";
+import { StoryBar } from "@/components/StoryBar";
 
 // -- Types --
 
@@ -226,6 +227,9 @@ export default function DashboardPage() {
   if (!isCreator) {
     return (
       <div className="space-y-6">
+        {/* Stories from subscribed creators */}
+        <StoryBar />
+
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Welcome{displayName ? `, ${displayName}` : ""}
@@ -297,6 +301,9 @@ export default function DashboardPage() {
   // Creator dashboard
   return (
     <div className="space-y-6">
+      {/* Story bar for creators */}
+      <StoryBar />
+
       {/* Getting Started Guide for new creators */}
       <GettingStartedGuide
         hasAvatar={hasAvatar}

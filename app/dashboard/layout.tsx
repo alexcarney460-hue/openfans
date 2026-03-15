@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   FileText,
+  Camera,
   PenSquare,
   MessageSquare,
   Users,
@@ -51,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/subscriptions", labelKey: "dash.subscriptions", icon: Heart, fanOnly: true },
   { href: "/dashboard/bookmarks", labelKey: "dash.bookmarks", icon: Bookmark },
   { href: "/dashboard/posts", labelKey: "dash.posts", icon: FileText, creatorOnly: true },
+  { href: "/dashboard/stories", labelKey: "dash.stories", icon: Camera, creatorOnly: true },
   { href: "/dashboard/posts/new", labelKey: "dash.newPost", icon: PenSquare, creatorOnly: true },
   { href: "/dashboard/messages", labelKey: "dash.messages", icon: MessageSquare },
   { href: "/dashboard/subscribers", labelKey: "dash.subscribers", icon: Users, creatorOnly: true },

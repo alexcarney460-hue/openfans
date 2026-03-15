@@ -21,6 +21,8 @@ import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 import { TipModal } from "@/components/TipModal";
 import { PPVUnlockModal } from "@/components/PPVUnlockModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { StoryRing } from "@/components/StoryRing";
+import { StoryViewer, type CreatorStories } from "@/components/StoryViewer";
 import { useTrack } from "@/hooks/useTrack";
 import { EXPLORE_CREATORS } from "@/app/explore/mock-data";
 
@@ -159,6 +161,9 @@ export default function CreatorProfileClient() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [creatorHasStories, setCreatorHasStories] = useState(false);
+  const [creatorStoryData, setCreatorStoryData] = useState<CreatorStories | null>(null);
+  const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const track = useTrack();
 
   // Track profile view on mount
@@ -209,6 +214,36 @@ export default function CreatorProfileClient() {
     }
     fetchCreator();
   }, [params.username]);
+
+  // Fetch stories for this creator
+  useEffect(() => {
+    if (!creator?.id) return;
+    fetch(`/api/stories?creator_id=${creator.id}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((json) => {
+        const stories = json?.data ?? [];
+        if (stories.length > 0) {
+          setCreatorHasStories(true);
+          setCreatorStoryData({
+            creator_id: creator.id,
+            username: creator.username,
+            display_name: creator.display_name,
+            avatar_url: creator.avatar_url ?? "",
+            stories: stories.map((s: { id: string; media_url: string; media_type: "image" | "video"; caption: string | null; created_at: string; duration?: number }) => ({
+              id: s.id,
+              media_url: s.media_url,
+              media_type: s.media_type,
+              caption: s.caption,
+              created_at: s.created_at,
+              duration: s.duration,
+            })),
+          });
+        }
+      })
+      .catch(() => {
+        // Non-critical
+      });
+  }, [creator?.id, creator?.username, creator?.display_name, creator?.avatar_url]);
 
   // Fetch follow status when creator loads
   useEffect(() => {
@@ -334,19 +369,32 @@ export default function CreatorProfileClient() {
         {/* Avatar */}
         <div className="-mt-16 mb-4 sm:-mt-20">
           <div className="flex items-end justify-between">
-            <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-gray-50 sm:h-32 sm:w-32">
-              {creator.avatar_url ? (
-                <img
-                  src={creator.avatar_url}
-                  alt={creator.display_name}
-                  className="h-full w-full rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-2xl font-bold text-gray-600 sm:text-4xl">
-                  {creator.display_name.charAt(0)}
-                </div>
-              )}
-            </div>
+            {creatorHasStories ? (
+              <StoryRing
+                creator={{
+                  avatar_url: creator.avatar_url ?? "",
+                  username: creator.username,
+                  has_stories: true,
+                }}
+                size="lg"
+                hasUnviewed
+                onClick={() => setStoryViewerOpen(true)}
+              />
+            ) : (
+              <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-gray-50 sm:h-32 sm:w-32">
+                {creator.avatar_url ? (
+                  <img
+                    src={creator.avatar_url}
+                    alt={creator.display_name}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-2xl font-bold text-gray-600 sm:text-4xl">
+                    {creator.display_name.charAt(0)}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Desktop action buttons - hidden on small screens */}
             <div className="hidden sm:flex items-center gap-2 pb-1">
               <button
@@ -743,6 +791,15 @@ export default function CreatorProfileClient() {
           postId={ppvTarget.id}
           postTitle={ppvTarget.title}
           priceUsdc={ppvTarget.ppv_price_usdc}
+        />
+      )}
+
+      {/* Story Viewer */}
+      {storyViewerOpen && creatorStoryData && (
+        <StoryViewer
+          stories={[creatorStoryData]}
+          initialCreatorIndex={0}
+          onClose={() => setStoryViewerOpen(false)}
         />
       )}
     </div>
