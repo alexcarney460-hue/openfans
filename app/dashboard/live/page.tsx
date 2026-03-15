@@ -130,7 +130,7 @@ export default function LiveStreamDashboard() {
 
       const json = await res.json();
       const streamId = json.data?.id ?? json.id;
-      router.push(`/dashboard/live/${streamId}`);
+      router.push(`/stream/${streamId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start stream.");
       setGoingLive(false);
