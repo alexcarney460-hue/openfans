@@ -148,6 +148,9 @@ export function VideoUploadPreview({
 
   const processFile = useCallback(
     async (selectedFile: File) => {
+      // Guard against concurrent uploads
+      if (status === "uploading" || status === "processing") return;
+
       setValidationError(null);
 
       // Validate type
@@ -207,7 +210,7 @@ export function VideoUploadPreview({
         }
       }
     },
-    [accept, maxFileSize, generateThumbnail, onUpload, externalProgress],
+    [accept, maxFileSize, generateThumbnail, onUpload, externalProgress, status],
   );
 
   // -----------------------------------------------------------------------

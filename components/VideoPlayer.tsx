@@ -41,6 +41,7 @@ interface VideoPlayerProps {
 // ---------------------------------------------------------------------------
 
 function formatTime(seconds: number): string {
+  if (!isFinite(seconds)) return "0:00";
   const s = Math.floor(seconds);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
@@ -351,13 +352,17 @@ export function VideoPlayer({
       setSelectedQuality(quality);
       setShowQualityMenu(false);
 
-      // After src change, restore position
-      requestAnimationFrame(() => {
-        const v = videoRef.current;
-        if (!v) return;
-        v.currentTime = time;
-        if (wasPlaying) v.play().catch(() => {});
-      });
+      // After src change, listen for loadedmetadata to restore position
+      if (video) {
+        video.addEventListener(
+          "loadedmetadata",
+          () => {
+            video.currentTime = time;
+            if (wasPlaying) video.play().catch(() => {});
+          },
+          { once: true },
+        );
+      }
     },
     [],
   );
@@ -421,14 +426,9 @@ export function VideoPlayer({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Only handle when this player's container or video has focus
+      // Only handle when this player's container or its children have focus
       const container = containerRef.current;
-      if (
-        !container ||
-        (!container.contains(document.activeElement) &&
-          document.activeElement !== document.body)
-      )
-        return;
+      if (!container || !container.contains(document.activeElement)) return;
 
       const video = videoRef.current;
       if (!video) return;
@@ -470,6 +470,17 @@ export function VideoPlayer({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [togglePlay, toggleFullscreen, toggleMute]);
+
+  // -----------------------------------------------------------------------
+  // Cleanup timeout refs on unmount
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      if (seekIndicatorTimeoutRef.current) clearTimeout(seekIndicatorTimeoutRef.current);
+    };
+  }, []);
 
   // -----------------------------------------------------------------------
   // Start controls hide timer when playing
@@ -580,7 +591,21 @@ export function VideoPlayer({
             className="group/progress mb-3 flex h-1.5 cursor-pointer items-center"
             onMouseDown={handleProgressMouseDown}
             onTouchStart={handleProgressTouchStart}
+            onKeyDown={(e) => {
+              const video = videoRef.current;
+              if (!video) return;
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                video.currentTime = Math.max(0, video.currentTime - 5);
+                setCurrentTime(video.currentTime);
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                video.currentTime = Math.min(video.duration, video.currentTime + 5);
+                setCurrentTime(video.currentTime);
+              }
+            }}
             role="slider"
+            tabIndex={0}
             aria-label="Seek"
             aria-valuenow={Math.round(currentTime)}
             aria-valuemin={0}

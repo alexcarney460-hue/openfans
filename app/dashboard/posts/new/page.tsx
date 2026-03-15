@@ -361,7 +361,24 @@ export default function NewPostPage() {
       clearInterval(statusPollRef.current);
     }
 
+    let pollCount = 0;
+    const MAX_POLL_COUNT = 120; // 120 * 5s = 10 minutes
+
     statusPollRef.current = setInterval(async () => {
+      pollCount += 1;
+
+      if (pollCount > MAX_POLL_COUNT) {
+        if (statusPollRef.current) {
+          clearInterval(statusPollRef.current);
+          statusPollRef.current = null;
+        }
+        setVideoState((prev) => ({
+          ...prev,
+          error: "Video processing timed out. Please try uploading again.",
+        }));
+        return;
+      }
+
       try {
         const res = await fetch(`/api/upload/video/${videoId}`);
         if (!res.ok) return;

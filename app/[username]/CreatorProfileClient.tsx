@@ -84,7 +84,7 @@ interface ApiPost {
   readonly is_ppv?: boolean;
   readonly ppv_price_usdc?: number | null;
   readonly has_purchased?: boolean;
-  readonly video_asset_id?: number | null;
+  readonly video_asset_id?: string | null;
   readonly video_url?: string | null;
   readonly video_thumbnail_url?: string | null;
 }

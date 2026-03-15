@@ -14,6 +14,8 @@ interface RouteParams {
   params: { id: string };
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ---------------------------------------------------------------------------
 // GET /api/upload/video/[id]
 // ---------------------------------------------------------------------------
@@ -33,7 +35,7 @@ export async function GET(
 
     const { id } = params;
 
-    if (!id || typeof id !== "string") {
+    if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
       return NextResponse.json(
         { error: "Invalid video ID", code: "INVALID_ID" },
         { status: 400 },
@@ -98,7 +100,7 @@ export async function DELETE(
 
     const { id } = params;
 
-    if (!id || typeof id !== "string") {
+    if (!id || typeof id !== "string" || !UUID_REGEX.test(id)) {
       return NextResponse.json(
         { error: "Invalid video ID", code: "INVALID_ID" },
         { status: 400 },
@@ -153,9 +155,9 @@ export async function DELETE(
       }
     }
 
-    // Delete from database
+    // Delete from database (ownership check in WHERE to prevent TOCTOU)
     await db.execute(sql`
-      DELETE FROM video_assets WHERE id = ${id}
+      DELETE FROM video_assets WHERE id = ${id} AND creator_id = ${user.id}
     `);
 
     return NextResponse.json(

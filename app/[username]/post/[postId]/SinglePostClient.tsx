@@ -44,7 +44,7 @@ interface ApiPost {
   readonly views_count: number;
   readonly created_at: string;
   readonly is_locked?: boolean;
-  readonly video_asset_id?: number | null;
+  readonly video_asset_id?: string | null;
   readonly video_url?: string | null;
   readonly video_thumbnail_url?: string | null;
 }

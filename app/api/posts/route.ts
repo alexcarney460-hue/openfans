@@ -381,6 +381,22 @@ export async function POST(request: NextRequest) {
       // If date is in the past or now, publish immediately (isPublished stays true)
     }
 
+    // Server-side mutual exclusivity: cannot have both video and images
+    if (
+      video_asset_id !== undefined &&
+      video_asset_id !== null &&
+      Array.isArray(media_urls) &&
+      media_urls.length > 0
+    ) {
+      return NextResponse.json(
+        {
+          error: "A post cannot have both a video and image attachments. Choose one.",
+          code: "MEDIA_CONFLICT",
+        },
+        { status: 400 },
+      );
+    }
+
     // Validate video_asset_id if provided
     let validatedVideoAssetId: string | null = null;
     if (video_asset_id !== undefined && video_asset_id !== null) {
@@ -434,23 +450,14 @@ export async function POST(request: NextRequest) {
 
     const createdPost = newPost[0];
 
-    // Link video asset to the post via raw SQL (adds video_asset_id column if needed)
+    // Link video asset to the post
     if (validatedVideoAssetId && createdPost) {
-      // Ensure the video_asset_id column exists on the posts table
-      await db.execute(sql`
-        ALTER TABLE posts
-        ADD COLUMN IF NOT EXISTS video_asset_id TEXT
-        REFERENCES video_assets(id) ON DELETE SET NULL
-      `);
-
-      // Set the video_asset_id on the newly created post
       await db.execute(sql`
         UPDATE posts
         SET video_asset_id = ${validatedVideoAssetId}
         WHERE id = ${createdPost.id}
       `);
 
-      // Return the post with video_asset_id included
       return NextResponse.json(
         { data: { ...createdPost, video_asset_id: validatedVideoAssetId } },
         { status: 201 },

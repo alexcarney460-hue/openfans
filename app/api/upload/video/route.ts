@@ -34,7 +34,7 @@ function getFileExtension(filename: string): string {
 
 function isAllowedVideoType(file: File): boolean {
   const ext = getFileExtension(file.name);
-  return ALLOWED_MIME_TYPES.has(file.type) || ALLOWED_EXTENSIONS.has(ext);
+  return ALLOWED_MIME_TYPES.has(file.type) && ALLOWED_EXTENSIONS.has(ext);
 }
 
 // ---------------------------------------------------------------------------
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. Upload to Supabase Storage
-    let storagePath: string;
+    let storagePath: string = "";
     let storageUrl: string;
 
     try {
@@ -146,49 +146,62 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. Create video_assets record via raw SQL
-    const videoId = crypto.randomUUID();
-    const now = new Date().toISOString();
+    try {
+      const videoId = crypto.randomUUID();
+      const now = new Date().toISOString();
 
-    const insertResult = await db.execute(sql`
-      INSERT INTO video_assets (
-        id,
-        creator_id,
-        original_url,
-        storage_path,
-        status,
-        original_filename,
-        file_size_bytes,
-        mime_type,
-        duration_seconds,
-        width,
-        height,
-        thumbnail_url,
-        hls_url,
-        created_at,
-        updated_at
-      ) VALUES (
-        ${videoId},
-        ${user.id},
-        ${storageUrl},
-        ${storagePath},
-        'uploaded',
-        ${file.name},
-        ${file.size},
-        ${file.type},
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        ${now},
-        ${now}
-      )
-      RETURNING *
-    `);
+      const insertResult = await db.execute(sql`
+        INSERT INTO video_assets (
+          id,
+          creator_id,
+          original_url,
+          storage_path,
+          status,
+          original_filename,
+          file_size_bytes,
+          mime_type,
+          duration_seconds,
+          width,
+          height,
+          thumbnail_url,
+          hls_url,
+          created_at,
+          updated_at
+        ) VALUES (
+          ${videoId},
+          ${user.id},
+          ${storageUrl},
+          ${storagePath},
+          'uploaded',
+          ${file.name},
+          ${file.size},
+          ${file.type},
+          NULL,
+          NULL,
+          NULL,
+          NULL,
+          NULL,
+          ${now},
+          ${now}
+        )
+        RETURNING *
+      `);
 
-    const videoAsset = insertResult[0];
+      const videoAsset = insertResult[0];
 
-    return NextResponse.json({ data: videoAsset }, { status: 201 });
+      return NextResponse.json({ data: videoAsset }, { status: 201 });
+    } catch (dbErr) {
+      // Best-effort cleanup: delete the uploaded file from storage
+      if (storagePath) {
+        try {
+          const { deleteVideoFromStorage } = await import("@/utils/video/storage");
+          await deleteVideoFromStorage(storagePath);
+        } catch (cleanupErr) {
+          console.error("Failed to clean up orphaned storage file:", cleanupErr);
+        }
+      }
+      throw dbErr;
+    }
   } catch (err) {
     console.error("POST /api/upload/video error:", err);
     return NextResponse.json(

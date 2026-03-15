@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
+import { timingSafeEqual } from "crypto";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
       : "";
     const cronSecret = process.env.CRON_SECRET;
 
-    if (!cronSecret || token !== cronSecret) {
+    if (!cronSecret || !token || cronSecret.length !== token.length || !timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret))) {
       return NextResponse.json(
         { error: "Unauthorized", code: "AUTH_REQUIRED" },
         { status: 401 },

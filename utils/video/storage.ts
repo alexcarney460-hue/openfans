@@ -15,7 +15,8 @@ export async function uploadVideoToStorage(
 ): Promise<{ path: string; url: string }> {
   const supabase = createClient();
 
-  const extension = file.name.split(".").pop()?.toLowerCase() || "mp4";
+  const rawExtension = file.name.split(".").pop()?.toLowerCase() || "mp4";
+  const extension = rawExtension.replace(/[^a-z0-9]/g, "") || "mp4";
   const uuid = crypto.randomUUID();
   const path = `${userId}/${uuid}.${extension}`;
 
