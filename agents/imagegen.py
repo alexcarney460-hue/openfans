@@ -1,20 +1,22 @@
 """
 Image generation via Nano Banana 2 (Gemini 3.1 Flash Image).
 Generates cinematic AI images for OpenFans reel scenes.
+Supports automatic API key rotation on rate limits (429).
 """
 
 import json
 import base64
+import time
 import urllib.request
 from pathlib import Path
-from agents.config import GEMINI_KEY, TMP
+from agents.config import GEMINI_KEYS, TMP
 
 MODEL = "gemini-3.1-flash-image-preview"
 ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 
 def generate_image(prompt: str, output_path: str, aspect_ratio: str = "9:16", size: str = "1K") -> str | None:
-    """Generate an image using Nano Banana 2 and save to disk."""
+    """Generate an image using Nano Banana 2, with automatic key rotation."""
     print(f"    [IMAGEGEN] Generating: {prompt[:80]}...")
 
     payload = json.dumps({
@@ -28,49 +30,65 @@ def generate_image(prompt: str, output_path: str, aspect_ratio: str = "9:16", si
         },
     }).encode()
 
-    req = urllib.request.Request(
-        ENDPOINT,
-        data=payload,
-        headers={
-            "x-goog-api-key": GEMINI_KEY,
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    # Try each API key, rotating on 429
+    for key_idx, api_key in enumerate(GEMINI_KEYS):
+        req = urllib.request.Request(
+            ENDPOINT,
+            data=payload,
+            headers={
+                "x-goog-api-key": api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
 
-    try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception as e:
-        print(f"    [IMAGEGEN] API error: {e}")
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                data = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                print(f"    [IMAGEGEN] Key {key_idx + 1}/{len(GEMINI_KEYS)} rate-limited, trying next...")
+                if key_idx < len(GEMINI_KEYS) - 1:
+                    continue
+                # All keys exhausted — wait with backoff and retry
+                wait = 120  # 2 minutes
+                print(f"    [IMAGEGEN] All keys rate-limited. Waiting {wait}s...")
+                time.sleep(wait)
+                return generate_image(prompt, output_path, aspect_ratio, size)
+            print(f"    [IMAGEGEN] API error: {e}")
+            return None
+        except Exception as e:
+            print(f"    [IMAGEGEN] API error: {e}")
+            return None
+
+        # Parse response
+        candidates = data.get("candidates", [])
+        if not candidates:
+            print(f"    [IMAGEGEN] No candidates in response")
+            return None
+
+        parts = candidates[0].get("content", {}).get("parts", [])
+        for part in parts:
+            inline = part.get("inlineData") or part.get("inline_data")
+            if inline and inline.get("data"):
+                img_bytes = base64.b64decode(inline["data"])
+                Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+                with open(output_path, "wb") as f:
+                    f.write(img_bytes)
+                print(f"    [IMAGEGEN] Saved: {output_path} ({len(img_bytes) // 1024}KB) [key {key_idx + 1}]")
+                return output_path
+
+        print(f"    [IMAGEGEN] No image data in response")
         return None
 
-    candidates = data.get("candidates", [])
-    if not candidates:
-        print(f"    [IMAGEGEN] No candidates in response")
-        return None
-
-    parts = candidates[0].get("content", {}).get("parts", [])
-    for part in parts:
-        inline = part.get("inlineData") or part.get("inline_data")
-        if inline and inline.get("data"):
-            img_bytes = base64.b64decode(inline["data"])
-            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.write(img_bytes)
-            print(f"    [IMAGEGEN] Saved: {output_path} ({len(img_bytes) // 1024}KB)")
-            return output_path
-
-    print(f"    [IMAGEGEN] No image data in response")
     return None
 
 
 def generate_scene_image(scene_description: str, visual_mood: str, scene_num: int, prefix: str = "of") -> str | None:
     """Generate a cinematic scene image for an OpenFans reel.
 
-    Unlike Motion Ventures (text-overlay focused), OpenFans reels are
-    STORY-DRIVEN with minimal text. Images need to be cinematic and
-    emotionally expressive — they ARE the story.
+    OpenFans reels are STORY-DRIVEN with minimal text.
+    Images need to be cinematic and emotionally expressive.
     """
     prompt = (
         f"Cinematic Instagram Reel frame, vertical 9:16, photorealistic. "

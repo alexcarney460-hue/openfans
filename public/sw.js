@@ -80,17 +80,27 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Next.js static chunks and build assets: cache-first
-  if (
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.startsWith("/_next/image")
-  ) {
+  // Next.js static chunks: cache-first (immutable hashed filenames)
+  if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
+  // Next.js image optimization: network-first (dynamic query params)
+  if (url.pathname.startsWith("/_next/image")) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
   // Navigation requests: network-first with offline fallback
+  // Skip caching authenticated dashboard pages to prevent stale content after logout
   if (request.mode === "navigate") {
+    if (url.pathname.startsWith("/dashboard")) {
+      event.respondWith(
+        fetch(request).catch(() => caches.match("/offline.html"))
+      );
+      return;
+    }
     event.respondWith(networkFirstNavigation(request));
     return;
   }

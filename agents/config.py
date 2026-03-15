@@ -10,7 +10,12 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 FFMPEG = "C:/Users/Claud/AppData/Local/Microsoft/WinGet/Links/ffmpeg.exe"
 
-GEMINI_KEY = "AIzaSyBGtPendB0zAOuMiepc3M1Np_X2H-Ak8Vk"
+GEMINI_KEYS = [
+    "AIzaSyB_8sKMOp-3MGNV2WcWPUJF3cXA-uSK4ME",
+    "AIzaSyAyDqVpIEozKnOweTWd-hShVth6RoOs9OE",
+    "AIzaSyBGtPendB0zAOuMiepc3M1Np_X2H-Ak8Vk",
+]
+GEMINI_KEY = GEMINI_KEYS[0]  # Rotate if rate-limited
 
 # Relative font paths (avoids Windows drive colon escaping in FFmpeg)
 FONT_BOLD = "assets/fonts/Montserrat-ExtraBold.ttf"
