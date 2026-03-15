@@ -56,9 +56,10 @@ export async function GET(
     if (authError) return authError;
 
     const creatorId = params.id;
-    if (!creatorId) {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!creatorId || !UUID_RE.test(creatorId)) {
       return NextResponse.json(
-        { error: "Missing creator id", code: "MISSING_ID" },
+        { error: "Invalid creator ID format", code: "INVALID_ID" },
         { status: 400 },
       );
     }

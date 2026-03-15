@@ -5,8 +5,7 @@ import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 
-const PLATFORM_FEE_RATE = 0.05;
-const CREATOR_SHARE_RATE = 1 - PLATFORM_FEE_RATE; // 0.95
+import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE } from "@/utils/tax-calculations";
 const DEFAULT_THRESHOLD_CENTS = 60000; // $600
 const MIN_TAX_YEAR = 2020;
 const MAX_TAX_YEAR = 2030;
@@ -42,7 +41,7 @@ interface CreatorEarningsRow {
   address_line2: string | null;
   city: string | null;
   state: string | null;
-  zip: string | null;
+  zip_code: string | null;
   country: string | null;
   gross_earnings_cents: string; // bigint comes back as string
 }
@@ -162,7 +161,7 @@ export async function GET(request: NextRequest) {
         cti.address_line2,
         cti.city,
         cti.state,
-        cti.zip,
+        cti.zip_code,
         cti.country,
         SUM(e.amount_cents)::bigint AS gross_earnings_cents
       FROM earnings e
@@ -178,7 +177,7 @@ export async function GET(request: NextRequest) {
         cti.address_line2,
         cti.city,
         cti.state,
-        cti.zip,
+        cti.zip_code,
         cti.country
       ${thresholdCondition}
       ORDER BY SUM(e.amount_cents) DESC
@@ -229,7 +228,7 @@ export async function GET(request: NextRequest) {
         row.address_line1,
         row.address_line2,
         row.city,
-        row.state && row.zip ? `${row.state} ${row.zip}` : (row.state || row.zip),
+        row.state && row.zip_code ? `${row.state} ${row.zip_code}` : (row.state || row.zip_code),
         row.country,
       ].filter(Boolean);
       const recipientAddress = addressParts.join(", ");
@@ -240,7 +239,7 @@ export async function GET(request: NextRequest) {
         row.address_line1 &&
         row.city &&
         row.state &&
-        row.zip,
+        row.zip_code,
       );
 
       return [

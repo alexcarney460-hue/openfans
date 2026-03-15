@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from "@/utils/api/auth";
 import { db } from "@/utils/db/db";
 import { usersTable } from "@/utils/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, randomBytes } from "crypto";
 
 // ---------------------------------------------------------------------------
 // Encryption helpers (AES-256-GCM)
@@ -20,13 +20,11 @@ function getEncryptionKey(): Buffer {
   if (!key) {
     throw new Error("TAX_ENCRYPTION_KEY environment variable is not set");
   }
-  // Key must be 32 bytes (256 bits). Accept hex-encoded (64 chars) or raw.
-  if (key.length === 64 && /^[0-9a-fA-F]+$/.test(key)) {
-    return Buffer.from(key, "hex");
+  // Key must be exactly 64 hex characters (32 bytes / 256 bits)
+  if (key.length !== 64 || !/^[0-9a-fA-F]+$/.test(key)) {
+    throw new Error("TAX_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)");
   }
-  // Fallback: hash to 32 bytes via sha256
-  const { createHash } = require("crypto");
-  return createHash("sha256").update(key).digest();
+  return Buffer.from(key, "hex");
 }
 
 function encryptTaxId(plaintext: string): { encrypted: Buffer; iv: Buffer } {
@@ -41,21 +39,6 @@ function encryptTaxId(plaintext: string): { encrypted: Buffer; iv: Buffer } {
     cipher.getAuthTag(),
   ]);
   return { encrypted, iv };
-}
-
-function decryptTaxId(encrypted: Buffer, iv: Buffer): string {
-  const key = getEncryptionKey();
-  // Auth tag is appended to the encrypted payload
-  const authTag = encrypted.subarray(encrypted.length - AUTH_TAG_LENGTH);
-  const ciphertext = encrypted.subarray(0, encrypted.length - AUTH_TAG_LENGTH);
-  const decipher = createDecipheriv(ALGORITHM, key, iv, {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
-  decipher.setAuthTag(authTag);
-  return Buffer.concat([
-    decipher.update(ciphertext),
-    decipher.final(),
-  ]).toString("utf8");
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +176,7 @@ export async function GET() {
 
     return NextResponse.json({ data: rows[0] });
   } catch (err) {
-    console.error("GET /api/tax-info error:", err);
+    console.error("GET /api/tax-info error:", err instanceof Error ? err.message : "Unknown error");
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },
@@ -364,7 +347,7 @@ export async function PUT(request: NextRequest) {
       message: "Tax information saved successfully",
     });
   } catch (err) {
-    console.error("PUT /api/tax-info error:", err);
+    console.error("PUT /api/tax-info error:", err instanceof Error ? err.message : "Unknown error");
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },

@@ -14,7 +14,7 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
-const PLATFORM_FEE_RATE = 0.05;
+import { PLATFORM_FEE_RATE } from "@/utils/tax-calculations";
 const CREATOR_SHARE = 0.95;
 const TAX_THRESHOLD_CENTS = 60000; // $600.00 in cents
 
