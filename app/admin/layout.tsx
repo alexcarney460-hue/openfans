@@ -25,6 +25,7 @@ import {
   Video,
   BookOpen,
   Radio,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { href: "/admin/support", label: "Support", icon: MessageSquare },
   { href: "/admin/tax", label: "Tax", icon: Receipt },
   { href: "/admin/health", label: "Health", icon: Activity },
+  { href: "/admin/creator-requests", label: "Creator Requests", icon: UserPlus },
 ] as const;
 
 export default function AdminLayout({

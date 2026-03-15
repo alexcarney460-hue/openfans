@@ -8,7 +8,7 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { CreatorCard } from "@/components/CreatorCard";
 import { SortSelect, type SortOption } from "@/components/SortSelect";
 import { CATEGORIES, EXPLORE_CREATORS } from "./mock-data";
-import { TrendingUp, Radio } from "lucide-react";
+import { TrendingUp, Radio, UserPlus } from "lucide-react";
 import { LiveStreamCard } from "@/components/LiveStreamCard";
 
 interface ApiCreator {
@@ -396,6 +396,31 @@ export default function ExplorePage() {
               >
                 Clear filters
               </button>
+            </div>
+          </section>
+        )}
+
+        {/* Request a Creator CTA */}
+        {!loading && (
+          <section className="border-t border-gray-200 bg-gray-50 py-10 sm:py-14">
+            <div className="mx-auto max-w-2xl px-4 text-center sm:px-6 lg:px-8">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#00AFF0]/10">
+                <UserPlus className="h-6 w-6 text-[#00AFF0]" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 sm:text-xl">
+                Can&apos;t find who you&apos;re looking for?
+              </h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">
+                Request any creator you want to see on OpenFans. We&apos;ll reach
+                out and let them know fans are waiting.
+              </p>
+              <a
+                href="/request-creator"
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#00AFF0] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#009ad6]"
+              >
+                <UserPlus className="h-4 w-4" />
+                Request a Creator
+              </a>
             </div>
           </section>
         )}

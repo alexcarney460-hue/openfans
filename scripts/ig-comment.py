@@ -376,7 +376,7 @@ if __name__ == "__main__":
         targets = [args.target]
     else:
         # Load from scraped handles file if it exists, otherwise use built-in list
-        handles_file = Path(__file__).parent.parent / "content" / "ig-high-traffic.txt"
+        handles_file = Path(__file__).parent.parent / "content" / "ig-of-handles.txt"
         if handles_file.exists():
             with open(handles_file, "r") as f:
                 file_targets = [line.strip() for line in f if line.strip()]

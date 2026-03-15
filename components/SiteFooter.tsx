@@ -8,6 +8,7 @@ const FOOTER_SECTIONS = [
       { label: "Explore", href: "/explore" },
       { label: "Pricing", href: "/pricing" },
       { label: "Help", href: "/help" },
+      { label: "Request a Creator", href: "/request-creator" },
     ],
   },
   {
