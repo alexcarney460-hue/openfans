@@ -255,7 +255,7 @@ export default function LandingPageClient() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white">
+    <div className="flex min-h-dvh flex-col overflow-x-hidden bg-white">
       <SiteHeader />
 
       <main className="flex-1">
@@ -578,51 +578,51 @@ export default function LandingPageClient() {
 
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
               {/* Table header */}
-              <div className="grid grid-cols-4 border-b border-gray-200 bg-gray-50 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 sm:text-sm">
-                <div className="px-3 py-3 text-left sm:px-6 sm:py-4" />
-                <div className="flex items-center justify-center gap-1.5 px-3 py-3 text-[#00AFF0] sm:px-6 sm:py-4">
-                  <Rocket className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  OpenFans
+              <div className="grid grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] border-b border-gray-200 bg-gray-50 text-center text-[10px] font-semibold uppercase tracking-wider text-gray-500 sm:grid-cols-4 sm:text-sm">
+                <div className="px-2 py-3 text-left sm:px-6 sm:py-4" />
+                <div className="flex items-center justify-center gap-1 px-1.5 py-3 text-[#00AFF0] sm:gap-1.5 sm:px-6 sm:py-4">
+                  <Rocket className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+                  <span className="truncate">OpenFans</span>
                 </div>
-                <div className="px-3 py-3 sm:px-6 sm:py-4">OnlyFans</div>
-                <div className="px-3 py-3 sm:px-6 sm:py-4">Patreon</div>
+                <div className="px-1.5 py-3 sm:px-6 sm:py-4">OnlyFans</div>
+                <div className="px-1.5 py-3 sm:px-6 sm:py-4">Patreon</div>
               </div>
 
               {/* Table rows */}
               {COMPARISON_ROWS.map((row, index) => (
                 <div
                   key={row.label}
-                  className={`grid grid-cols-4 text-center text-sm sm:text-base ${
+                  className={`grid grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))] text-center text-xs sm:grid-cols-4 sm:text-base ${
                     index < COMPARISON_ROWS.length - 1
                       ? "border-b border-gray-100"
                       : ""
                   }`}
                 >
-                  <div className="flex items-center px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-6 sm:py-4 sm:text-sm">
+                  <div className="flex items-center px-2 py-3 text-left text-[11px] font-medium leading-tight text-gray-700 sm:px-6 sm:py-4 sm:text-sm">
                     {row.label}
                   </div>
-                  <div className="flex items-center justify-center px-3 py-3 sm:px-6 sm:py-4">
+                  <div className="flex items-center justify-center px-1.5 py-3 sm:px-6 sm:py-4">
                     <span
-                      className={`inline-flex items-center gap-1 text-xs font-semibold sm:text-sm ${
+                      className={`inline-flex items-center gap-1 text-[11px] font-semibold sm:text-sm ${
                         row.highlight ? "text-[#00AFF0]" : "text-gray-900"
                       }`}
                     >
                       {row.openfans === "Yes" ? (
-                        <Check className="h-4 w-4 text-emerald-500" />
+                        <Check className="h-3.5 w-3.5 text-emerald-500 sm:h-4 sm:w-4" />
                       ) : null}
                       {row.openfans}
                     </span>
                   </div>
-                  <div className="flex items-center justify-center px-3 py-3 text-xs text-gray-500 sm:px-6 sm:py-4 sm:text-sm">
+                  <div className="flex items-center justify-center px-1.5 py-3 text-[11px] text-gray-500 sm:px-6 sm:py-4 sm:text-sm">
                     {row.onlyfans === "No" ? (
-                      <X className="h-4 w-4 text-gray-300" />
+                      <X className="h-3.5 w-3.5 text-gray-300 sm:h-4 sm:w-4" />
                     ) : (
                       row.onlyfans
                     )}
                   </div>
-                  <div className="flex items-center justify-center px-3 py-3 text-xs text-gray-500 sm:px-6 sm:py-4 sm:text-sm">
+                  <div className="flex items-center justify-center px-1.5 py-3 text-[11px] text-gray-500 sm:px-6 sm:py-4 sm:text-sm">
                     {row.patreon === "No" ? (
-                      <X className="h-4 w-4 text-gray-300" />
+                      <X className="h-3.5 w-3.5 text-gray-300 sm:h-4 sm:w-4" />
                     ) : (
                       row.patreon
                     )}
@@ -711,19 +711,19 @@ export default function LandingPageClient() {
                 earnings. Set up your page in under 5 minutes.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row sm:gap-4">
-                <Link href="/signup">
+                <Link href="/signup" className="w-full sm:w-auto">
                   <Button
                     size="lg"
-                    className="h-12 border-0 bg-white px-8 text-sm font-semibold text-[#00AFF0] shadow-lg shadow-black/10 transition-all hover:bg-gray-100 sm:h-13 sm:px-10 sm:text-base"
+                    className="h-12 w-full border-0 bg-white px-8 text-sm font-semibold text-[#00AFF0] shadow-lg shadow-black/10 transition-all hover:bg-gray-100 sm:h-13 sm:w-auto sm:px-10 sm:text-base"
                   >
                     Create Your Page
                   </Button>
                 </Link>
-                <Link href="/explore">
+                <Link href="/explore" className="w-full sm:w-auto">
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-12 border-white/30 px-8 text-sm font-semibold text-white transition-all hover:border-white hover:bg-white/10 sm:h-13 sm:px-10 sm:text-base"
+                    className="h-12 w-full border-white/30 px-8 text-sm font-semibold text-white transition-all hover:border-white hover:bg-white/10 sm:h-13 sm:w-auto sm:px-10 sm:text-base"
                   >
                     Explore Creators
                   </Button>

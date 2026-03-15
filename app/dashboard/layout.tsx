@@ -33,6 +33,8 @@ import { logout } from "@/app/auth/actions";
 import { useLanguage } from "@/utils/i18n/context";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import NotificationBell from "@/components/NotificationBell";
+import MobileBottomNav from "@/components/MobileBottomNav";
+import PullToRefresh from "@/components/PullToRefresh";
 import type { TranslationKey } from "@/utils/i18n/translations";
 
 type NavItem = {
@@ -162,7 +164,7 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen overflow-x-hidden bg-gray-50">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -312,7 +314,7 @@ export default function DashboardLayout({
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Language selector */}
             <LanguageSelector compact />
 
@@ -389,8 +391,14 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
       </div>
+
+      {/* Mobile-only bottom navigation */}
+      <MobileBottomNav />
+
+      {/* Pull-to-refresh for touch devices */}
+      <PullToRefresh />
     </div>
   );
 }

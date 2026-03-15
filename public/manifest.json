@@ -1,0 +1,89 @@
+{
+  "name": "OpenFans",
+  "short_name": "OpenFans",
+  "description": "Creator subscription platform — earn 95% with instant crypto payouts",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#00AFF0",
+  "background_color": "#ffffff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "entertainment", "finance"],
+  "shortcuts": [
+    {
+      "name": "New Post",
+      "short_name": "Post",
+      "description": "Create a new post",
+      "url": "/dashboard/posts/new",
+      "icons": [
+        {
+          "src": "/icons/shortcut-edit.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "description": "View your messages",
+      "url": "/dashboard/messages",
+      "icons": [
+        {
+          "src": "/icons/shortcut-message.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Earnings",
+      "short_name": "Earnings",
+      "description": "View your earnings",
+      "url": "/dashboard/earnings",
+      "icons": [
+        {
+          "src": "/icons/shortcut-dollar.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Explore",
+      "short_name": "Explore",
+      "description": "Discover creators",
+      "url": "/explore",
+      "icons": [
+        {
+          "src": "/icons/shortcut-compass.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [],
+  "share_target": {
+    "action": "/dashboard/posts/new",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

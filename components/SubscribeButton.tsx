@@ -20,8 +20,8 @@ export function SubscribeButton({
   onSubscribe,
 }: SubscribeButtonProps) {
   const sizeClasses = {
-    sm: "h-8 px-4 text-xs",
-    default: "h-10 px-6 text-sm",
+    sm: "h-8 min-h-[44px] px-4 text-xs",
+    default: "h-10 min-h-[44px] px-6 text-sm",
     lg: "h-12 px-8 text-base font-semibold",
   } as const;
 

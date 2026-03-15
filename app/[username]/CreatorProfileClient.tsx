@@ -285,7 +285,7 @@ export default function CreatorProfileClient() {
   const vipPrice = creator.vip_price_usdc != null ? creator.vip_price_usdc / 100 : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50">
       {/* Navigation Bar */}
       <nav className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b border-gray-200 bg-white/80 px-4 backdrop-blur-xl">
         <Link
@@ -327,28 +327,70 @@ export default function CreatorProfileClient() {
       {/* Profile Section */}
       <div className="relative mx-auto max-w-2xl px-4">
         {/* Avatar */}
-        <div className="-mt-16 mb-4 flex items-end justify-between sm:-mt-20">
-          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-gray-50 sm:h-32 sm:w-32">
-            {creator.avatar_url ? (
-              <img
-                src={creator.avatar_url}
-                alt={creator.display_name}
-                className="h-full w-full rounded-full object-cover"
+        <div className="-mt-16 mb-4 sm:-mt-20">
+          <div className="flex items-end justify-between">
+            <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-gray-50 sm:h-32 sm:w-32">
+              {creator.avatar_url ? (
+                <img
+                  src={creator.avatar_url}
+                  alt={creator.display_name}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-2xl font-bold text-gray-600 sm:text-4xl">
+                  {creator.display_name.charAt(0)}
+                </div>
+              )}
+            </div>
+            {/* Desktop action buttons - hidden on small screens */}
+            <div className="hidden sm:flex items-center gap-2 pb-1">
+              <button
+                onClick={handleToggleFollow}
+                disabled={followLoading}
+                className={`flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                  isFollowing
+                    ? "border-gray-300 bg-gray-50 text-gray-700 hover:border-red-300 hover:text-red-500"
+                    : "border-[#00AFF0] text-[#00AFF0] hover:bg-[#00AFF0]/10"
+                } ${followLoading ? "opacity-50" : ""}`}
+              >
+                {isFollowing ? (
+                  <>
+                    <UserCheck className="h-4 w-4" />
+                    Following
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    Follow
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setShowTipModal(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-[#10b981] px-4 py-2 text-sm font-semibold text-[#10b981] transition-colors hover:bg-[#10b981]/10"
+              >
+                <DollarSign className="h-4 w-4" />
+                Tip
+              </button>
+              <CreatorSubscribeSection
+                creatorId={creator.id}
+                creatorName={creator.display_name}
+                creatorUsername={creator.username}
+                subscriptionPrice={subscriptionPrice}
+                premiumPrice={premiumPrice}
+                vipPrice={vipPrice}
               />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-3xl font-bold text-gray-600 sm:text-4xl">
-                {creator.display_name.charAt(0)}
-              </div>
-            )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 pb-1">
+          {/* Mobile action buttons - stacked, full width */}
+          <div className="mt-3 flex gap-2 sm:hidden">
             <button
               onClick={handleToggleFollow}
               disabled={followLoading}
-              className={`flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
                 isFollowing
-                  ? "border-gray-300 bg-gray-50 text-gray-700 hover:border-red-300 hover:text-red-500"
-                  : "border-[#00AFF0] text-[#00AFF0] hover:bg-[#00AFF0]/10"
+                  ? "border-gray-300 bg-gray-50 text-gray-700"
+                  : "border-[#00AFF0] text-[#00AFF0]"
               } ${followLoading ? "opacity-50" : ""}`}
             >
               {isFollowing ? (
@@ -365,19 +407,21 @@ export default function CreatorProfileClient() {
             </button>
             <button
               onClick={() => setShowTipModal(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-[#10b981] px-4 py-2 text-sm font-semibold text-[#10b981] transition-colors hover:bg-[#10b981]/10"
+              className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#10b981] px-3 py-2 text-sm font-semibold text-[#10b981] transition-colors"
             >
               <DollarSign className="h-4 w-4" />
               Tip
             </button>
-            <CreatorSubscribeSection
-              creatorId={creator.id}
-              creatorName={creator.display_name}
-              creatorUsername={creator.username}
-              subscriptionPrice={subscriptionPrice}
-              premiumPrice={premiumPrice}
-              vipPrice={vipPrice}
-            />
+            <div className="flex-1">
+              <CreatorSubscribeSection
+                creatorId={creator.id}
+                creatorName={creator.display_name}
+                creatorUsername={creator.username}
+                subscriptionPrice={subscriptionPrice}
+                premiumPrice={premiumPrice}
+                vipPrice={vipPrice}
+              />
+            </div>
           </div>
         </div>
 
@@ -398,7 +442,7 @@ export default function CreatorProfileClient() {
         </div>
 
         {/* Stats Row */}
-        <div className="mb-4 flex items-center gap-6">
+        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-1.5 text-sm">
             <FileText className="h-4 w-4 text-gray-300" />
             <span className="font-semibold text-gray-900">
@@ -440,7 +484,7 @@ export default function CreatorProfileClient() {
         {(premiumPrice !== null || vipPrice !== null) && (
           <div className="mb-6">
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Subscription Tiers</p>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3">
               <div className="rounded-lg border border-gray-200 bg-white p-3 text-center">
                 <p className="text-xs font-semibold text-[#00AFF0] mb-0.5">Basic</p>
                 <p className="text-lg font-bold text-gray-900">${subscriptionPrice.toFixed(2)}<span className="text-xs font-normal text-gray-400">/mo</span></p>

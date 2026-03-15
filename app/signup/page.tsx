@@ -13,7 +13,7 @@ export default function Signup({ searchParams }: SignupPageProps) {
   return (
     <div className="bg-gray-50 flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
-        <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-2xl shadow-[#00AFF0]/5">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-2xl shadow-[#00AFF0]/5 sm:p-8">
           {/* Logo */}
           <div className="mb-6 flex justify-center">
             <Link href="/" className="transition-transform hover:scale-105">

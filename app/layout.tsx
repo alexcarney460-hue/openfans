@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import SolanaProvider from "@/components/SolanaProvider";
 import { LanguageProvider } from "@/utils/i18n/context";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,14 +16,28 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#00AFF0",
+};
+
 export const metadata: Metadata = {
   title: "OpenFans — Own Your Content, Own Your Money",
   description:
     "The creator platform that pays more. Keep 95% of your earnings, get paid instantly in crypto. No restrictions. No gatekeepers.",
   metadataBase: new URL("https://openfans.online"),
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    apple: "/icons/icon-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "OpenFans",
   },
   openGraph: {
     title: "OpenFans — The Creator Platform That Pays More",
@@ -39,7 +55,7 @@ export const metadata: Metadata = {
       "Keep 95% of your earnings. Get paid instantly in crypto. No restrictions. Join 10,000+ creators.",
   },
   other: {
-    "apple-mobile-web-app-title": "OpenFans",
+    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -55,6 +71,8 @@ export default function RootLayout({
       >
         <LanguageProvider>
           <SolanaProvider>{children}</SolanaProvider>
+          <PWAInstallPrompt />
+          <ServiceWorkerRegistration />
         </LanguageProvider>
       </body>
     </html>
