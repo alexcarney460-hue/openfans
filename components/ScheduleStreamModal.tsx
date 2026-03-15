@@ -56,6 +56,7 @@ export default function ScheduleStreamModal({ open, onClose, onCreated }: Schedu
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [ticketPrice, setTicketPrice] = useState("5.00");
   const [subscriberOnly, setSubscriberOnly] = useState(false);
   const [chatEnabled, setChatEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -65,6 +66,7 @@ export default function ScheduleStreamModal({ open, onClose, onCreated }: Schedu
     setTitle("");
     setDescription("");
     setScheduledAt("");
+    setTicketPrice("5.00");
     setSubscriberOnly(false);
     setChatEnabled(true);
     setError(null);
@@ -95,6 +97,14 @@ export default function ScheduleStreamModal({ open, onClose, onCreated }: Schedu
       return;
     }
 
+    const priceNum = parseFloat(ticketPrice);
+    if (isNaN(priceNum) || priceNum < 5.0) {
+      setError("Ticket price must be at least $5.00.");
+      return;
+    }
+
+    const ticketPriceCents = Math.round(priceNum * 100);
+
     setLoading(true);
 
     try {
@@ -105,6 +115,7 @@ export default function ScheduleStreamModal({ open, onClose, onCreated }: Schedu
           title: title.trim(),
           description: description.trim() || undefined,
           scheduled_at: scheduledDate.toISOString(),
+          ticket_price: ticketPriceCents,
           subscriber_only: subscriberOnly,
           chat_enabled: chatEnabled,
           status: "scheduled",
@@ -124,7 +135,7 @@ export default function ScheduleStreamModal({ open, onClose, onCreated }: Schedu
     } finally {
       setLoading(false);
     }
-  }, [title, description, scheduledAt, subscriberOnly, chatEnabled, resetForm, onCreated, onClose]);
+  }, [title, description, scheduledAt, ticketPrice, subscriberOnly, chatEnabled, resetForm, onCreated, onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -224,6 +235,31 @@ export default function ScheduleStreamModal({ open, onClose, onCreated }: Schedu
               min={minDateTime}
               disabled={loading}
             />
+          </div>
+
+          {/* Ticket Price */}
+          <div className="space-y-2">
+            <Label htmlFor="stream-ticket-price">
+              Ticket Price (USD) <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                $
+              </span>
+              <Input
+                id="stream-ticket-price"
+                type="number"
+                value={ticketPrice}
+                onChange={(e) => setTicketPrice(e.target.value)}
+                min="5.00"
+                step="0.01"
+                disabled={loading}
+                className="pl-7"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Minimum $5.00. Viewers pay this to watch your stream.
+            </p>
           </div>
 
           {/* Toggles */}

@@ -2,10 +2,33 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Send, Users, MessageSquareOff, Lock, Video, VideoOff, Mic, MicOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Users,
+  MessageSquareOff,
+  Lock,
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  Loader2,
+  DollarSign,
+  PhoneOff,
+  Clock,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LiveBadge } from "@/components/LiveBadge";
 import { ChatMessage, type ChatMessageData } from "@/components/ChatMessage";
+import {
+  LiveKitRoom,
+  VideoTrack,
+  useTracks,
+  useConnectionState,
+  useLocalParticipant,
+  RoomAudioRenderer,
+} from "@livekit/components-react";
+import { Track, ConnectionState } from "livekit-client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,6 +50,9 @@ interface StreamData {
   readonly stream_key?: string;
   readonly status: "live" | "ended" | "scheduled";
   readonly chat_enabled: boolean;
+  readonly ticket_price: number | null;
+  readonly is_creator?: boolean;
+  readonly has_paid?: boolean;
   readonly is_subscriber_only: boolean;
   readonly is_subscribed?: boolean;
   readonly started_at: string | null;
@@ -35,9 +61,13 @@ interface StreamData {
   readonly creator: StreamCreator;
 }
 
-interface ViewerData {
-  readonly count: number;
-}
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const CHAT_POLL_INTERVAL = 3000;
+const VIEWER_POLL_INTERVAL = 10000;
+const MAX_STREAM_DURATION_MS = 20 * 60 * 1000; // 20 minutes
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -57,19 +87,28 @@ function formatDuration(startedAt: string, endedAt: string): string {
   return `${minutes}m`;
 }
 
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function formatCountdown(remainingMs: number): string {
+  if (remainingMs <= 0) return "0:00";
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
 // ---------------------------------------------------------------------------
-// Component
+// Main Component
 // ---------------------------------------------------------------------------
 
 interface StreamClientProps {
   readonly streamId: string;
 }
 
-const CHAT_POLL_INTERVAL = 3000;
-const VIEWER_POLL_INTERVAL = 10000;
-
 export default function StreamClient({ streamId }: StreamClientProps) {
-  // ---- State ----
+  // ---- Core state ----
   const [stream, setStream] = useState<StreamData | null>(null);
   const [messages, setMessages] = useState<readonly ChatMessageData[]>([]);
   const [viewerCount, setViewerCount] = useState(0);
@@ -79,11 +118,21 @@ export default function StreamClient({ streamId }: StreamClientProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ---- LiveKit state ----
+  const [livekitToken, setLivekitToken] = useState<string | null>(null);
+  const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
+  const [isCreator, setIsCreator] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [hasJoined, setHasJoined] = useState(false);
+  const [purchasedAt, setPurchasedAt] = useState<string | null>(null);
+  const [viewerExpired, setViewerExpired] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScroll = useRef(true);
 
-  // ---- Fetch stream data ----
+  // ---- Fetch stream data + auto-join ----
   useEffect(() => {
     let cancelled = false;
 
@@ -96,11 +145,19 @@ export default function StreamClient({ streamId }: StreamClientProps) {
           return;
         }
         const data = await res.json();
-        if (!cancelled) {
-          const streamPayload: StreamData = data.data ?? data.stream ?? data;
-          setStream(streamPayload);
-          setIsSubscribed(streamPayload.is_subscribed ?? data.is_subscribed ?? false);
-          setLoading(false);
+        if (cancelled) return;
+
+        const s: StreamData = data.data ?? data.stream ?? data;
+        setStream(s);
+        setIsSubscribed(s.is_subscribed ?? data.is_subscribed ?? false);
+
+        const creatorFlag = s.is_creator ?? !!s.stream_key;
+        setIsCreator(creatorFlag);
+        setLoading(false);
+
+        // Auto-join if creator or already paid
+        if (s.status === "live" && (creatorFlag || s.has_paid)) {
+          autoJoin(creatorFlag);
         }
       } catch {
         if (!cancelled) {
@@ -110,11 +167,31 @@ export default function StreamClient({ streamId }: StreamClientProps) {
       }
     }
 
+    async function autoJoin(creatorJoining: boolean) {
+      try {
+        const res = await fetch(`/api/streams/${streamId}/join`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setLivekitToken(data.token);
+          setLivekitUrl(data.livekit_url);
+          setIsCreator(creatorJoining || !!data.is_creator);
+          setPurchasedAt(data.purchased_at ?? null);
+          setHasJoined(true);
+          setViewerExpired(false);
+        }
+      } catch {
+        // Silent failure on auto-join; user can retry manually
+      }
+    }
+
     fetchStream();
     return () => { cancelled = true; };
   }, [streamId]);
 
-  // ---- Poll for chat messages ----
+  // ---- Poll chat messages ----
   useEffect(() => {
     if (!stream || stream.status === "ended" || !stream.chat_enabled) return;
     let cancelled = false;
@@ -127,9 +204,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
           const incoming: ChatMessageData[] = data.data ?? data.messages ?? data;
           setMessages(Array.isArray(incoming) ? incoming : []);
         }
-      } catch {
-        // Silently retry on next interval
-      }
+      } catch { /* retry next interval */ }
     }
 
     fetchMessages();
@@ -137,7 +212,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
     return () => { cancelled = true; clearInterval(interval); };
   }, [streamId, stream?.status, stream?.chat_enabled]);
 
-  // ---- Poll for viewer count ----
+  // ---- Poll viewer count ----
   useEffect(() => {
     if (!stream || stream.status !== "live") return;
     let cancelled = false;
@@ -147,12 +222,10 @@ export default function StreamClient({ streamId }: StreamClientProps) {
         const res = await fetch(`/api/streams/${streamId}/viewers`);
         if (res.ok && !cancelled) {
           const json = await res.json();
-          const viewerData = json.data ?? json;
-          setViewerCount(viewerData.viewer_count ?? viewerData.count ?? 0);
+          const vd = json.data ?? json;
+          setViewerCount(vd.viewer_count ?? vd.count ?? 0);
         }
-      } catch {
-        // Silently retry on next interval
-      }
+      } catch { /* retry next interval */ }
     }
 
     fetchViewers();
@@ -174,7 +247,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
     shouldAutoScroll.current = scrollHeight - scrollTop - clientHeight < 60;
   }, []);
 
-  // ---- Send message ----
+  // ---- Send chat message ----
   const sendMessage = useCallback(async () => {
     const trimmed = chatInput.trim();
     if (!trimmed || isSending) return;
@@ -188,7 +261,6 @@ export default function StreamClient({ streamId }: StreamClientProps) {
       });
       if (res.ok) {
         setChatInput("");
-        // Immediately fetch new messages to show own message
         const refreshRes = await fetch(`/api/streams/${streamId}/chat`);
         if (refreshRes.ok) {
           const data = await refreshRes.json();
@@ -196,9 +268,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
           setMessages(Array.isArray(refreshed) ? refreshed : []);
         }
       }
-    } catch {
-      // Swallow network errors — user can retry
-    } finally {
+    } catch { /* user can retry */ } finally {
       setIsSending(false);
     }
   }, [chatInput, isSending, streamId]);
@@ -212,6 +282,55 @@ export default function StreamClient({ streamId }: StreamClientProps) {
     },
     [sendMessage],
   );
+
+  // ---- Pay & Join ----
+  const handlePayAndWatch = useCallback(async () => {
+    if (isJoining) return;
+    setIsJoining(true);
+    setJoinError(null);
+
+    try {
+      const res = await fetch(`/api/streams/${streamId}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setJoinError(data.error ?? "Failed to join stream");
+        setIsJoining(false);
+        return;
+      }
+
+      setLivekitToken(data.token);
+      setLivekitUrl(data.livekit_url);
+      setPurchasedAt(data.purchased_at ?? new Date().toISOString());
+      setHasJoined(true);
+      setViewerExpired(false);
+    } catch {
+      setJoinError("Network error. Please try again.");
+    } finally {
+      setIsJoining(false);
+    }
+  }, [isJoining, streamId]);
+
+  // ---- End Stream (creator only) ----
+  const handleEndStream = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/streams/${streamId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ended" }),
+      });
+      if (res.ok) {
+        setStream((prev) =>
+          prev ? { ...prev, status: "ended", ended_at: new Date().toISOString() } : prev,
+        );
+        setLivekitToken(null);
+        setHasJoined(false);
+      }
+    } catch { /* swallow */ }
+  }, [streamId]);
 
   // ---- Loading / Error states ----
   if (loading) {
@@ -238,6 +357,8 @@ export default function StreamClient({ streamId }: StreamClientProps) {
 
   const isEnded = stream.status === "ended";
   const showSubscribeGate = stream.is_subscriber_only && !isSubscribed;
+  const showPaymentGate =
+    stream.status === "live" && !isCreator && !hasJoined && !showSubscribeGate;
 
   // ---- Render ----
   return (
@@ -273,17 +394,32 @@ export default function StreamClient({ streamId }: StreamClientProps) {
               startedAt={stream.started_at}
               endedAt={stream.ended_at}
             />
-          ) : stream.playback_url ? (
-            <iframe
-              src={stream.playback_url}
-              className="absolute inset-0 h-full w-full"
-              sandbox="allow-scripts allow-same-origin"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
+          ) : showPaymentGate ? (
+            <PaymentGate
+              creator={stream.creator}
               title={stream.title}
+              ticketPrice={stream.ticket_price ?? 500}
+              isJoining={isJoining}
+              joinError={joinError}
+              onPayAndWatch={handlePayAndWatch}
+              isRenew={viewerExpired}
             />
-          ) : stream.stream_key ? (
-            <CreatorWebcamView />
+          ) : hasJoined && livekitToken && livekitUrl ? (
+            <LiveKitStreamView
+              token={livekitToken}
+              serverUrl={livekitUrl}
+              isCreator={isCreator}
+              creator={stream.creator}
+              streamId={streamId}
+              startedAt={stream.started_at}
+              purchasedAt={purchasedAt}
+              onEndStream={handleEndStream}
+              onViewerTimeUp={() => {
+                setViewerExpired(true);
+                setLivekitToken(null);
+                setHasJoined(false);
+              }}
+            />
           ) : (
             <ViewerLiveView creator={stream.creator} title={stream.title} />
           )}
@@ -291,10 +427,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
 
         {/* Stream info bar */}
         <div className="flex items-center gap-3 border-t border-white/10 px-4 py-3">
-          <Link
-            href={`/${stream.creator.username}`}
-            className="flex-shrink-0"
-          >
+          <Link href={`/${stream.creator.username}`} className="flex-shrink-0">
             {stream.creator.avatar_url ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -319,21 +452,15 @@ export default function StreamClient({ streamId }: StreamClientProps) {
               >
                 {stream.creator.display_name}
               </Link>
-              {stream.status === "live" && (
-                <LiveBadge size="sm" />
-              )}
+              {stream.status === "live" && <LiveBadge size="sm" />}
             </div>
-            <p className="truncate text-xs text-gray-400">
-              {stream.title}
-            </p>
+            <p className="truncate text-xs text-gray-400">{stream.title}</p>
           </div>
 
           {stream.status === "live" && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <Users className="h-4 w-4" />
-              <span className="tabular-nums">
-                {viewerCount.toLocaleString()}
-              </span>
+              <span className="tabular-nums">{viewerCount.toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -432,122 +559,409 @@ export default function StreamClient({ streamId }: StreamClientProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Payment Gate
 // ---------------------------------------------------------------------------
 
-function CreatorWebcamView() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraOn, setCameraOn] = useState(true);
-  const [micOn, setMicOn] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function startCamera() {
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true,
-        });
-        if (cancelled) {
-          mediaStream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = mediaStream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
-      } catch {
-        if (!cancelled) setError("Camera access denied. Please allow camera and microphone access.");
-      }
-    }
-
-    startCamera();
-    return () => {
-      cancelled = true;
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
-  const toggleCamera = () => {
-    const tracks = streamRef.current?.getVideoTracks();
-    if (tracks) {
-      tracks.forEach((t) => { t.enabled = !t.enabled; });
-      setCameraOn((prev) => !prev);
-    }
-  };
-
-  const toggleMic = () => {
-    const tracks = streamRef.current?.getAudioTracks();
-    if (tracks) {
-      tracks.forEach((t) => { t.enabled = !t.enabled; });
-      setMicOn((prev) => !prev);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
-        <VideoOff className="h-10 w-10 text-gray-500" />
-        <p className="max-w-sm text-center text-sm text-gray-400">{error}</p>
-        <button
-          onClick={() => { setError(null); window.location.reload(); }}
-          className="rounded-lg bg-[#00AFF0] px-4 py-2 text-sm font-medium text-white hover:bg-[#009dd8]"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
+function PaymentGate({
+  creator,
+  title,
+  ticketPrice,
+  isJoining,
+  joinError,
+  onPayAndWatch,
+  isRenew = false,
+}: {
+  readonly creator: StreamCreator;
+  readonly title: string;
+  readonly ticketPrice: number;
+  readonly isJoining: boolean;
+  readonly joinError: string | null;
+  readonly onPayAndWatch: () => void;
+  readonly isRenew?: boolean;
+}) {
   return (
-    <div className="relative h-full w-full">
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        className="h-full w-full object-cover"
-        style={{ transform: "scaleX(-1)" }}
-      />
-      {/* Controls overlay */}
-      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3">
-        <button
-          onClick={toggleCamera}
-          className={`rounded-full p-3 transition-colors ${
-            cameraOn ? "bg-white/20 text-white hover:bg-white/30" : "bg-red-500 text-white hover:bg-red-600"
-          }`}
-          aria-label={cameraOn ? "Turn off camera" : "Turn on camera"}
-        >
-          {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-        </button>
-        <button
-          onClick={toggleMic}
-          className={`rounded-full p-3 transition-colors ${
-            micOn ? "bg-white/20 text-white hover:bg-white/30" : "bg-red-500 text-white hover:bg-red-600"
-          }`}
-          aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
-        >
-          {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-        </button>
+    <div className="flex h-full flex-col items-center justify-center gap-5 bg-gradient-to-b from-gray-900 to-black p-6">
+      {/* Creator avatar */}
+      {creator.avatar_url ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={creator.avatar_url}
+          alt={creator.display_name}
+          className="h-20 w-20 rounded-full object-cover ring-4 ring-[#00AFF0]/30"
+        />
+      ) : (
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#00AFF0] ring-4 ring-[#00AFF0]/30">
+          <span className="text-2xl font-bold text-white">
+            {avatarInitial(creator.display_name)}
+          </span>
+        </div>
+      )}
+
+      {/* Stream info */}
+      <div className="text-center">
+        <h2 className="text-lg font-semibold text-white">{creator.display_name}</h2>
+        <p className="mt-1 text-sm text-gray-400">{title}</p>
       </div>
-      <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5">
+
+      {/* LIVE badge */}
+      <div className="flex items-center gap-2 rounded-full bg-red-500/20 px-4 py-1.5">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
         </span>
-        <span className="text-xs font-semibold text-white">YOU ARE LIVE</span>
+        <span className="text-xs font-semibold text-red-400">LIVE NOW</span>
+      </div>
+
+      {/* Price + Pay button */}
+      <div className="flex flex-col items-center gap-3">
+        <p className="text-sm text-gray-300">
+          {isRenew ? (
+            <>
+              Your 20 minutes are up! Pay{" "}
+              <span className="font-bold text-white">{formatCents(ticketPrice)}</span>{" "}
+              for another 20 minutes
+            </>
+          ) : (
+            <>
+              Pay{" "}
+              <span className="font-bold text-white">{formatCents(ticketPrice)}</span>{" "}
+              to watch this live stream (20 min)
+            </>
+          )}
+        </p>
+
+        <button
+          onClick={onPayAndWatch}
+          disabled={isJoining}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-8 py-3 text-sm font-semibold text-white transition-all",
+            "bg-[#00AFF0] hover:bg-[#009dd8] hover:scale-105",
+            "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100",
+          )}
+        >
+          {isJoining ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <DollarSign className="h-4 w-4" />
+              Pay & Watch
+            </>
+          )}
+        </button>
+
+        {joinError && (
+          <p className="max-w-sm text-center text-sm text-red-400">{joinError}</p>
+        )}
       </div>
     </div>
   );
 }
 
-function ViewerLiveView({ creator, title }: { creator: StreamCreator; title: string }) {
+// ---------------------------------------------------------------------------
+// LiveKit Stream View
+// ---------------------------------------------------------------------------
+
+function LiveKitStreamView({
+  token,
+  serverUrl,
+  isCreator,
+  creator,
+  streamId,
+  startedAt,
+  purchasedAt,
+  onEndStream,
+  onViewerTimeUp,
+}: {
+  readonly token: string;
+  readonly serverUrl: string;
+  readonly isCreator: boolean;
+  readonly creator: StreamCreator;
+  readonly streamId: string;
+  readonly startedAt: string | null;
+  readonly purchasedAt: string | null;
+  readonly onEndStream: () => void;
+  readonly onViewerTimeUp: () => void;
+}) {
+  return (
+    <LiveKitRoom
+      token={token}
+      serverUrl={serverUrl}
+      connect={true}
+      audio={isCreator}
+      video={isCreator}
+      className="relative h-full w-full"
+    >
+      <RoomAudioRenderer />
+      <LiveKitInner
+        isCreator={isCreator}
+        creator={creator}
+        streamId={streamId}
+        startedAt={startedAt}
+        purchasedAt={purchasedAt}
+        onEndStream={onEndStream}
+        onViewerTimeUp={onViewerTimeUp}
+      />
+    </LiveKitRoom>
+  );
+}
+
+function LiveKitInner({
+  isCreator,
+  creator,
+  streamId,
+  startedAt,
+  purchasedAt,
+  onEndStream,
+  onViewerTimeUp,
+}: {
+  readonly isCreator: boolean;
+  readonly creator: StreamCreator;
+  readonly streamId: string;
+  readonly startedAt: string | null;
+  readonly purchasedAt: string | null;
+  readonly onEndStream: () => void;
+  readonly onViewerTimeUp: () => void;
+}) {
+  const connectionState = useConnectionState();
+  const tracks = useTracks(
+    [
+      { source: Track.Source.Camera, withPlaceholder: true },
+      { source: Track.Source.Microphone, withPlaceholder: false },
+    ],
+    { onlySubscribed: false },
+  );
+  const { localParticipant } = useLocalParticipant();
+
+  const [cameraOn, setCameraOn] = useState(true);
+  const [micOn, setMicOn] = useState(true);
+
+  // Find the creator's video track
+  const creatorVideoTrack = isCreator
+    ? tracks.find(
+        (t) =>
+          t.source === Track.Source.Camera &&
+          t.participant.identity === localParticipant?.identity,
+      )
+    : tracks.find(
+        (t) =>
+          t.source === Track.Source.Camera &&
+          t.participant.identity !== localParticipant?.identity,
+      );
+
+  const toggleCamera = useCallback(async () => {
+    if (!localParticipant) return;
+    try {
+      await localParticipant.setCameraEnabled(!cameraOn);
+      setCameraOn((prev) => !prev);
+    } catch { /* toggle failed */ }
+  }, [localParticipant, cameraOn]);
+
+  const toggleMic = useCallback(async () => {
+    if (!localParticipant) return;
+    try {
+      await localParticipant.setMicrophoneEnabled(!micOn);
+      setMicOn((prev) => !prev);
+    } catch { /* toggle failed */ }
+  }, [localParticipant, micOn]);
+
+  // Connecting state
+  if (connectionState === ConnectionState.Connecting) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 bg-gray-950">
+        <Loader2 className="h-8 w-8 animate-spin text-[#00AFF0]" />
+        <p className="text-sm text-gray-400">Connecting to stream...</p>
+      </div>
+    );
+  }
+
+  if (connectionState === ConnectionState.Disconnected) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 bg-gray-950">
+        <PhoneOff className="h-8 w-8 text-gray-500" />
+        <p className="text-sm text-gray-400">Disconnected from stream</p>
+      </div>
+    );
+  }
+
+  const hasVideoTrack =
+    creatorVideoTrack?.publication &&
+    !creatorVideoTrack.publication.isMuted &&
+    creatorVideoTrack.publication.track;
+
+  return (
+    <div className="relative h-full w-full bg-black">
+      {/* Video display */}
+      {hasVideoTrack ? (
+        <VideoTrack
+          trackRef={creatorVideoTrack}
+          className="h-full w-full object-cover"
+          style={isCreator ? { transform: "scaleX(-1)" } : undefined}
+        />
+      ) : (
+        <CreatorAvatarFallback creator={creator} />
+      )}
+
+      {/* Viewer countdown timer (creator has no timer — they stay live) */}
+      {!isCreator && purchasedAt && (
+        <ViewerCountdownTimer
+          purchasedAt={purchasedAt}
+          onTimeUp={onViewerTimeUp}
+        />
+      )}
+
+      {/* Creator controls */}
+      {isCreator && (
+        <>
+          {/* YOU ARE LIVE indicator */}
+          <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            <span className="text-xs font-semibold text-white">YOU ARE LIVE</span>
+          </div>
+
+          {/* Camera / Mic / End controls */}
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3">
+            <button
+              onClick={toggleCamera}
+              className={cn(
+                "rounded-full p-3 transition-colors",
+                cameraOn
+                  ? "bg-white/20 text-white hover:bg-white/30"
+                  : "bg-red-500 text-white hover:bg-red-600",
+              )}
+              aria-label={cameraOn ? "Turn off camera" : "Turn on camera"}
+            >
+              {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+            </button>
+
+            <button
+              onClick={toggleMic}
+              className={cn(
+                "rounded-full p-3 transition-colors",
+                micOn
+                  ? "bg-white/20 text-white hover:bg-white/30"
+                  : "bg-red-500 text-white hover:bg-red-600",
+              )}
+              aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
+            >
+              {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+            </button>
+
+            <button
+              onClick={onEndStream}
+              className="rounded-full bg-red-600 p-3 text-white transition-colors hover:bg-red-700"
+              aria-label="End stream"
+            >
+              <PhoneOff className="h-5 w-5" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Countdown Timer
+// ---------------------------------------------------------------------------
+
+function ViewerCountdownTimer({
+  purchasedAt,
+  onTimeUp,
+}: {
+  readonly purchasedAt: string;
+  readonly onTimeUp: () => void;
+}) {
+  const [remainingMs, setRemainingMs] = useState<number>(MAX_STREAM_DURATION_MS);
+  const hasExpiredRef = useRef(false);
+
+  useEffect(() => {
+    const purchaseTime = new Date(purchasedAt).getTime();
+
+    function tick() {
+      const elapsed = Date.now() - purchaseTime;
+      const remaining = Math.max(0, MAX_STREAM_DURATION_MS - elapsed);
+      setRemainingMs(remaining);
+
+      if (remaining <= 0 && !hasExpiredRef.current) {
+        hasExpiredRef.current = true;
+        onTimeUp();
+      }
+    }
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [purchasedAt, onTimeUp]);
+
+  const isWarning = remainingMs <= 5 * 60 * 1000;
+  const isCritical = remainingMs <= 60 * 1000;
+
+  return (
+    <div
+      className={cn(
+        "absolute top-3 right-3 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold tabular-nums transition-colors",
+        isCritical
+          ? "animate-pulse bg-red-600/90 text-white"
+          : isWarning
+            ? "bg-yellow-500/90 text-black"
+            : "bg-black/60 text-white",
+      )}
+    >
+      <Clock className="h-3.5 w-3.5" />
+      {formatCountdown(remainingMs)}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Creator Avatar Fallback (no video track yet)
+// ---------------------------------------------------------------------------
+
+function CreatorAvatarFallback({ creator }: { readonly creator: StreamCreator }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-gray-900 to-black">
+      {creator.avatar_url ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={creator.avatar_url}
+          alt={creator.display_name}
+          className="h-24 w-24 rounded-full object-cover ring-4 ring-[#00AFF0]/30"
+        />
+      ) : (
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#00AFF0] ring-4 ring-[#00AFF0]/30">
+          <span className="text-3xl font-bold text-white">
+            {avatarInitial(creator.display_name)}
+          </span>
+        </div>
+      )}
+      <p className="text-sm text-gray-400">{creator.display_name}</p>
+      <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+      <p className="text-xs text-gray-500">Waiting for video...</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Viewer placeholder (scheduled / no payment gate)
+// ---------------------------------------------------------------------------
+
+function ViewerLiveView({
+  creator,
+  title,
+}: {
+  readonly creator: StreamCreator;
+  readonly title: string;
+}) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-gray-900 to-black p-6">
       {creator.avatar_url ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={creator.avatar_url}
           alt={creator.display_name}
@@ -577,6 +991,10 @@ function ViewerLiveView({ creator, title }: { creator: StreamCreator; title: str
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Subscribe Overlay
+// ---------------------------------------------------------------------------
 
 function SubscribeOverlay({
   creatorName,
@@ -618,6 +1036,10 @@ function SubscribeOverlay({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Stream Ended Overlay
+// ---------------------------------------------------------------------------
+
 function StreamEndedOverlay({
   startedAt,
   endedAt,
@@ -653,9 +1075,7 @@ function StreamEndedOverlay({
       <div>
         <p className="text-sm font-medium text-gray-300">Stream has ended</p>
         {duration && (
-          <p className="mt-0.5 text-xs text-gray-500">
-            Duration: {duration}
-          </p>
+          <p className="mt-0.5 text-xs text-gray-500">Duration: {duration}</p>
         )}
       </div>
       <Link

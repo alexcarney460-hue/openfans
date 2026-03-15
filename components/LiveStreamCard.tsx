@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Users, Bell, Radio } from "lucide-react";
+import { Users, Bell, Radio, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LiveBadge } from "./LiveBadge";
 
@@ -15,6 +15,7 @@ interface LiveStreamCardProps {
     readonly viewer_count: number;
     readonly scheduled_at: string | null;
     readonly is_subscriber_only: boolean;
+    readonly ticket_price?: number;
     readonly creator: {
       readonly username: string;
       readonly display_name: string;
@@ -115,6 +116,14 @@ export function LiveStreamCard({ stream, className }: LiveStreamCardProps) {
             </div>
           )}
 
+          {/* Ticket price badge */}
+          {typeof stream.ticket_price === "number" && stream.ticket_price > 0 && (
+            <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-green-600/90 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+              <DollarSign className="h-3 w-3" />
+              {(stream.ticket_price / 100).toFixed(2)} to watch
+            </div>
+          )}
+
           {/* Viewer count for live streams */}
           {isLive && (
             <div className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
@@ -169,11 +178,11 @@ export function LiveStreamCard({ stream, className }: LiveStreamCardProps) {
         </div>
 
         {/* Action button */}
-        <div className="mt-3">
+        <div className="mt-3 flex items-center gap-2">
           <Link
             href={`/stream/${stream.id}`}
             className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
+              "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
               isLive
                 ? "bg-red-600 text-white hover:bg-red-700 active:scale-[0.98]"
                 : "border border-[#00AFF0] text-[#00AFF0] hover:bg-[#00AFF0]/10",
@@ -191,6 +200,11 @@ export function LiveStreamCard({ stream, className }: LiveStreamCardProps) {
               </>
             )}
           </Link>
+          {typeof stream.ticket_price === "number" && stream.ticket_price > 0 && (
+            <span className="shrink-0 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 border border-green-200">
+              ${(stream.ticket_price / 100).toFixed(2)}
+            </span>
+          )}
         </div>
       </div>
     </div>

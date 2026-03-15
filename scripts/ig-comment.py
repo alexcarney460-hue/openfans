@@ -43,9 +43,10 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/131.0.0.0 Safari/537.36"
 )
-MIN_DELAY = 84    # ~84 seconds between comments
-MAX_DELAY = 100   # slight randomization up to 100s
-MAX_COMMENTS = 50  # per session
+MIN_DELAY = 42    # 42 seconds between comments
+MAX_DELAY = 48    # slight randomization
+MAX_COMMENTS = 100  # per batch
+BATCH_PAUSE = 300  # 5 min pause between batches of 100
 LOG_FILE = str(Path(__file__).parent.parent / "logs" / "comment-outreach.jsonl")
 
 
@@ -344,10 +345,17 @@ def run(targets: list, dry_run: bool = False):
                 fail_count += 1
                 log_result(target, comment, False, "comment_failed")
 
+            # Batch pause: every MAX_COMMENTS, take a BATCH_PAUSE break
+            if success_count > 0 and success_count % MAX_COMMENTS == 0:
+                log(f"\n{'='*40}")
+                log(f"BATCH COMPLETE: {success_count} posted. Pausing {BATCH_PAUSE}s ({BATCH_PAUSE//60}m)...")
+                log(f"{'='*40}")
+                time.sleep(BATCH_PAUSE)
+
             # Rate limit between comments
-            if i < min(len(targets), MAX_COMMENTS) - 1:
+            elif i < len(targets) - 1:
                 delay = random.randint(MIN_DELAY, MAX_DELAY)
-                log(f"Waiting {delay}s before next comment ({delay // 60}m {delay % 60}s)...")
+                log(f"Waiting {delay}s...")
                 time.sleep(delay)
 
         browser.close()
@@ -367,6 +375,14 @@ if __name__ == "__main__":
     if args.target:
         targets = [args.target]
     else:
-        targets = TARGETS
+        # Load from scraped handles file if it exists, otherwise use built-in list
+        handles_file = Path(__file__).parent.parent / "content" / "ig-of-handles.txt"
+        if handles_file.exists():
+            with open(handles_file, "r") as f:
+                file_targets = [line.strip() for line in f if line.strip()]
+            log(f"Loaded {len(file_targets)} targets from {handles_file}")
+            targets = file_targets
+        else:
+            targets = TARGETS
 
     run(targets, dry_run=args.dry_run)

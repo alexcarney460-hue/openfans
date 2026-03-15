@@ -45,6 +45,7 @@ export async function GET(
         ls.ended_at,
         ls.viewer_count,
         ls.peak_viewers,
+        ls.ticket_price,
         ls.is_subscriber_only,
         ls.chat_enabled,
         ls.created_at,
@@ -139,6 +140,17 @@ export async function GET(
       streamKey = keyRows[0]?.stream_key as string | undefined;
     }
 
+    // Check if the viewer has already paid for this stream
+    let hasPaid = false;
+    if (user && !isCreator) {
+      const purchaseRows = await db.execute(sql`
+        SELECT id FROM live_stream_purchases
+        WHERE stream_id = ${streamId} AND buyer_id = ${user.id}
+        LIMIT 1
+      `);
+      hasPaid = purchaseRows.length > 0;
+    }
+
     return NextResponse.json({
       data: {
         id: stream.id,
@@ -156,6 +168,9 @@ export async function GET(
         ended_at: stream.ended_at,
         viewer_count: stream.viewer_count,
         peak_viewers: stream.peak_viewers,
+        ticket_price: stream.ticket_price,
+        is_creator: isCreator,
+        has_paid: hasPaid,
         is_subscriber_only: stream.is_subscriber_only,
         is_subscribed: stream.is_subscriber_only ? isSubscribed : undefined,
         chat_enabled: stream.chat_enabled,
@@ -332,7 +347,7 @@ export async function PATCH(
           RETURNING
             id, creator_id, title, description, status,
             playback_url, thumbnail_url, scheduled_at, started_at, ended_at,
-            viewer_count, peak_viewers, is_subscriber_only, chat_enabled,
+            viewer_count, peak_viewers, ticket_price, is_subscriber_only, chat_enabled,
             created_at, updated_at
         `);
 

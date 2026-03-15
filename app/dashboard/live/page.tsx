@@ -18,7 +18,11 @@ import {
   Trash2,
   AlertCircle,
   PlayCircle,
+  DollarSign,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import ScheduleStreamModal from "@/components/ScheduleStreamModal";
 import StreamControlPanel from "@/components/StreamControlPanel";
 
@@ -35,6 +39,7 @@ interface Stream {
   duration_seconds?: number;
   subscriber_only?: boolean;
   chat_enabled?: boolean;
+  ticket_price?: number;
   created_at: string;
 }
 
@@ -77,6 +82,9 @@ export default function LiveStreamDashboard() {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
   const [goingLive, setGoingLive] = useState(false);
+  const [goLiveModalOpen, setGoLiveModalOpen] = useState(false);
+  const [goLiveTitle, setGoLiveTitle] = useState("");
+  const [goLivePrice, setGoLivePrice] = useState("5.00");
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -108,16 +116,45 @@ export default function LiveStreamDashboard() {
     .filter((s) => s.status === "ended")
     .sort((a, b) => new Date(b.ended_at ?? b.created_at).getTime() - new Date(a.ended_at ?? a.created_at).getTime());
 
-  const handleGoLive = useCallback(async () => {
-    setGoingLive(true);
+  const openGoLiveModal = useCallback(() => {
+    setGoLiveTitle("");
+    setGoLivePrice("5.00");
     setError(null);
+    setGoLiveModalOpen(true);
+  }, []);
+
+  const closeGoLiveModal = useCallback(() => {
+    if (!goingLive) {
+      setGoLiveModalOpen(false);
+    }
+  }, [goingLive]);
+
+  const handleGoLive = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!goLiveTitle.trim()) {
+      setError("Title is required.");
+      return;
+    }
+
+    const priceNum = parseFloat(goLivePrice);
+    if (isNaN(priceNum) || priceNum < 5.0) {
+      setError("Ticket price must be at least $5.00.");
+      return;
+    }
+
+    const ticketPriceCents = Math.round(priceNum * 100);
+
+    setGoingLive(true);
 
     try {
       const res = await fetch("/api/streams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: "Live Stream",
+          title: goLiveTitle.trim(),
+          ticket_price: ticketPriceCents,
           status: "live",
           chat_enabled: true,
         }),
@@ -130,12 +167,13 @@ export default function LiveStreamDashboard() {
 
       const json = await res.json();
       const streamId = json.data?.id ?? json.id;
+      setGoLiveModalOpen(false);
       router.push(`/stream/${streamId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start stream.");
       setGoingLive(false);
     }
-  }, [router]);
+  }, [router, goLiveTitle, goLivePrice]);
 
   const handleCancelStream = useCallback(async (streamId: string) => {
     setCancellingId(streamId);
@@ -190,20 +228,11 @@ export default function LiveStreamDashboard() {
           </Button>
           <Button
             className="bg-red-600 text-white hover:bg-red-700"
-            onClick={handleGoLive}
+            onClick={openGoLiveModal}
             disabled={goingLive || !!activeStream}
           >
-            {goingLive ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Going Live...
-              </>
-            ) : (
-              <>
-                <Radio className="mr-2 h-4 w-4" />
-                Go Live
-              </>
-            )}
+            <Radio className="mr-2 h-4 w-4" />
+            Go Live
           </Button>
         </div>
       </div>
@@ -382,6 +411,12 @@ export default function LiveStreamDashboard() {
                             {stream.viewer_count} viewers
                           </span>
                         )}
+                        {typeof stream.ticket_price === "number" && stream.ticket_price > 0 && (
+                          <span className="flex items-center gap-1 text-green-600 font-medium">
+                            <DollarSign className="h-3 w-3" />
+                            ${(stream.ticket_price / 100).toFixed(2)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -415,7 +450,7 @@ export default function LiveStreamDashboard() {
               </Button>
               <Button
                 className="bg-red-600 text-white hover:bg-red-700"
-                onClick={handleGoLive}
+                onClick={openGoLiveModal}
                 disabled={goingLive}
               >
                 <Radio className="mr-2 h-4 w-4" />
@@ -424,6 +459,109 @@ export default function LiveStreamDashboard() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Go Live modal */}
+      {goLiveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closeGoLiveModal}
+            aria-hidden="true"
+          />
+          <Card className="relative z-10 w-full max-w-md bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 p-6 pb-4">
+              <div className="flex items-center gap-2">
+                <Radio className="h-5 w-5 text-red-500" />
+                <h2 className="text-lg font-semibold text-foreground">Go Live</h2>
+              </div>
+              <button
+                onClick={closeGoLiveModal}
+                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
+                aria-label="Close modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleGoLive} className="p-6 space-y-5">
+              {error && (
+                <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="go-live-title">
+                  Title <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="go-live-title"
+                  value={goLiveTitle}
+                  onChange={(e) => setGoLiveTitle(e.target.value)}
+                  placeholder="What's your stream about?"
+                  maxLength={150}
+                  disabled={goingLive}
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="go-live-price">
+                  Ticket Price (USD) <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="go-live-price"
+                    type="number"
+                    value={goLivePrice}
+                    onChange={(e) => setGoLivePrice(e.target.value)}
+                    min="5.00"
+                    step="0.01"
+                    disabled={goingLive}
+                    className="pl-7"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Minimum $5.00. Viewers pay this to watch your stream.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={closeGoLiveModal}
+                  disabled={goingLive}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-red-600 text-white hover:bg-red-700"
+                  disabled={goingLive}
+                >
+                  {goingLive ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Going Live...
+                    </>
+                  ) : (
+                    <>
+                      <Radio className="mr-2 h-4 w-4" />
+                      Start Stream
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
       )}
 
       {/* Schedule stream modal */}

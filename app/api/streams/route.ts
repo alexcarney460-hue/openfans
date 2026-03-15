@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
           ls.ended_at,
           ls.viewer_count,
           ls.peak_viewers,
+          ls.ticket_price,
           ls.is_subscriber_only,
           ls.chat_enabled,
           ls.created_at,
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest) {
           ls.ended_at,
           ls.viewer_count,
           ls.peak_viewers,
+          ls.ticket_price,
           ls.is_subscriber_only,
           ls.chat_enabled,
           ls.created_at,
@@ -158,6 +160,7 @@ export async function GET(request: NextRequest) {
       ended_at: row.ended_at,
       viewer_count: row.viewer_count,
       peak_viewers: row.peak_viewers,
+      ticket_price: row.ticket_price,
       is_subscriber_only: row.is_subscriber_only,
       chat_enabled: row.chat_enabled,
       created_at: row.created_at,
@@ -226,7 +229,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, description, scheduled_at, is_subscriber_only, chat_enabled, status: requestedStatus } = body;
+    const { title, description, scheduled_at, is_subscriber_only, chat_enabled, status: requestedStatus, ticket_price } = body;
 
     // Validate title
     if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -277,6 +280,27 @@ export async function POST(request: NextRequest) {
       parsedScheduledAt = date.toISOString();
     }
 
+    // Validate ticket_price (required, integer, minimum 500 cents = $5.00)
+    if (ticket_price === undefined || ticket_price === null) {
+      return NextResponse.json(
+        { error: "ticket_price is required", code: "MISSING_TICKET_PRICE" },
+        { status: 400 },
+      );
+    }
+    const parsedTicketPrice = parseInt(String(ticket_price), 10);
+    if (isNaN(parsedTicketPrice) || parsedTicketPrice !== Number(ticket_price)) {
+      return NextResponse.json(
+        { error: "ticket_price must be an integer (cents)", code: "INVALID_TICKET_PRICE" },
+        { status: 400 },
+      );
+    }
+    if (parsedTicketPrice < 500) {
+      return NextResponse.json(
+        { error: "ticket_price must be at least 500 ($5.00)", code: "TICKET_PRICE_TOO_LOW" },
+        { status: 400 },
+      );
+    }
+
     // Generate unique stream key
     const streamKey = crypto.randomUUID();
 
@@ -290,7 +314,7 @@ export async function POST(request: NextRequest) {
       INSERT INTO live_streams (
         creator_id, title, description, status, stream_key,
         scheduled_at, started_at, is_subscriber_only, chat_enabled,
-        created_at, updated_at
+        ticket_price, created_at, updated_at
       )
       VALUES (
         ${user.id},
@@ -302,6 +326,7 @@ export async function POST(request: NextRequest) {
         ${goLiveNow ? now : null},
         ${subscriberOnly},
         ${chatOn},
+        ${parsedTicketPrice},
         ${now},
         ${now}
       )
@@ -309,7 +334,7 @@ export async function POST(request: NextRequest) {
         id, creator_id, title, description, status, stream_key,
         playback_url, thumbnail_url, scheduled_at, started_at, ended_at,
         viewer_count, peak_viewers, is_subscriber_only, chat_enabled,
-        created_at, updated_at
+        ticket_price, created_at, updated_at
     `);
 
     const row = result[0];
@@ -332,6 +357,7 @@ export async function POST(request: NextRequest) {
       peak_viewers: row.peak_viewers,
       is_subscriber_only: row.is_subscriber_only,
       chat_enabled: row.chat_enabled,
+      ticket_price: row.ticket_price,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
