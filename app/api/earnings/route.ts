@@ -5,13 +5,10 @@ import { db } from "@/utils/db/db";
 import {
   usersTable,
   creatorProfilesTable,
-  subscriptionsTable,
-  tipsTable,
   payoutsTable,
 } from "@/utils/db/schema";
-import { eq, and, sql, desc, gte } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
-import { getCreatorFeeConfig } from "@/utils/fees";
 
 /**
  * GET /api/earnings
@@ -42,7 +39,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get creator profile for cached total
+    // Use creator_profiles.total_earnings_usdc as the source of truth
+    // for all-time earnings (already computed at payment time).
     const profileResult = await db
       .select({
         total_earnings_usdc: creatorProfilesTable.total_earnings_usdc,
@@ -51,65 +49,25 @@ export async function GET(request: NextRequest) {
       .where(eq(creatorProfilesTable.user_id, user.id))
       .limit(1);
 
-    const totalEarningsCached = profileResult[0]?.total_earnings_usdc ?? 0;
+    const totalEarningsCalc = profileResult[0]?.total_earnings_usdc ?? 0;
 
-    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
-    const feeConfig = await getCreatorFeeConfig(user.id);
-    const creatorShareMultiplier = feeConfig.shareRate;
-
-    // Calculate this month's earnings from subscriptions
+    // This month's earnings: sum positive amounts from wallet_transactions
+    // covering all revenue types (subscriptions, tips, PPV, stream tickets).
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const monthSubEarnings = await db
-      .select({
-        total: sql<number>`COALESCE(SUM(${subscriptionsTable.price_usdc}), 0)::int`,
-      })
-      .from(subscriptionsTable)
-      .where(
-        and(
-          eq(subscriptionsTable.creator_id, user.id),
-          gte(subscriptionsTable.created_at, startOfMonth),
-        ),
-      );
+    const monthEarningsResult = await db.execute(sql`
+      SELECT COALESCE(SUM(amount_usdc), 0)::int AS total
+      FROM wallet_transactions
+      WHERE user_id = ${user.id}
+        AND type IN ('subscription_received', 'tip_received', 'ppv_received', 'stream_ticket_received')
+        AND amount_usdc > 0
+        AND created_at >= ${startOfMonth}
+    `);
 
-    const monthTipEarnings = await db
-      .select({
-        total: sql<number>`COALESCE(SUM(${tipsTable.amount_usdc}), 0)::int`,
-      })
-      .from(tipsTable)
-      .where(
-        and(
-          eq(tipsTable.creator_id, user.id),
-          gte(tipsTable.created_at, startOfMonth),
-        ),
-      );
-
-    const thisMonthEarnings = Math.round(
-      ((monthSubEarnings[0]?.total ?? 0) + (monthTipEarnings[0]?.total ?? 0)) *
-        creatorShareMultiplier,
-    );
-
-    // Calculate all-time earnings from subscriptions + tips
-    const allTimeSubEarnings = await db
-      .select({
-        total: sql<number>`COALESCE(SUM(${subscriptionsTable.price_usdc}), 0)::int`,
-      })
-      .from(subscriptionsTable)
-      .where(eq(subscriptionsTable.creator_id, user.id));
-
-    const allTimeTipEarnings = await db
-      .select({
-        total: sql<number>`COALESCE(SUM(${tipsTable.amount_usdc}), 0)::int`,
-      })
-      .from(tipsTable)
-      .where(eq(tipsTable.creator_id, user.id));
-
-    const totalEarningsCalc = Math.round(
-      ((allTimeSubEarnings[0]?.total ?? 0) + (allTimeTipEarnings[0]?.total ?? 0)) *
-        creatorShareMultiplier,
-    );
+    const thisMonthEarnings: number =
+      (monthEarningsResult as unknown as Array<{ total: number }>)[0]?.total ?? 0;
 
     // Get total paid out
     const totalPaidOut = await db

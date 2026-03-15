@@ -47,17 +47,20 @@ export function getCreatorFeeRate(isAdult: boolean): {
 
 /**
  * Calculate the creator's share after the platform fee.
- * Uses integer math (floor) to avoid floating-point drift.
+ * Uses the same integer math as `calculateFeeSplit` in `utils/fees.ts`:
+ * compute the fee via Math.round, then subtract from gross.
+ * This avoids rounding mismatches between payment processing and reporting.
  *
  * @param grossCents - Gross earnings in USDC cents
- * @param shareRate  - Creator share as a decimal (default 0.95 for non-adult)
+ * @param feeRate    - Platform fee as a decimal (default 0.05 for non-adult)
  * @returns Net earnings in USDC cents (integer)
  */
 export function calculateCreatorShare(
   grossCents: number,
-  shareRate: number = STANDARD_SHARE_RATE,
+  feeRate: number = STANDARD_FEE_RATE,
 ): number {
-  return Math.floor(grossCents * shareRate);
+  const fee = Math.round(grossCents * feeRate);
+  return grossCents - fee;
 }
 
 /**

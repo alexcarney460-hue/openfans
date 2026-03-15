@@ -33,6 +33,7 @@ interface TipModalProps {
   readonly creatorName: string;
   readonly creatorUsername: string;
   readonly creatorId: string;
+  readonly initialAmount?: string;
 }
 
 function truncateAddress(address: string): string {
@@ -53,6 +54,7 @@ export function TipModal({
   creatorName,
   creatorUsername,
   creatorId,
+  initialAmount,
 }: TipModalProps) {
   const { publicKey, sendTransaction, connected, wallet } = useWallet();
   const { connection } = useConnection();
@@ -81,12 +83,12 @@ export function TipModal({
   }, [isOpen, handleKeyDown]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
       setTxState({ status: "idle" });
-      setAmount("5");
+      setAmount(initialAmount ?? "5");
       setMessage("");
     }
-  }, [isOpen]);
+  }, [isOpen, initialAmount]);
 
   const handleConnectWallet = useCallback(() => {
     openWalletModal(true);

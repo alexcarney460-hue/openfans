@@ -23,7 +23,8 @@ import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
  * Record a PPV purchase after on-chain USDC payment to the platform wallet.
  *
  * The buyer pays on-chain to the platform wallet. The platform credits
- * the creator's internal wallet with 95% (minus 5% platform fee).
+ * the creator's internal wallet after deducting a dynamic fee based on
+ * content type (5% for non-adult, 10% for adult creators).
  * The buyer's internal wallet is NOT debited — they already paid on-chain.
  *
  * Body:

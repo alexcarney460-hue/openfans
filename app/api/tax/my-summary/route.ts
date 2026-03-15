@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
 
     // Look up creator's fee rate (adult = 10%, non-adult = 5%)
     const feeConfig = await getCreatorFeeConfig(user.id);
-    const shareRate = feeConfig.shareRate;
+    const feeRate = feeConfig.feeRate;
 
     // Build lookup maps from query results
     const subsByMonth = new Map<number, number>();
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
       const tips = tipsByMonth.get(monthNum) ?? 0;
       const ppv = ppvByMonth.get(monthNum) ?? 0;
       const total = subscriptions + tips + ppv;
-      const net = calculateCreatorShare(total, shareRate);
+      const net = calculateCreatorShare(total, feeRate);
 
       return {
         month: name,
@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
 
     // Annual totals
     const grossEarnings = monthlyBreakdown.reduce((sum, m) => sum + m.total, 0);
-    const netEarnings = calculateCreatorShare(grossEarnings, shareRate);
+    const netEarnings = calculateCreatorShare(grossEarnings, feeRate);
     const platformFees = grossEarnings - netEarnings;
     const totalPayouts = Number((yearPayouts as unknown as Array<{ total: number }>)[0]?.total ?? 0);
 

@@ -123,6 +123,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
 
   // ---- Tip state ----
   const [tipModalOpen, setTipModalOpen] = useState(false);
+  const [tipAmount, setTipAmount] = useState<string | undefined>(undefined);
 
   // ---- LiveKit state ----
   const [livekitToken, setLivekitToken] = useState<string | null>(null);
@@ -290,12 +291,14 @@ export default function StreamClient({ streamId }: StreamClientProps) {
   );
 
   // ---- Tip handlers ----
-  const openTipModal = useCallback(() => {
+  const openTipModal = useCallback((amount?: string) => {
+    setTipAmount(amount);
     setTipModalOpen(true);
   }, []);
 
   const closeTipModal = useCallback(() => {
     setTipModalOpen(false);
+    setTipAmount(undefined);
   }, []);
 
   // ---- Pay & Join ----
@@ -328,6 +331,13 @@ export default function StreamClient({ streamId }: StreamClientProps) {
       setIsJoining(false);
     }
   }, [isJoining, streamId]);
+
+  // ---- Viewer time expired ----
+  const handleViewerTimeUp = useCallback(() => {
+    setViewerExpired(true);
+    setLivekitToken(null);
+    setHasJoined(false);
+  }, []);
 
   // ---- End Stream (creator only) ----
   const handleEndStream = useCallback(async () => {
@@ -430,11 +440,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
               startedAt={stream.started_at}
               purchasedAt={purchasedAt}
               onEndStream={handleEndStream}
-              onViewerTimeUp={() => {
-                setViewerExpired(true);
-                setLivekitToken(null);
-                setHasJoined(false);
-              }}
+              onViewerTimeUp={handleViewerTimeUp}
             />
           ) : (
             <ViewerLiveView creator={stream.creator} title={stream.title} />
@@ -555,7 +561,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
                   {TIP_QUICK_AMOUNTS.map((amt) => (
                     <button
                       key={amt}
-                      onClick={openTipModal}
+                      onClick={() => openTipModal(String(amt))}
                       className="flex-shrink-0 rounded-full border border-[#00AFF0]/30 bg-[#00AFF0]/5 px-3 py-1 text-xs font-semibold text-[#00AFF0] transition-all duration-200 hover:border-[#00AFF0] hover:bg-[#00AFF0]/10 hover:scale-105 active:scale-95"
                     >
                       ${amt}
@@ -602,16 +608,15 @@ export default function StreamClient({ streamId }: StreamClientProps) {
         )}
       </div>
 
-      {/* Tip Modal */}
-      {showTipButton && (
-        <TipModal
-          isOpen={tipModalOpen}
-          onClose={closeTipModal}
-          creatorName={stream.creator.display_name}
-          creatorUsername={stream.creator.username}
-          creatorId={stream.creator_id}
-        />
-      )}
+      {/* Tip Modal — always rendered, controlled by isOpen */}
+      <TipModal
+        isOpen={tipModalOpen}
+        onClose={closeTipModal}
+        creatorName={stream.creator.display_name}
+        creatorUsername={stream.creator.username}
+        creatorId={stream.creator_id}
+        initialAmount={tipAmount}
+      />
 
     </div>
   );

@@ -113,7 +113,7 @@ export async function GET(
 
     // Look up creator's fee rate (adult = 10%, non-adult = 5%)
     const feeConfig = await getCreatorFeeConfig(creatorId);
-    const shareRate = feeConfig.shareRate;
+    const feeRate = feeConfig.feeRate;
 
     // --- Monthly earnings breakdown ---
     // Subscription earnings by month
@@ -188,8 +188,8 @@ export async function GET(
         ppv,
         total,
         gross_earnings_usdc: total,
-        net: calculateCreatorShare(total, shareRate),
-        net_earnings_usdc: calculateCreatorShare(total, shareRate),
+        net: calculateCreatorShare(total, feeRate),
+        net_earnings_usdc: calculateCreatorShare(total, feeRate),
       });
     }
 
@@ -207,13 +207,13 @@ export async function GET(
         tips,
         ppv,
         total,
-        net: calculateCreatorShare(total, shareRate),
+        net: calculateCreatorShare(total, feeRate),
       });
     }
 
     // Annual totals
     const grossEarnings = monthly.reduce((s, m) => s + m.total, 0);
-    const netEarnings = calculateCreatorShare(grossEarnings, shareRate);
+    const netEarnings = calculateCreatorShare(grossEarnings, feeRate);
 
     // --- Payout history for the year ---
     const payoutRows = await db.execute(sql`

@@ -6,7 +6,9 @@ import { sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 
 import { DEFAULT_1099_THRESHOLD, calculateCreatorShare, formatTaxYear } from "@/utils/tax-calculations";
-import { STANDARD_SHARE_RATE, ADULT_SHARE_RATE } from "@/utils/fees";
+import { STANDARD_FEE_RATE, ADULT_FEE_RATE } from "@/utils/fees";
+const STANDARD_SHARE_RATE = 1 - STANDARD_FEE_RATE;
+const ADULT_SHARE_RATE = 1 - ADULT_FEE_RATE;
 const DEFAULT_THRESHOLD_CENTS = DEFAULT_1099_THRESHOLD;
 
 /**
@@ -238,8 +240,8 @@ export async function GET(request: NextRequest) {
 
     const csvRows = rows.map((row) => {
       const grossCents = Number(row.gross_earnings_cents);
-      const shareRate = row.is_adult ? ADULT_SHARE_RATE : STANDARD_SHARE_RATE;
-      const netCents = calculateCreatorShare(grossCents, shareRate);
+      const feeRate = row.is_adult ? ADULT_FEE_RATE : STANDARD_FEE_RATE;
+      const netCents = calculateCreatorShare(grossCents, feeRate);
       const feeCents = grossCents - netCents;
 
       const recipientName = row.legal_name || row.display_name;
