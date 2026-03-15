@@ -96,6 +96,10 @@ export type TranslationKey =
   | "dash.tax"
   | "dash.support"
   | "dash.settings"
+  | "dash.group.content"
+  | "dash.group.audience"
+  | "dash.group.money"
+  | "dash.group.account"
   | "dash.accountType"
   | "dash.admin"
   | "dash.creator"
@@ -206,6 +210,10 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.tax": "Tax Info",
     "dash.support": "Support",
     "dash.settings": "Settings",
+    "dash.group.content": "Content",
+    "dash.group.audience": "Audience",
+    "dash.group.money": "Money",
+    "dash.group.account": "Account",
     "dash.accountType": "Account Type",
     "dash.admin": "Admin",
     "dash.creator": "Creator",
@@ -277,6 +285,10 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.tax": "Impuestos",
     "dash.support": "Soporte",
     "dash.settings": "Configuracion",
+    "dash.group.content": "Contenido",
+    "dash.group.audience": "Audiencia",
+    "dash.group.money": "Dinero",
+    "dash.group.account": "Cuenta",
     "dash.accountType": "Tipo de cuenta",
     "dash.admin": "Administrador",
     "dash.creator": "Creador",

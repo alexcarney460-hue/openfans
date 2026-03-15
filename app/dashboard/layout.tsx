@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  ChevronDown,
   User,
   LogOut,
   Compass,
@@ -49,28 +50,80 @@ type NavItem = {
   fanOnly?: boolean;
 };
 
-const NAV_ITEMS: NavItem[] = [
+type NavGroup = {
+  id: string;
+  labelKey: TranslationKey;
+  icon: typeof LayoutDashboard;
+  items: NavItem[];
+  creatorOnly?: boolean;
+};
+
+// Top-level items (always visible, no group)
+const TOP_LEVEL_ITEMS: NavItem[] = [
   { href: "/dashboard", labelKey: "dash.home", icon: LayoutDashboard },
   { href: "/explore", labelKey: "dash.explore", icon: Compass, fanOnly: true },
-  { href: "/dashboard/subscriptions", labelKey: "dash.subscriptions", icon: Heart, fanOnly: true },
-  { href: "/dashboard/bookmarks", labelKey: "dash.bookmarks", icon: Bookmark },
-  { href: "/dashboard/posts", labelKey: "dash.posts", icon: FileText, creatorOnly: true },
-  { href: "/dashboard/stories", labelKey: "dash.stories", icon: Camera, creatorOnly: true },
-  { href: "/dashboard/live", labelKey: "dash.live", icon: Video, creatorOnly: true },
-  { href: "/dashboard/posts/new", labelKey: "dash.newPost", icon: PenSquare, creatorOnly: true },
   { href: "/dashboard/messages", labelKey: "dash.messages", icon: MessageSquare },
-  { href: "/dashboard/subscribers", labelKey: "dash.subscribers", icon: Users, creatorOnly: true },
-  { href: "/dashboard/earnings", labelKey: "dash.earnings", icon: DollarSign, creatorOnly: true },
-  { href: "/dashboard/analytics", labelKey: "dash.analytics", icon: BarChart3, creatorOnly: true },
-  { href: "/dashboard/wallet", labelKey: "dash.wallet", icon: Wallet },
-  { href: "/dashboard/promotions", labelKey: "dash.promotions", icon: Tag, creatorOnly: true },
-  { href: "/dashboard/referrals", labelKey: "dash.referrals", icon: Share2, creatorOnly: true },
-  { href: "/dashboard/verification", labelKey: "dash.verification", icon: ShieldCheck, creatorOnly: true },
-  { href: "/dashboard/tax", labelKey: "dash.tax", icon: Receipt, creatorOnly: true },
-  { href: "/dashboard/support", labelKey: "dash.support", icon: HelpCircle },
   { href: "/dashboard/notifications", labelKey: "dash.notifications", icon: Bell },
-  { href: "/dashboard/settings", labelKey: "dash.settings", icon: Settings },
 ];
+
+// Collapsible nav groups
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "content",
+    labelKey: "dash.group.content",
+    icon: FileText,
+    creatorOnly: true,
+    items: [
+      { href: "/dashboard/posts", labelKey: "dash.posts", icon: FileText, creatorOnly: true },
+      { href: "/dashboard/posts/new", labelKey: "dash.newPost", icon: PenSquare, creatorOnly: true },
+      { href: "/dashboard/stories", labelKey: "dash.stories", icon: Camera, creatorOnly: true },
+      { href: "/dashboard/live", labelKey: "dash.live", icon: Video, creatorOnly: true },
+    ],
+  },
+  {
+    id: "audience",
+    labelKey: "dash.group.audience",
+    icon: Users,
+    creatorOnly: true,
+    items: [
+      { href: "/dashboard/subscribers", labelKey: "dash.subscribers", icon: Users, creatorOnly: true },
+      { href: "/dashboard/subscriptions", labelKey: "dash.subscriptions", icon: Heart, fanOnly: true },
+      { href: "/dashboard/promotions", labelKey: "dash.promotions", icon: Tag, creatorOnly: true },
+      { href: "/dashboard/referrals", labelKey: "dash.referrals", icon: Share2, creatorOnly: true },
+    ],
+  },
+  {
+    id: "money",
+    labelKey: "dash.group.money",
+    icon: DollarSign,
+    creatorOnly: true,
+    items: [
+      { href: "/dashboard/earnings", labelKey: "dash.earnings", icon: DollarSign, creatorOnly: true },
+      { href: "/dashboard/wallet", labelKey: "dash.wallet", icon: Wallet },
+      { href: "/dashboard/analytics", labelKey: "dash.analytics", icon: BarChart3, creatorOnly: true },
+      { href: "/dashboard/tax", labelKey: "dash.tax", icon: Receipt, creatorOnly: true },
+    ],
+  },
+  {
+    id: "account",
+    labelKey: "dash.group.account",
+    icon: User,
+    items: [
+      { href: "/dashboard/bookmarks", labelKey: "dash.bookmarks", icon: Bookmark },
+      { href: "/dashboard/support", labelKey: "dash.support", icon: HelpCircle },
+      { href: "/dashboard/verification", labelKey: "dash.verification", icon: ShieldCheck, creatorOnly: true },
+    ],
+  },
+];
+
+// Settings is always visible at the bottom, standalone
+const SETTINGS_ITEM: NavItem = {
+  href: "/dashboard/settings",
+  labelKey: "dash.settings",
+  icon: Settings,
+};
+
+const STORAGE_KEY = "openfans-nav-groups";
 
 export default function DashboardLayout({
   children,
@@ -86,6 +139,7 @@ export default function DashboardLayout({
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [sidebarUnreadCount, setSidebarUnreadCount] = useState(0);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<{
     username: string;
     display_name: string;
@@ -160,6 +214,58 @@ export default function DashboardLayout({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Initialize open groups from localStorage, auto-open group containing active page
+  useEffect(() => {
+    let saved: Record<string, boolean> = {};
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch {
+      // Ignore parse errors
+    }
+
+    // Determine which group contains the active page
+    const activeGroupId = NAV_GROUPS.find((group) =>
+      group.items.some((item) => {
+        if (item.href === "/dashboard") return pathname === "/dashboard";
+        return pathname.startsWith(item.href);
+      })
+    )?.id;
+
+    // On mobile (< 1024px), start all collapsed except active group
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
+
+    const initial: Record<string, boolean> = {};
+    for (const group of NAV_GROUPS) {
+      if (Object.prototype.hasOwnProperty.call(saved, group.id)) {
+        initial[group.id] = saved[group.id];
+      } else if (isMobile) {
+        initial[group.id] = group.id === activeGroupId;
+      } else {
+        initial[group.id] = true; // Desktop: default open
+      }
+    }
+
+    // Always ensure the active group is open
+    if (activeGroupId) {
+      initial[activeGroupId] = true;
+    }
+
+    setOpenGroups(initial);
+  }, [pathname]);
+
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [groupId]: !prev[groupId] };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore storage errors
+      }
+      return next;
+    });
+  };
+
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
@@ -224,19 +330,166 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Dashboard navigation">
-          {NAV_ITEMS.filter((item) => {
+        <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Dashboard navigation">
+          {/* Top-level items */}
+          <div className="space-y-1">
+            {TOP_LEVEL_ITEMS.filter((item) => {
+              const isCreator = currentUser?.role === "creator" || currentUser?.role === "admin";
+              if (item.creatorOnly && !isCreator) return false;
+              if (item.fanOnly && isCreator) return false;
+              return true;
+            }).map((item) => {
+              const active = isActive(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-[#00AFF0]/15 text-gray-900"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  )}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <Icon
+                    className={cn(
+                      "h-[18px] w-[18px] shrink-0",
+                      active && "text-[#00AFF0]"
+                    )}
+                  />
+                  {!collapsed && <span>{t(item.labelKey)}</span>}
+                  {/* Unread badge for notifications */}
+                  {!collapsed &&
+                    item.href === "/dashboard/notifications" &&
+                    sidebarUnreadCount > 0 && (
+                      <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00AFF0] px-1.5 text-[10px] font-bold text-white">
+                        {sidebarUnreadCount > 99 ? "99+" : sidebarUnreadCount}
+                      </span>
+                    )}
+                  {/* Unread badge for messages */}
+                  {!collapsed &&
+                    item.href === "/dashboard/messages" &&
+                    unreadMsgCount > 0 && (
+                      <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00AFF0] px-1.5 text-[10px] font-bold text-white">
+                        {unreadMsgCount > 99 ? "99+" : unreadMsgCount}
+                      </span>
+                    )}
+                  {active && !collapsed && (() => {
+                    if (item.href === "/dashboard/notifications" && sidebarUnreadCount > 0) return false;
+                    if (item.href === "/dashboard/messages" && unreadMsgCount > 0) return false;
+                    return true;
+                  })() && (
+                    <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#00AFF0]" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Collapsible nav groups */}
+          {NAV_GROUPS.filter((group) => {
             const isCreator = currentUser?.role === "creator" || currentUser?.role === "admin";
-            if (item.creatorOnly && !isCreator) return false;
-            if (item.fanOnly && isCreator) return false;
+            if (group.creatorOnly && !isCreator) return false;
             return true;
-          }).map((item) => {
-            const active = isActive(item.href);
-            const Icon = item.icon;
+          }).map((group) => {
+            const isCreator = currentUser?.role === "creator" || currentUser?.role === "admin";
+            const visibleItems = group.items.filter((item) => {
+              if (item.creatorOnly && !isCreator) return false;
+              if (item.fanOnly && isCreator) return false;
+              return true;
+            });
+            if (visibleItems.length === 0) return null;
+
+            const isOpen = openGroups[group.id] ?? false;
+            const GroupIcon = group.icon;
+            const hasActiveItem = visibleItems.some((item) => isActive(item.href));
+
+            return (
+              <div key={group.id} className="mt-4">
+                {/* Group header */}
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors",
+                    hasActiveItem
+                      ? "text-[#00AFF0]"
+                      : "text-gray-400 hover:text-gray-600"
+                  )}
+                  aria-expanded={isOpen}
+                >
+                  {collapsed ? (
+                    <GroupIcon className="h-[18px] w-[18px] shrink-0" />
+                  ) : (
+                    <>
+                      <GroupIcon className="h-4 w-4 shrink-0" />
+                      <span>{t(group.labelKey)}</span>
+                      <ChevronDown
+                        className={cn(
+                          "ml-auto h-3.5 w-3.5 transition-transform duration-200",
+                          isOpen && "rotate-180"
+                        )}
+                      />
+                    </>
+                  )}
+                </button>
+
+                {/* Group items */}
+                <div
+                  className={cn(
+                    "overflow-hidden transition-all duration-200",
+                    isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  <div className="mt-1 space-y-0.5">
+                    {visibleItems.map((item) => {
+                      const active = isActive(item.href);
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
+                            collapsed ? "px-3" : "pl-7 pr-3",
+                            active
+                              ? "bg-[#00AFF0]/15 text-gray-900"
+                              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                          )}
+                          aria-current={active ? "page" : undefined}
+                        >
+                          <Icon
+                            className={cn(
+                              "h-[18px] w-[18px] shrink-0",
+                              active && "text-[#00AFF0]"
+                            )}
+                          />
+                          {!collapsed && <span>{t(item.labelKey)}</span>}
+                          {active && !collapsed && (
+                            <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#00AFF0]" />
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Divider before Settings */}
+          <div className="my-3 border-t border-gray-200" />
+
+          {/* Settings - always visible at the bottom */}
+          {(() => {
+            const active = isActive(SETTINGS_ITEM.href);
+            const Icon = SETTINGS_ITEM.icon;
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                href={SETTINGS_ITEM.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
@@ -252,38 +505,13 @@ export default function DashboardLayout({
                     active && "text-[#00AFF0]"
                   )}
                 />
-                {!collapsed && <span>{t(item.labelKey)}</span>}
-                {/* Unread badge for notifications nav item */}
-                {!collapsed &&
-                  item.href === "/dashboard/notifications" &&
-                  sidebarUnreadCount > 0 && (
-                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00AFF0] px-1.5 text-[10px] font-bold text-white">
-                      {sidebarUnreadCount > 99
-                        ? "99+"
-                        : sidebarUnreadCount}
-                    </span>
-                  )}
-                {/* Unread badge for messages nav item */}
-                {!collapsed &&
-                  item.href === "/dashboard/messages" &&
-                  unreadMsgCount > 0 && (
-                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#00AFF0] px-1.5 text-[10px] font-bold text-white">
-                      {unreadMsgCount > 99
-                        ? "99+"
-                        : unreadMsgCount}
-                    </span>
-                  )}
-                {active && !collapsed && (() => {
-                  // Don't show the active dot if a badge is already shown
-                  if (item.href === "/dashboard/notifications" && sidebarUnreadCount > 0) return false;
-                  if (item.href === "/dashboard/messages" && unreadMsgCount > 0) return false;
-                  return true;
-                })() && (
+                {!collapsed && <span>{t(SETTINGS_ITEM.labelKey)}</span>}
+                {active && !collapsed && (
                   <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#00AFF0]" />
                 )}
               </Link>
             );
-          })}
+          })()}
         </nav>
 
         {/* Sidebar footer */}

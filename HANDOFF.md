@@ -305,6 +305,52 @@ video_assets, video_variants, stories, story_views, story_highlights, story_high
 - [ ] **Live mainnet wallet test** — deposit → subscribe → payout flow with real USDC
 - [ ] **Set up Vercel Cron** — configure cron jobs for payout processing, onboarding emails, story cleanup
 
+---
+
+## Creator Acquisition Campaign — "Request a Creator"
+
+### How It Works
+1. Share `openfans.online/request-creator` on social media, DMs, and communities
+2. Fans visit and request their favorite OnlyFans creators by username
+3. Demand builds — admin dashboard at `/admin/creator-requests` shows most-requested creators ranked by waitlist count
+4. For top-requested creators: click "Generate Link" in admin → copies a unique claim URL
+5. DM the creator on Instagram/Twitter/Reddit with the claim link and message:
+   > "Hey @username — X fans are requesting you on OpenFans. You have a page waiting. Keep 95% instead of 80%. Claim it here: openfans.online/claim/[token]"
+6. Creator clicks link → sees waitlist count + earnings calculator → claims their page → instant creator profile
+
+### Key URLs
+| URL | Purpose |
+|-----|---------|
+| `/request-creator` | Fan-facing request page (share this) |
+| `/claim/[token]` | Creator claim page (generated per-creator) |
+| `/admin/creator-requests` | Admin dashboard to manage requests + generate links |
+
+### API Endpoints
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET/POST | `/api/creator-requests` | List leaderboard + submit request |
+| GET | `/api/creator-requests/[username]` | Single creator waitlist stats |
+| GET/POST | `/api/creator-claims` | Validate token / generate claim link (admin) |
+| POST | `/api/creator-claims/claim` | Claim a profile (auth required) |
+
+### Database Tables
+- `creator_requests` — fan requests with dedup (migration 012)
+- `creator_claims` — claim tokens with status tracking (migration 012)
+
+### Outreach Scripts (optional, in `scripts/outreach/`)
+- `find-instagram-handles.py` — Brave Search to find IG handles for requested creators
+- `comment-on-instagram.py` — Playwright bot to comment on creator posts (max 15/day)
+- `daily-outreach.py` — Orchestrator for daily cron
+- **Warning**: Instagram auto-commenting risks account bans. Use manually or with extreme caution.
+
+### Campaign Playbook
+1. **Seed phase**: Have 5-10 people request popular OF creators to build initial leaderboard
+2. **Viral phase**: Share `/request-creator` in Reddit communities (r/onlyfansadvice, etc.), Twitter, Discord
+3. **Outreach phase**: When a creator hits 20+ requests, generate claim link and DM them
+4. **Conversion**: The claim page's earnings calculator does the selling — $9,500 vs $8,000 on $10K/mo
+
+---
+
 ### Future Enhancements
 | Task | Effort |
 |------|--------|
