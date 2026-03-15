@@ -23,6 +23,7 @@ import { PPVUnlockModal } from "@/components/PPVUnlockModal";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { StoryRing } from "@/components/StoryRing";
 import { StoryViewer, type CreatorStories } from "@/components/StoryViewer";
+import { LiveBadge } from "@/components/LiveBadge";
 import { useTrack } from "@/hooks/useTrack";
 import { EXPLORE_CREATORS } from "@/app/explore/mock-data";
 
@@ -164,6 +165,11 @@ export default function CreatorProfileClient() {
   const [creatorHasStories, setCreatorHasStories] = useState(false);
   const [creatorStoryData, setCreatorStoryData] = useState<CreatorStories | null>(null);
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
+  const [activeStream, setActiveStream] = useState<{
+    id: string;
+    title: string;
+    viewer_count: number;
+  } | null>(null);
   const track = useTrack();
 
   // Track profile view on mount
@@ -244,6 +250,26 @@ export default function CreatorProfileClient() {
         // Non-critical
       });
   }, [creator?.id, creator?.username, creator?.display_name, creator?.avatar_url]);
+
+  // Fetch active live stream for this creator
+  useEffect(() => {
+    if (!creator?.id) return;
+    fetch(`/api/streams?status=live&creator_id=${creator.id}&limit=1`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const streams = json?.data ?? [];
+        if (streams.length > 0) {
+          setActiveStream({
+            id: streams[0].id,
+            title: streams[0].title,
+            viewer_count: streams[0].viewer_count,
+          });
+        }
+      })
+      .catch(() => {
+        // Non-critical
+      });
+  }, [creator?.id]);
 
   // Fetch follow status when creator loads
   useEffect(() => {
@@ -487,8 +513,22 @@ export default function CreatorProfileClient() {
             {creator.is_verified && (
               <BadgeCheck className="h-5 w-5 fill-[#00AFF0] text-white" />
             )}
+            {activeStream && (
+              <LiveBadge size="sm" viewerCount={activeStream.viewer_count} />
+            )}
           </div>
-          <p className="mb-3 text-sm text-gray-400">@{creator.username}</p>
+          <div className="mb-3 flex items-center gap-3">
+            <p className="text-sm text-gray-400">@{creator.username}</p>
+            {activeStream && (
+              <Link
+                href={`/stream/${activeStream.id}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700 active:scale-[0.98]"
+              >
+                <Play className="h-3 w-3" fill="white" />
+                Watch Live
+              </Link>
+            )}
+          </div>
           <p className="text-sm leading-relaxed text-gray-600">
             {creator.bio}
           </p>

@@ -8,7 +8,8 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { CreatorCard } from "@/components/CreatorCard";
 import { SortSelect, type SortOption } from "@/components/SortSelect";
 import { CATEGORIES, EXPLORE_CREATORS } from "./mock-data";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Radio } from "lucide-react";
+import { LiveStreamCard } from "@/components/LiveStreamCard";
 
 interface ApiCreator {
   readonly id: string;
@@ -135,6 +136,21 @@ function getFeaturedMockCreators(): MappedCreator[] {
     .map(mapMockCreator);
 }
 
+interface LiveStreamData {
+  readonly id: string;
+  readonly title: string;
+  readonly status: "live" | "scheduled";
+  readonly thumbnail_url: string | null;
+  readonly viewer_count: number;
+  readonly scheduled_at: string | null;
+  readonly is_subscriber_only: boolean;
+  readonly creator: {
+    readonly username: string;
+    readonly display_name: string;
+    readonly avatar_url: string | null;
+  };
+}
+
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("All");
@@ -144,6 +160,22 @@ export default function ExplorePage() {
   const [dynamicCategories, setDynamicCategories] = useState<readonly string[]>(CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [liveStreams, setLiveStreams] = useState<LiveStreamData[]>([]);
+
+  // Fetch live streams on mount
+  useEffect(() => {
+    async function fetchLiveStreams() {
+      try {
+        const res = await fetch("/api/streams?status=live&limit=6");
+        if (!res.ok) return;
+        const json = await res.json();
+        setLiveStreams(json.data ?? []);
+      } catch {
+        // Non-critical
+      }
+    }
+    fetchLiveStreams();
+  }, []);
 
   // Fetch featured creators once on mount
   useEffect(() => {
@@ -258,6 +290,30 @@ export default function ExplorePage() {
             </div>
           </div>
         </div>
+
+        {/* Live Now Section */}
+        {liveStreams.length > 0 && !loading && (
+          <section className="border-b border-red-100 bg-gradient-to-b from-red-50/50 to-white py-6 sm:py-8">
+            <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+              <div className="mb-4 flex items-center gap-2 sm:mb-6">
+                <div className="flex items-center gap-2 rounded-full bg-red-500/10 px-3 py-1.5">
+                  <Radio className="h-4 w-4 text-red-500" />
+                  <span className="text-sm font-semibold text-red-500">
+                    Live Now
+                  </span>
+                </div>
+                <span className="text-sm text-gray-400">
+                  {liveStreams.length} creator{liveStreams.length !== 1 ? "s" : ""} streaming
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+                {liveStreams.map((stream) => (
+                  <LiveStreamCard key={stream.id} stream={stream} />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Featured / Trending Section */}
         {showFeatured && !loading && (

@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GettingStartedGuide } from "@/components/GettingStartedGuide";
 import { StoryBar } from "@/components/StoryBar";
+import { LiveStreamBanner } from "@/components/LiveStreamBanner";
 
 // -- Types --
 
@@ -97,6 +98,16 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [liveStream, setLiveStream] = useState<{
+    id: string;
+    title: string;
+    viewer_count: number;
+    creator: {
+      username: string;
+      display_name: string;
+      avatar_url: string | null;
+    };
+  } | null>(null);
 
   const isCreator = userRole === "creator" || userRole === "admin";
 
@@ -130,6 +141,20 @@ export default function DashboardPage() {
           setHasAvatar(!!meRes.data.avatar_url);
           setHasBanner(!!meRes.data.banner_url);
           setHasBio(!!meRes.data.bio && meRes.data.bio.trim().length > 0);
+        }
+
+        // Fetch live streams from followed creators
+        try {
+          const streamsRes = await fetch("/api/streams?status=live&limit=1");
+          if (streamsRes.ok) {
+            const streamsJson = await streamsRes.json();
+            const liveStreams = streamsJson.data ?? [];
+            if (liveStreams.length > 0) {
+              setLiveStream(liveStreams[0]);
+            }
+          }
+        } catch {
+          // Non-critical, silently ignore
         }
 
         const role = meRes.data?.role ?? "subscriber";
@@ -230,6 +255,11 @@ export default function DashboardPage() {
         {/* Stories from subscribed creators */}
         <StoryBar />
 
+        {/* Live stream banner */}
+        {liveStream && (
+          <LiveStreamBanner stream={liveStream} />
+        )}
+
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Welcome{displayName ? `, ${displayName}` : ""}
@@ -303,6 +333,11 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Story bar for creators */}
       <StoryBar />
+
+      {/* Live stream banner */}
+      {liveStream && (
+        <LiveStreamBanner stream={liveStream} />
+      )}
 
       {/* Getting Started Guide for new creators */}
       <GettingStartedGuide

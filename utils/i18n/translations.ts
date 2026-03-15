@@ -81,6 +81,7 @@ export type TranslationKey =
   | "dash.bookmarks"
   | "dash.posts"
   | "dash.stories"
+  | "dash.live"
   | "dash.newPost"
   | "dash.messages"
   | "dash.subscribers"
@@ -188,6 +189,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.bookmarks": "Bookmarks",
     "dash.posts": "My Posts",
     "dash.stories": "Stories",
+    "dash.live": "Live",
     "dash.newPost": "New Post",
     "dash.messages": "Messages",
     "dash.subscribers": "Subscribers",

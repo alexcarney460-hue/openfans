@@ -21,6 +21,7 @@ import {
   Wallet,
   Video,
   BookOpen,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: "/admin/verification", label: "Verification", icon: Shield },
   { href: "/admin/compliance", label: "Compliance", icon: FileCheck },
   { href: "/admin/videos", label: "Videos", icon: Video },
+  { href: "/admin/streams", label: "Streams", icon: Radio },
   { href: "/admin/stories", label: "Stories", icon: BookOpen },
   { href: "/admin/moderation", label: "Moderation", icon: Flag },
   { href: "/admin/dmca", label: "DMCA", icon: Scale },

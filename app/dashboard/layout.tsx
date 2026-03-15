@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Bookmark,
   Tag,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -53,6 +54,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/bookmarks", labelKey: "dash.bookmarks", icon: Bookmark },
   { href: "/dashboard/posts", labelKey: "dash.posts", icon: FileText, creatorOnly: true },
   { href: "/dashboard/stories", labelKey: "dash.stories", icon: Camera, creatorOnly: true },
+  { href: "/dashboard/live", labelKey: "dash.live", icon: Video, creatorOnly: true },
   { href: "/dashboard/posts/new", labelKey: "dash.newPost", icon: PenSquare, creatorOnly: true },
   { href: "/dashboard/messages", labelKey: "dash.messages", icon: MessageSquare },
   { href: "/dashboard/subscribers", labelKey: "dash.subscribers", icon: Users, creatorOnly: true },
