@@ -3,6 +3,18 @@ import { db } from "@/utils/db/db";
 import { usersTable, creatorProfilesTable } from "@/utils/db/schema";
 import { eq, sql, and } from "drizzle-orm";
 
+/**
+ * Extracts viewer's geo from Vercel request headers.
+ */
+function getViewerGeo(request: NextRequest): {
+  country: string | null;
+  region: string | null;
+} {
+  const country = request.headers.get("x-vercel-ip-country")?.toUpperCase() ?? null;
+  const region = request.headers.get("x-vercel-ip-country-region")?.toUpperCase() ?? null;
+  return { country, region };
+}
+
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -106,6 +118,20 @@ export async function GET(request: NextRequest) {
       whereConditions.push(
         eq(creatorProfilesTable.is_featured, true),
       );
+    }
+
+    // Filter out creators who have geo-blocked the viewer's location
+    const { country: viewerCountry, region: viewerRegion } = getViewerGeo(request);
+    if (viewerCountry) {
+      whereConditions.push(
+        sql`NOT (COALESCE(${creatorProfilesTable}.blocked_countries, '{}') @> ARRAY[${viewerCountry}]::text[])` as any,
+      );
+      const countryRegion = viewerRegion ? `${viewerCountry}:${viewerRegion}` : null;
+      if (countryRegion) {
+        whereConditions.push(
+          sql`NOT (COALESCE(${creatorProfilesTable}.blocked_regions, '{}') @> ARRAY[${countryRegion}]::text[])` as any,
+        );
+      }
     }
 
     const whereClause =

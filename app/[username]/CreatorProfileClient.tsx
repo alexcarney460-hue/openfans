@@ -157,6 +157,7 @@ export default function CreatorProfileClient() {
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [geoBlocked, setGeoBlocked] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [ppvTarget, setPpvTarget] = useState<ApiPost | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -194,6 +195,12 @@ export default function CreatorProfileClient() {
             const postsJson = await postsRes.json();
             setPosts(postsJson.data ?? []);
           }
+          return;
+        }
+
+        // Handle geo-blocking (HTTP 451)
+        if (res.status === 451) {
+          setGeoBlocked(true);
           return;
         }
 
@@ -331,6 +338,44 @@ export default function CreatorProfileClient() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-[#00AFF0]" />
         <p className="mt-4 text-sm text-gray-400">Loading profile...</p>
+      </div>
+    );
+  }
+
+  if (geoBlocked) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 gap-6 px-4">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-10 w-10 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5a17.92 17.92 0 01-8.716-2.247m0 0A9.015 9.015 0 003 12c0-1.605.42-3.113 1.157-4.418"
+            />
+            <line x1="4" y1="4" x2="20" y2="20" strokeLinecap="round" />
+          </svg>
+        </div>
+        <div className="text-center">
+          <h2 className="text-lg font-semibold text-gray-700 mb-2">
+            Profile Not Available
+          </h2>
+          <p className="text-sm text-gray-500 max-w-sm">
+            This creator&apos;s profile is not available in your region.
+          </p>
+        </div>
+        <Link
+          href="/explore"
+          className="text-sm text-[#00AFF0] hover:underline"
+        >
+          Browse other creators
+        </Link>
       </div>
     );
   }

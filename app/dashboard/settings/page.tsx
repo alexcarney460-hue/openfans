@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock, CalendarClock } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock, CalendarClock, Globe, X, MapPin, Info } from "lucide-react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -78,6 +78,14 @@ export default function SettingsPage() {
 
   const [showActivity, setShowActivity] = useState(true);
   const [allowMessages, setAllowMessages] = useState(false);
+
+  // Geo-blocking state
+  const [blockedCountries, setBlockedCountries] = useState<string[]>([]);
+  const [blockedRegions, setBlockedRegions] = useState<string[]>([]);
+  const [geoSaving, setGeoSaving] = useState(false);
+  const [geoSaveMessage, setGeoSaveMessage] = useState<string | null>(null);
+  const [geoLoaded, setGeoLoaded] = useState(false);
+  const [addCountryInput, setAddCountryInput] = useState("");
 
   const [payoutSchedule, setPayoutSchedule] = useState<"manual" | "weekly" | "monthly">("manual");
   const [payoutScheduleSaving, setPayoutScheduleSaving] = useState(false);
@@ -203,6 +211,21 @@ export default function SettingsPage() {
                 if (vJson.data) {
                   setVerificationStatus(vJson.data.verification_status);
                 }
+              }
+
+              // Load geo-blocking settings
+              try {
+                const geoRes = await fetch("/api/creator-profile/geo-blocking");
+                if (geoRes.ok) {
+                  const geoJson = await geoRes.json();
+                  if (geoJson.data) {
+                    setBlockedCountries(geoJson.data.blocked_countries ?? []);
+                    setBlockedRegions(geoJson.data.blocked_regions ?? []);
+                    setGeoLoaded(true);
+                  }
+                }
+              } catch {
+                // non-critical
               }
             } catch {
               // non-critical
@@ -449,6 +472,59 @@ export default function SettingsPage() {
       setSaveMessage("Failed to update payout schedule.");
     } finally {
       setPayoutScheduleSaving(false);
+    }
+  };
+
+  const handleSaveGeoBlocking = async () => {
+    setGeoSaving(true);
+    setGeoSaveMessage(null);
+
+    try {
+      const res = await fetch("/api/creator-profile/geo-blocking", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blocked_countries: blockedCountries,
+          blocked_regions: blockedRegions,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        setBlockedCountries(json.data.blocked_countries ?? blockedCountries);
+        setBlockedRegions(json.data.blocked_regions ?? blockedRegions);
+        setGeoSaveMessage("Geo-blocking settings saved successfully.");
+        setSaveMessage("Geo-blocking settings saved successfully.");
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setGeoSaveMessage(json.error ?? "Failed to save geo-blocking settings.");
+      }
+    } catch {
+      setGeoSaveMessage("Failed to save geo-blocking settings.");
+    } finally {
+      setGeoSaving(false);
+    }
+  };
+
+  const handleToggleCountry = (code: string) => {
+    setBlockedCountries((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+    );
+  };
+
+  const handleToggleRegion = (regionCode: string) => {
+    setBlockedRegions((prev) =>
+      prev.includes(regionCode)
+        ? prev.filter((r) => r !== regionCode)
+        : [...prev, regionCode],
+    );
+  };
+
+  const handleAddCustomCountry = () => {
+    const code = addCountryInput.toUpperCase().trim();
+    if (code.length === 2 && /^[A-Z]{2}$/.test(code) && !blockedCountries.includes(code)) {
+      setBlockedCountries((prev) => [...prev, code]);
+      setAddCountryInput("");
     }
   };
 
@@ -796,6 +872,265 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Geo Blocking (creators only) */}
+      {isCreator && (
+        <Card className="border-gray-200 bg-white">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Globe className="h-5 w-5 text-[#00AFF0]" />
+              <h2 className="text-lg font-semibold text-foreground">Geo Blocking</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-5">
+              Block visitors from specific countries or US states from viewing your profile.
+            </p>
+
+            {/* Info banner */}
+            <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+              <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-700">
+                Visitors from blocked areas will see &quot;Profile not available in your region&quot; instead of your profile. You will never be blocked from your own profile.
+              </p>
+            </div>
+
+            {geoSaveMessage && (
+              <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                geoSaveMessage.includes("success")
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                  : "border-red-200 bg-red-50 text-red-600"
+              }`}>
+                {geoSaveMessage}
+              </div>
+            )}
+
+            {/* Common Countries */}
+            <div className="mb-5">
+              <p className="text-sm font-medium text-foreground mb-3">Block Countries</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {([
+                  { code: "US", name: "United States" },
+                  { code: "GB", name: "United Kingdom" },
+                  { code: "CA", name: "Canada" },
+                  { code: "AU", name: "Australia" },
+                  { code: "DE", name: "Germany" },
+                  { code: "FR", name: "France" },
+                ] as const).map((country) => (
+                  <button
+                    key={country.code}
+                    type="button"
+                    onClick={() => handleToggleCountry(country.code)}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                      blockedCountries.includes(country.code)
+                        ? "border-red-300 bg-red-50 text-red-700"
+                        : "border-gray-200 bg-gray-50 text-foreground hover:border-gray-300"
+                    }`}
+                  >
+                    <div className={`h-4 w-4 shrink-0 rounded border flex items-center justify-center transition-colors ${
+                      blockedCountries.includes(country.code)
+                        ? "border-red-400 bg-red-500"
+                        : "border-gray-300 bg-white"
+                    }`}>
+                      {blockedCountries.includes(country.code) && (
+                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="truncate">{country.name}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Add custom country code */}
+              <div className="mt-3 flex gap-2">
+                <Input
+                  placeholder="Country code (e.g. JP)"
+                  value={addCountryInput}
+                  onChange={(e) => setAddCountryInput(e.target.value.toUpperCase().slice(0, 2))}
+                  maxLength={2}
+                  className="border-gray-200 bg-gray-50 w-48 uppercase focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCustomCountry();
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-200"
+                  onClick={handleAddCustomCountry}
+                  disabled={addCountryInput.length !== 2}
+                >
+                  Add Country
+                </Button>
+              </div>
+
+              {/* Show blocked countries as tags */}
+              {blockedCountries.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {blockedCountries.map((code) => {
+                    const knownNames: Record<string, string> = {
+                      US: "United States", GB: "United Kingdom", CA: "Canada",
+                      AU: "Australia", DE: "Germany", FR: "France", JP: "Japan",
+                      BR: "Brazil", IN: "India", MX: "Mexico", IT: "Italy",
+                      ES: "Spain", NL: "Netherlands", SE: "Sweden", NO: "Norway",
+                      DK: "Denmark", FI: "Finland", CH: "Switzerland", AT: "Austria",
+                      BE: "Belgium", IE: "Ireland", NZ: "New Zealand", SG: "Singapore",
+                      KR: "South Korea", ZA: "South Africa", AR: "Argentina",
+                      CL: "Chile", CO: "Colombia", PL: "Poland", CZ: "Czechia",
+                      PT: "Portugal", RO: "Romania", HU: "Hungary", IL: "Israel",
+                      TH: "Thailand", PH: "Philippines", MY: "Malaysia", ID: "Indonesia",
+                      TR: "Turkey", RU: "Russia", UA: "Ukraine", CN: "China",
+                      TW: "Taiwan", HK: "Hong Kong", AE: "UAE", SA: "Saudi Arabia",
+                      EG: "Egypt", NG: "Nigeria", KE: "Kenya", GH: "Ghana",
+                    };
+                    return (
+                      <span
+                        key={code}
+                        className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700"
+                      >
+                        {knownNames[code] ?? code}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCountry(code)}
+                          className="ml-0.5 hover:text-red-900 transition-colors"
+                          aria-label={`Remove ${code}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* US State Selector */}
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">Block US States</p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Block specific US states instead of the entire country. This only applies if the US is not already fully blocked above.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+                {([
+                  { code: "AL", name: "Alabama" },
+                  { code: "AK", name: "Alaska" },
+                  { code: "AZ", name: "Arizona" },
+                  { code: "AR", name: "Arkansas" },
+                  { code: "CA", name: "California" },
+                  { code: "CO", name: "Colorado" },
+                  { code: "CT", name: "Connecticut" },
+                  { code: "DE", name: "Delaware" },
+                  { code: "DC", name: "Washington DC" },
+                  { code: "FL", name: "Florida" },
+                  { code: "GA", name: "Georgia" },
+                  { code: "HI", name: "Hawaii" },
+                  { code: "ID", name: "Idaho" },
+                  { code: "IL", name: "Illinois" },
+                  { code: "IN", name: "Indiana" },
+                  { code: "IA", name: "Iowa" },
+                  { code: "KS", name: "Kansas" },
+                  { code: "KY", name: "Kentucky" },
+                  { code: "LA", name: "Louisiana" },
+                  { code: "ME", name: "Maine" },
+                  { code: "MD", name: "Maryland" },
+                  { code: "MA", name: "Massachusetts" },
+                  { code: "MI", name: "Michigan" },
+                  { code: "MN", name: "Minnesota" },
+                  { code: "MS", name: "Mississippi" },
+                  { code: "MO", name: "Missouri" },
+                  { code: "MT", name: "Montana" },
+                  { code: "NE", name: "Nebraska" },
+                  { code: "NV", name: "Nevada" },
+                  { code: "NH", name: "New Hampshire" },
+                  { code: "NJ", name: "New Jersey" },
+                  { code: "NM", name: "New Mexico" },
+                  { code: "NY", name: "New York" },
+                  { code: "NC", name: "North Carolina" },
+                  { code: "ND", name: "North Dakota" },
+                  { code: "OH", name: "Ohio" },
+                  { code: "OK", name: "Oklahoma" },
+                  { code: "OR", name: "Oregon" },
+                  { code: "PA", name: "Pennsylvania" },
+                  { code: "RI", name: "Rhode Island" },
+                  { code: "SC", name: "South Carolina" },
+                  { code: "SD", name: "South Dakota" },
+                  { code: "TN", name: "Tennessee" },
+                  { code: "TX", name: "Texas" },
+                  { code: "UT", name: "Utah" },
+                  { code: "VT", name: "Vermont" },
+                  { code: "VA", name: "Virginia" },
+                  { code: "WA", name: "Washington" },
+                  { code: "WV", name: "West Virginia" },
+                  { code: "WI", name: "Wisconsin" },
+                  { code: "WY", name: "Wyoming" },
+                ] as const).map((state) => {
+                  const regionCode = `US:${state.code}`;
+                  const isDisabled = blockedCountries.includes("US");
+                  return (
+                    <button
+                      key={state.code}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => handleToggleRegion(regionCode)}
+                      className={`flex items-center gap-1.5 rounded px-2 py-1.5 text-xs transition-colors text-left ${
+                        isDisabled
+                          ? "opacity-40 cursor-not-allowed"
+                          : blockedRegions.includes(regionCode)
+                            ? "bg-red-100 text-red-700 font-medium"
+                            : "hover:bg-gray-100 text-foreground"
+                      }`}
+                    >
+                      <div className={`h-3.5 w-3.5 shrink-0 rounded-sm border flex items-center justify-center transition-colors ${
+                        isDisabled
+                          ? "border-gray-300 bg-gray-200"
+                          : blockedRegions.includes(regionCode)
+                            ? "border-red-400 bg-red-500"
+                            : "border-gray-300 bg-white"
+                      }`}>
+                        {blockedRegions.includes(regionCode) && !isDisabled && (
+                          <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="truncate">{state.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {blockedCountries.includes("US") && (
+                <p className="mt-2 text-xs text-amber-600">
+                  The entire US is blocked. Remove the US country block to select individual states.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                className="bg-[#00AFF0] hover:bg-[#009dd8]"
+                onClick={handleSaveGeoBlocking}
+                disabled={geoSaving}
+              >
+                {geoSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Geo-Blocking Settings"
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Connected Wallet */}
       <Card className="border-gray-200 bg-white">

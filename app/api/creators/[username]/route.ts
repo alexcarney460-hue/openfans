@@ -7,6 +7,35 @@ import {
   subscriptionsTable,
 } from "@/utils/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { createClient } from "@/utils/supabase/server";
+
+/**
+ * Extracts the viewer's geo information from Vercel request headers.
+ * Returns null values when headers are absent (e.g. localhost).
+ */
+function getViewerGeo(request: NextRequest): {
+  country: string | null;
+  region: string | null;
+} {
+  const country = request.headers.get("x-vercel-ip-country")?.toUpperCase() ?? null;
+  const region = request.headers.get("x-vercel-ip-country-region")?.toUpperCase() ?? null;
+  return { country, region };
+}
+
+/**
+ * Checks whether a viewer from the given geo is blocked by the creator's settings.
+ */
+function isGeoBlocked(
+  viewerCountry: string | null,
+  viewerRegion: string | null,
+  blockedCountries: string[],
+  blockedRegions: string[],
+): boolean {
+  if (!viewerCountry) return false;
+  if (blockedCountries.includes(viewerCountry)) return true;
+  if (viewerRegion && blockedRegions.includes(`${viewerCountry}:${viewerRegion}`)) return true;
+  return false;
+}
 
 /**
  * GET /api/creators/[username]
@@ -70,6 +99,60 @@ export async function GET(
     }
 
     const creator = userResults[0];
+
+    // Fetch geo-blocking data via raw SQL (columns may not be in schema)
+    const geoResult = await db.execute(
+      sql`SELECT
+            COALESCE(blocked_countries, '{}') AS blocked_countries,
+            COALESCE(blocked_regions, '{}') AS blocked_regions
+          FROM creator_profiles
+          WHERE user_id = ${creator.id}
+          LIMIT 1`,
+    );
+    const geoRow = ((geoResult as any).rows ?? geoResult)?.[0] as
+      | { blocked_countries: string[]; blocked_regions: string[] }
+      | undefined;
+    const blockedCountries: string[] = geoRow?.blocked_countries ?? [];
+    const blockedRegions: string[] = geoRow?.blocked_regions ?? [];
+
+    // Check if viewer is geo-blocked
+    const { country: viewerCountry, region: viewerRegion } = getViewerGeo(request);
+
+    if (isGeoBlocked(viewerCountry, viewerRegion, blockedCountries, blockedRegions)) {
+      // Allow the creator to view their own profile
+      let isOwnProfile = false;
+      let isAdmin = false;
+      try {
+        const supabase = createClient();
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          if (authUser.id === creator.id) {
+            isOwnProfile = true;
+          } else {
+            const adminCheck = await db
+              .select({ role: usersTable.role })
+              .from(usersTable)
+              .where(eq(usersTable.id, authUser.id))
+              .limit(1);
+            if (adminCheck.length > 0 && adminCheck[0].role === "admin") {
+              isAdmin = true;
+            }
+          }
+        }
+      } catch {
+        // Auth check failed — treat as anonymous visitor
+      }
+
+      if (!isOwnProfile && !isAdmin) {
+        return NextResponse.json(
+          {
+            error: "This profile is not available in your region",
+            code: "GEO_BLOCKED",
+          },
+          { status: 451 },
+        );
+      }
+    }
 
     // Get post count
     const postCountResult = await db
