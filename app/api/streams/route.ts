@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, description, scheduled_at, is_subscriber_only, chat_enabled } = body;
+    const { title, description, scheduled_at, is_subscriber_only, chat_enabled, status: requestedStatus } = body;
 
     // Validate title
     if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -283,20 +283,23 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const subscriberOnly = is_subscriber_only === true;
     const chatOn = chat_enabled !== false; // default true
+    const goLiveNow = requestedStatus === "live";
+    const initialStatus = goLiveNow ? "live" : "scheduled";
 
     const result = await db.execute(sql`
       INSERT INTO live_streams (
         creator_id, title, description, status, stream_key,
-        scheduled_at, is_subscriber_only, chat_enabled,
+        scheduled_at, started_at, is_subscriber_only, chat_enabled,
         created_at, updated_at
       )
       VALUES (
         ${user.id},
         ${title.trim()},
         ${description?.trim() ?? null},
-        'scheduled',
+        ${initialStatus},
         ${streamKey},
         ${parsedScheduledAt},
+        ${goLiveNow ? now : null},
         ${subscriberOnly},
         ${chatOn},
         ${now},

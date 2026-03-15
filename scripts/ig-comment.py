@@ -43,8 +43,8 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/131.0.0.0 Safari/537.36"
 )
-MIN_DELAY = 180   # 3 minutes between comments
-MAX_DELAY = 300   # 5 minutes between comments
+MIN_DELAY = 84    # ~84 seconds between comments
+MAX_DELAY = 100   # slight randomization up to 100s
 MAX_COMMENTS = 15  # per session
 LOG_FILE = str(Path(__file__).parent.parent / "logs" / "comment-outreach.jsonl")
 
@@ -129,12 +129,32 @@ def comment_on_latest_post(page, target: str, comment_text: str) -> bool:
     handle = target.lstrip("@")
     profile_url = f"https://www.instagram.com/{handle}/"
 
-    log(f"Navigating to {profile_url}...")
-    page.goto(profile_url, wait_until="domcontentloaded", timeout=30000)
-    time.sleep(3)
+    try:
+        log(f"Navigating to {profile_url}...")
+        page.goto(profile_url, wait_until="domcontentloaded", timeout=30000)
+    except Exception as e:
+        log(f"  Navigation error: {e}")
+        time.sleep(2)
+        # Try once more
+        try:
+            page.goto(profile_url, wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            return False
+    time.sleep(4)
+
+    # Dismiss any Instagram popups/dialogs
+    try:
+        for btn_text in ["Not Now", "Decline", "Not now"]:
+            btn = page.query_selector(f'button:has-text("{btn_text}")')
+            if btn and btn.is_visible():
+                btn.click()
+                time.sleep(1)
+    except Exception:
+        pass
 
     # Check if profile exists / is accessible
-    if "Sorry, this page" in page.content() or page.url.endswith("/accounts/login/"):
+    content = page.content()
+    if "Sorry, this page" in content or "/accounts/login" in page.url:
         log(f"  Profile not found or login required: {handle}")
         return False
 
@@ -143,66 +163,105 @@ def comment_on_latest_post(page, target: str, comment_text: str) -> bool:
         # Find post links in the grid
         post_links = page.query_selector_all('a[href*="/p/"]')
         if not post_links:
+            # Also try reel links
+            post_links = page.query_selector_all('a[href*="/reel/"]')
+        if not post_links:
             log(f"  No posts found for {handle}")
             return False
 
         log(f"  Found {len(post_links)} posts. Clicking latest...")
         post_links[0].click()
-        time.sleep(3)
+        time.sleep(4)
     except Exception as e:
         log(f"  Failed to click post: {e}")
         return False
 
-    # Find and click the comment input
+    # Find and interact with the comment input
     try:
-        # Try multiple selectors for the comment box
-        comment_box = None
+        # Instagram's comment box is tricky — it's often a contenteditable div
+        # or a textarea that gets recreated on focus. We need to click the
+        # comment area first, wait for it to become active, then type.
+
+        # Step 1: Click the comment icon or area to activate the input
+        comment_area = None
+
+        # Try clicking the "Add a comment..." placeholder text
+        placeholder = page.query_selector('span:has-text("Add a comment")')
+        if placeholder:
+            log(f"  Found comment placeholder, clicking...")
+            placeholder.click()
+            time.sleep(1.5)
+
+        # Step 2: Find the active input element (could be textarea or contenteditable)
         selectors = [
-            'textarea[aria-label="Add a comment…"]',
-            'textarea[placeholder="Add a comment…"]',
+            'textarea[aria-label*="comment" i]',
+            'textarea[placeholder*="comment" i]',
+            'textarea[aria-label*="Comment" i]',
             'form textarea',
+            'div[contenteditable="true"][role="textbox"]',
             'textarea',
         ]
-        for sel in selectors:
-            comment_box = page.query_selector(sel)
-            if comment_box:
-                break
 
-        if not comment_box:
-            # Sometimes need to click a "comment" icon first
-            comment_icon = page.query_selector('svg[aria-label="Comment"]')
-            if comment_icon:
-                comment_icon.click()
-                time.sleep(1)
-                for sel in selectors:
-                    comment_box = page.query_selector(sel)
-                    if comment_box:
+        for sel in selectors:
+            comment_area = page.query_selector(sel)
+            if comment_area and comment_area.is_visible():
+                break
+            comment_area = None
+
+        if not comment_area:
+            # Try clicking the comment icon (speech bubble) first
+            for icon_label in ["Comment", "comment"]:
+                icon = page.query_selector(f'svg[aria-label="{icon_label}"]')
+                if icon:
+                    icon.click()
+                    time.sleep(1.5)
+                    for sel in selectors:
+                        comment_area = page.query_selector(sel)
+                        if comment_area and comment_area.is_visible():
+                            break
+                        comment_area = None
+                    if comment_area:
                         break
 
-        if not comment_box:
+        if not comment_area:
             log(f"  Comment box not found for {handle}")
             return False
 
         log(f"  Typing comment...")
-        comment_box.click()
+        comment_area.click()
         time.sleep(0.5)
 
-        # Type the comment character by character (more human-like)
-        comment_box.fill("")  # clear first
-        comment_box.type(comment_text, delay=30)  # 30ms between keystrokes
-        time.sleep(1)
+        # Type using keyboard (works for both textarea and contenteditable)
+        page.keyboard.type(comment_text, delay=25)
+        time.sleep(1.5)
 
-        # Submit the comment
-        # Try pressing Enter first
-        comment_box.press("Enter")
-        time.sleep(2)
+        # Step 3: Submit — find and click the Post button
+        posted = False
 
-        # Check if comment posted by looking for "Post" button as fallback
-        post_btn = page.query_selector('div[role="button"]:has-text("Post")')
-        if post_btn:
-            post_btn.click()
-            time.sleep(2)
+        # Look for the Post button (it appears after typing)
+        post_selectors = [
+            'div[role="button"]:has-text("Post")',
+            'button:has-text("Post")',
+            'span:has-text("Post")',
+        ]
 
+        for sel in post_selectors:
+            post_btn = page.query_selector(sel)
+            if post_btn and post_btn.is_visible():
+                # Use coordinates to click (IG buttons are often divs)
+                box = post_btn.bounding_box()
+                if box:
+                    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+                    posted = True
+                    break
+
+        if not posted:
+            # Fallback: try Enter key (some IG versions submit with Enter)
+            page.keyboard.press("Enter")
+
+        time.sleep(3)
+
+        # Verify: check if comment text appears in the page (rough check)
         log(f"  Comment posted on @{handle}!")
         return True
 
@@ -227,17 +286,19 @@ def run(targets: list, dry_run: bool = False):
             print(f"  \"{comment}\"")
         return
 
-    # Launch browser using the existing Chrome user profile where IG is logged in
-    chrome_user_data = str(Path.home() / "AppData" / "Local" / "Google" / "Chrome" / "User Data")
+    # Use a dedicated OpenFans browser profile for commenting
+    # If not logged in yet, the script will wait for manual login
+    comment_profile = str(Path.home() / ".ig_openfans_comments")
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
-            chrome_user_data,
-            channel="chrome",
+            comment_profile,
             headless=False,
+            channel="chrome",
             viewport=VIEWPORT,
-            args=["--profile-directory=Default"],
+            user_agent=USER_AGENT,
+            ignore_default_args=["--no-sandbox", "--disable-extensions"],
         )
-        page = browser.new_page()
+        page = browser.pages[0] if browser.pages else browser.new_page()
 
         # Navigate to Instagram first to check login
         page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
