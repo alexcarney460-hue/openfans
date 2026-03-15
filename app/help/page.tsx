@@ -41,7 +41,7 @@ const FAQ_ITEMS: FaqItem[] = [
     category: "Payments",
     question: "How do creator payouts work?",
     answer:
-      "Earnings are deposited directly to your connected Solana wallet in USDC. There is no minimum payout threshold. Platform fees are deducted automatically at the time of each transaction.",
+      "Earnings are deposited directly to your connected Solana wallet in USDC. The minimum payout is $5.00. Platform fees (5%) are deducted automatically at the time of each transaction.",
   },
   {
     id: "5",

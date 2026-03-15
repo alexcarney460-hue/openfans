@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
+  Download,
   BadgeCheck,
   UserPlus,
   Activity,
@@ -341,13 +342,22 @@ export default function AdminDashboard() {
           <h1 className="text-lg font-bold text-gray-900 sm:text-xl">Platform Analytics</h1>
           <p className="text-xs text-gray-500">Real-time overview of OpenFans</p>
         </div>
-        <button
-          onClick={fetchData}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <a
+            href="/api/admin/export?type=revenue"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </a>
+          <button
+            onClick={fetchData}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ===================== KPI CARDS ===================== */}

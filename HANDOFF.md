@@ -6,7 +6,7 @@
 
 ## Project Overview
 - **Platform**: OpenFans — Solana-based creator subscription platform (like OnlyFans but crypto-native)
-- **Stack**: Next.js 14 (App Router), TypeScript, Tailwind, Drizzle ORM, Supabase (Postgres + Auth), Solana (USDC payments)
+- **Stack**: Next.js 14 (App Router), TypeScript, Tailwind, Drizzle ORM, Supabase (Postgres + Auth), Solana (USDC payments), Sentry (error monitoring)
 - **Repo**: `C:\Users\Claud\.openclaw\workspace\openfans` → github.com/alexcarney460-hue/openfans
 - **Deploy**: Vercel (auto-deploy from main branch)
 - **Supabase**: `qnomimlnkjutldxuxuqj.supabase.co`
@@ -31,15 +31,16 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 ### Key Files
 | Area | Files |
 |------|-------|
-| Schema | `utils/db/schema.ts` (16 tables incl. analytics_events) |
+| Schema | `utils/db/schema.ts` (18 tables incl. analytics_events) |
 | Wallet ops | `utils/solana/verify.ts`, `transfer.ts`, `balance.ts` |
 | Rate limiting | `utils/rate-limit.ts` (Upstash Redis + in-memory fallback) |
 | Auth | `utils/api/auth.ts` (getAuthenticatedUser, getAuthenticatedAdmin) |
 | Email | `utils/email.ts` (Resend API, fire-and-forget) |
-| Admin | `app/admin/page.tsx`, `payouts/`, `creators/` |
+| Admin | `app/admin/page.tsx`, `payouts/`, `creators/`, `export/` |
 | Creator dash | `app/dashboard/analytics/`, `wallet/`, `settings/`, `referrals/` |
 | Tracking | `hooks/useTrack.ts`, `app/api/analytics/track/route.ts` |
 | SEO | `generateMetadata` in `app/[username]/page.tsx`, `app/[username]/post/[postId]/page.tsx` |
+| Sentry | `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` |
 
 ### Environment Variables (.env.local)
 - `DATABASE_URL` — Supabase Postgres
@@ -49,8 +50,9 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 - `PLATFORM_WALLET_SECRET_KEY` — base58 private key (server-side only)
 - `UPSTASH_REDIS_REST_URL` + `TOKEN` — not yet configured
 - `RESEND_API_KEY` — not yet configured (emails skip silently without it)
+- `NEXT_PUBLIC_SENTRY_DSN` — not yet configured (Sentry disabled without it)
 
-## What's Been Built (2026-03-13 + 2026-03-14 Sessions)
+## What's Been Built
 
 ### Wallet System
 - Wallet connection fix (5 bugs: race condition, CSP, wrong endpoint, backend support, silent errors)
@@ -58,6 +60,7 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 - Hot wallet configured with keypair
 - Deposit verification, withdrawal request, admin payout processing
 - On-chain USDC transfer utility for payouts
+- $5.00 minimum payout threshold (enforced frontend + backend)
 
 ### Revenue & Security
 - All 3 streams (subs, tips, PPV) route through platform wallet with 5% fee
@@ -72,8 +75,12 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 - Platform analytics (tiles load fast, charts load async via `/api/admin/charts`)
 - Payouts management page with process/approve flow
 - Creators management page with verify/unverify toggle
+- User management with ban/suspend functionality
+- Content moderation queue
+- DMCA takedown workflow
 - Click/engagement tracking section
 - On-chain wallet balance (separate endpoint to avoid timeout)
+- Revenue CSV export (revenue, users, payouts with date filtering)
 
 ### Creator Features
 - Analytics dashboard (`/dashboard/analytics`)
@@ -82,18 +89,26 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 - Referral program UI (`/dashboard/referrals`) with copy link + commission tracking
 - Copy Profile Link buttons on dashboard, settings, analytics
 - Subscription price editing in settings
+- Scheduled posts with publish scheduling
+- Mass messaging / broadcast to subscribers
+- Content bundles / promotions system
+- Subscription pricing tiers
 
-### KYC / Age Verification (2026-03-14)
+### KYC / Age Verification
 - Creator verification: legal name + DOB (18+) + ID photo + selfie upload
 - Admin review page (`/admin/verification`) with approve/reject
 - Unverified creators blocked from posting
 - Status banners on dashboard + settings
+- 2257 compliance record retention
 
-### Social Features (2026-03-14)
+### Social Features
 - Like toggle with optimistic UI (filled red heart)
 - Comments with pagination, add/delete, rate limiting
 - Notification center: bell dropdown + full page + unread badges + 30s polling
 - DM messaging: split-pane inbox, real-time threads, user search, read receipts
+- Bookmarks / favorites
+- Follow without subscribing
+- Discover/explore page
 
 ### Infrastructure
 - Redis rate limiting via Upstash (in-memory fallback for dev)
@@ -103,23 +118,20 @@ All payments (subscriptions, tips, PPV) route through the platform hot wallet:
 - Phantom wallet setup guide (`/help/wallet-setup`)
 - Creator onboarding audit fixes (password validation, duplicate buttons, getting started guide)
 - Node 20 on Vercel (fixes OAuth + timeout issues)
-- Direct Phantom connect (bypass modal if installed)
-
-### Production Fixes
-- Analytics timeout: consolidated queries + maxDuration 30s
-- Date serialization: ISO strings for raw SQL
-- Google Fonts CSP: added to style-src + font-src
+- Sentry error monitoring (configured, needs DSN env var on Vercel)
+- Social proof stats bar on landing page
 
 ## API Endpoints
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET/PATCH/DELETE | `/api/me` | User profile (includes wallet_address) |
 | GET/POST | `/api/wallet` | Wallet balance + deposit |
-| POST | `/api/payouts/request` | Creator requests withdrawal |
+| POST | `/api/payouts/request` | Creator requests withdrawal ($5 min) |
 | GET | `/api/payouts/mine` | Creator's payout history |
 | GET/POST | `/api/admin/payouts` | Admin lists/processes payouts |
 | GET | `/api/admin/analytics` | Platform-wide analytics |
 | GET | `/api/admin/charts` | Growth/revenue charts (async) |
+| GET | `/api/admin/export` | CSV export (revenue/users/payouts) |
 | GET | `/api/admin/wallet-balance` | On-chain hot wallet USDC balance |
 | GET | `/api/admin/creators` | List all creators |
 | POST | `/api/admin/creators/[id]/verify` | Toggle creator verified status |
@@ -151,107 +163,27 @@ users_table, creator_profiles, posts, ppv_purchases, subscriptions, messages, ti
 - [ ] **Fund hot wallet with SOL** — `4e8YpUSns...niQt` has 0 SOL, can't process payouts
 - [ ] **Set up Upstash Redis** — console.upstash.com, free tier, add URL + Token to `.env.local` + Vercel
 - [ ] **Set up Resend** — resend.com, get API key, add to `.env.local` + Vercel
+- [ ] **Set up Sentry** — sentry.io, create Next.js project, add DSN to `.env.local` + Vercel
 - [ ] **Live mainnet wallet test** — deposit → subscribe → payout flow with real USDC
 
-### Critical for Launch
-| Task | Status | Effort |
-|------|--------|--------|
-| ~~KYC / age verification for creators~~ | DONE | ~~Large~~ |
-| Content moderation system | TODO | Large |
-| Subscription auto-renewal / expiry | TODO | Medium |
-| DMCA takedown workflow | TODO | Medium |
-| 2257 compliance records | TODO (KYC covers age, need record retention) | Medium |
-| Terms of Service enforcement (ban/suspend) | TODO | Medium |
+### Remaining Work
 
-### Revenue & Payments
-| Task | Status | Effort |
-|------|--------|--------|
-| Minimum payout threshold | TODO | Small |
-| Payout schedule (weekly/monthly auto) | TODO | Medium |
-| Tax reporting / 1099 generation | TODO | Large |
-| Subscription pricing tiers | TODO | Medium |
+#### Medium Effort
+| Task | Status |
+|------|--------|
+| Payout schedule (weekly/monthly auto) | TODO |
+| Support ticket system | TODO |
+| Platform health monitoring | TODO |
+| Landing page improvements | TODO |
+| Blog / content marketing | TODO |
+| Creator onboarding email sequence | TODO |
+| CDN for media files | TODO |
 
-### Creator Experience
-| Task | Status | Effort |
-|------|--------|--------|
-| ~~Like + comment system~~ | DONE | ~~Medium~~ |
-| ~~Notification center UI~~ | DONE | ~~Medium~~ |
-| ~~DM/messaging UI~~ | DONE | ~~Medium~~ |
-| ~~Referral program UI~~ | DONE | ~~Medium~~ |
-| ~~Creator analytics dashboard~~ | DONE | ~~Medium~~ |
-| ~~Wallet setup guide~~ | DONE | ~~Small~~ |
-| ~~Creator verification doc upload~~ | DONE (part of KYC) | ~~Large~~ |
-| Scheduled posts | TODO | Medium |
-| Mass messaging to subscribers | TODO | Medium |
-| Content bundles / promotions | TODO | Medium |
-| Live streaming | TODO | Large |
-| Stories / disappearing content | TODO | Large |
-
-### Fan Experience
-| Task | Status | Effort |
-|------|--------|--------|
-| ~~Like/unlike API + UI~~ | DONE | ~~Small~~ |
-| ~~Comment system UI~~ | DONE | ~~Medium~~ |
-| Discover/explore page improvements | TODO | Medium |
-| Bookmarks / favorites | TODO | Small |
-| Follow without subscribing | TODO | Small |
-
-### Admin & Ops
-| Task | Status | Effort |
-|------|--------|--------|
-| ~~Admin analytics dashboard~~ | DONE | ~~Medium~~ |
-| ~~Admin payouts management~~ | DONE | ~~Medium~~ |
-| ~~Admin creators management~~ | DONE | ~~Medium~~ |
-| ~~Admin KYC verification review~~ | DONE | ~~Medium~~ |
-| Content moderation queue | TODO | Medium |
-| User management (ban/suspend) | TODO | Medium |
-| Support ticket system | TODO | Medium |
-| Revenue reports / export | TODO | Small |
-| Platform health monitoring | TODO | Medium |
-
-### Marketing & Growth
-| Task | Status | Effort |
-|------|--------|--------|
-| ~~SEO / OpenGraph meta tags~~ | DONE | ~~Small~~ |
-| ~~Click/event tracking~~ | DONE | ~~Medium~~ |
-| ~~Email notifications~~ | DONE (needs Resend key) | ~~Medium~~ |
-| Landing page improvements | TODO | Medium |
-| Blog / content marketing | TODO | Medium |
-| Creator onboarding email sequence | TODO | Medium |
-| Social proof (testimonials, stats) | TODO | Small |
-| Mobile app (PWA at minimum) | TODO | Large |
-
-### Infrastructure
-| Task | Status | Effort |
-|------|--------|--------|
-| ~~Redis rate limiting~~ | DONE (needs Upstash credentials) | ~~Small~~ |
-| ~~Database migrations~~ | DONE | ~~Small~~ |
-| ~~Node 20 on Vercel~~ | DONE | ~~Small~~ |
-| Production error monitoring (Sentry) | TODO | Small |
-| Database backups verification | TODO | Small |
-| CDN for media files | TODO | Medium |
-| Video transcoding pipeline | TODO | Large |
-| Devnet on-chain test | TODO (faucet rate-limited) | Small |
-
-### Next Priority Order
-
-**This week (before creator onboarding):**
-1. Fund hot wallet + live mainnet test
-2. Content moderation system
-3. Subscription auto-renewal
-4. User management (ban/suspend)
-5. Minimum payout threshold
-
-**Next week (creator onboarding begins):**
-6. Scheduled posts
-7. Discover/explore improvements
-8. Bookmarks + follow system
-9. Set up Resend + Upstash
-10. Landing page polish
-
-**Following weeks:**
-11. Mass messaging to subscribers
-12. Content bundles / promotions
-13. Revenue reports / export
-14. Mobile responsive audit
-15. Video transcoding pipeline
+#### Large Effort
+| Task | Status |
+|------|--------|
+| Tax reporting / 1099 generation | TODO |
+| Live streaming | TODO |
+| Stories / disappearing content | TODO |
+| Video transcoding pipeline | TODO |
+| Mobile app (PWA at minimum) | TODO |
