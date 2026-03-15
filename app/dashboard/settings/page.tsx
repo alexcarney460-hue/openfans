@@ -71,6 +71,7 @@ export default function SettingsPage() {
   const [vipEnabled, setVipEnabled] = useState(false);
   const [vipPrice, setVipPrice] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
+  const [contentType, setContentType] = useState<"general" | "adult">("general");
   const [priceSaving, setPriceSaving] = useState(false);
   const [priceSaveError, setPriceSaveError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -171,7 +172,13 @@ export default function SettingsPage() {
                   // subscription_price_usdc is in cents, convert to dollars for display
                   const basicCents = cpJson.data.subscription_price_usdc;
                   setSubscriptionPrice(basicCents ? (basicCents / 100).toString() : "");
-                  setCategories(cpJson.data.categories ?? []);
+                  const loadedCategories = cpJson.data.categories ?? [];
+                  setCategories(loadedCategories);
+                  setContentType(
+                    loadedCategories.some((c: string) => c.toLowerCase() === "adult")
+                      ? "adult"
+                      : "general",
+                  );
 
                   // Load tier pricing
                   const premCents = cpJson.data.premium_price_usdc;
@@ -382,6 +389,16 @@ export default function SettingsPage() {
     }
 
     try {
+      // Build the categories array: merge existing non-adult categories
+      // with the content type selection
+      const baseCategories = categories.filter(
+        (c) => c.toLowerCase() !== "adult",
+      );
+      const finalCategories =
+        contentType === "adult"
+          ? [...baseCategories, "adult"]
+          : baseCategories;
+
       const res = await fetch("/api/creator-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -389,7 +406,7 @@ export default function SettingsPage() {
           subscription_price: basicVal,
           premium_price: premiumVal,
           vip_price: vipVal,
-          categories,
+          categories: finalCategories.length > 0 ? finalCategories : ["general"],
         }),
       });
 
@@ -844,6 +861,49 @@ export default function SettingsPage() {
             )}
 
             <div className="space-y-5">
+              {/* Content Type selector */}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-foreground">Content Type</p>
+                  <p className="text-xs text-muted-foreground">
+                    This determines your platform fee rate.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setContentType("general")}
+                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-left transition-all ${
+                      contentType === "general"
+                        ? "border-[#00AFF0] bg-[#00AFF0]/5"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="text-sm font-medium text-foreground">General</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Standard content</p>
+                    <p className="mt-2 text-xs font-semibold text-emerald-600">Platform fee: 5%</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContentType("adult")}
+                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-left transition-all ${
+                      contentType === "adult"
+                        ? "border-rose-400 bg-rose-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="text-sm font-medium text-foreground">Adult (18+)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Age-restricted content</p>
+                    <p className="mt-2 text-xs font-semibold text-rose-600">Platform fee: 10%</p>
+                  </button>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {contentType === "adult"
+                    ? "You keep 90% of all revenue. The 10% fee covers enhanced compliance and age verification infrastructure."
+                    : "You keep 95% of all revenue."}
+                </p>
+              </div>
+
               {/* Basic Tier */}
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <div className="flex items-center justify-between mb-3">

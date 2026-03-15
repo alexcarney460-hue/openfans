@@ -16,8 +16,7 @@ import { getAuthenticatedUser } from "@/utils/api/auth";
 import { verifyTransaction } from "@/utils/solana/verify";
 import { sendPpvPurchaseEmail } from "@/utils/email";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
-
-const PLATFORM_FEE_PERCENT = 5;
+import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
 
 /**
  * POST /api/posts/[postId]/unlock
@@ -157,11 +156,11 @@ export async function POST(
       })
       .returning();
 
+    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    const feeConfig = await getCreatorFeeConfig(post.creator_id);
+
     // Calculate platform fee and creator share
-    const platformFee = Math.round(
-      (post.ppv_price_usdc * PLATFORM_FEE_PERCENT) / 100,
-    );
-    const creatorAmount = post.ppv_price_usdc - platformFee;
+    const { platformFee, creatorAmount } = calculateFeeSplit(post.ppv_price_usdc, feeConfig.feePercent);
 
     // Get or create creator wallet, then credit with creatorAmount
     const existingCreatorWallet = await db
@@ -197,7 +196,7 @@ export async function POST(
         type: "ppv_received",
         amount_usdc: creatorAmount,
         balance_after: updatedCreatorWallet.balance_usdc,
-        description: `PPV sale: "${post.title ?? "Untitled"}" (5% fee: $${(platformFee / 100).toFixed(2)})`,
+        description: `PPV sale: "${post.title ?? "Untitled"}" (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`,
         reference_id: payment_tx.trim(),
         related_user_id: user.id,
       });
@@ -209,7 +208,7 @@ export async function POST(
         type: "platform_fee",
         amount_usdc: -platformFee,
         balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Platform fee (5%) on PPV sale`,
+        description: `Platform fee (${feeConfig.feePercent}%) on PPV sale`,
         reference_id: payment_tx.trim(),
         related_user_id: user.id,
       });

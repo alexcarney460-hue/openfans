@@ -161,3 +161,9 @@
 .wallet-adapter-collapse {
   background-color: transparent !important;
 }
+
+/* Tip button pulse animation for stream chat */
+@keyframes tip-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}

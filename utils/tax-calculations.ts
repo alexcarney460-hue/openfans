@@ -2,27 +2,62 @@
  * Tax calculation utilities for 1099 reporting.
  *
  * All monetary values are in USDC cents (integer).
- * The platform takes a 5% fee; creators receive 95%.
+ *
+ * Platform fees are differentiated by content type:
+ *   - Adult creators: 10% fee, 90% creator share
+ *   - Non-adult creators: 5% fee, 95% creator share
+ *
+ * Legacy constants (PLATFORM_FEE_RATE, CREATOR_SHARE_RATE) are kept
+ * for backward compatibility but callers should prefer
+ * getCreatorFeeRate() for accurate per-creator rates.
  */
 
-/** Platform fee as a decimal (5%). */
-export const PLATFORM_FEE_RATE = 0.05;
+import {
+  STANDARD_FEE_RATE,
+  STANDARD_SHARE_RATE,
+  ADULT_FEE_RATE,
+  ADULT_SHARE_RATE,
+} from "@/utils/fees";
 
-/** Creator share as a decimal (95%). */
-export const CREATOR_SHARE_RATE = 0.95;
+/** @deprecated Use getCreatorFeeRate(isAdult) instead. Default (non-adult) fee. */
+export const PLATFORM_FEE_RATE = STANDARD_FEE_RATE;
+
+/** @deprecated Use getCreatorFeeRate(isAdult) instead. Default (non-adult) share. */
+export const CREATOR_SHARE_RATE = STANDARD_SHARE_RATE;
 
 /** Default IRS 1099-NEC reporting threshold: $600.00 expressed in cents. */
 export const DEFAULT_1099_THRESHOLD = 60000;
+
+/**
+ * Return the fee and share rates based on whether the creator
+ * publishes adult content.
+ *
+ * @param isAdult - true if the creator's categories include 'adult'
+ * @returns { feeRate, shareRate } as decimals
+ */
+export function getCreatorFeeRate(isAdult: boolean): {
+  feeRate: number;
+  shareRate: number;
+} {
+  if (isAdult) {
+    return { feeRate: ADULT_FEE_RATE, shareRate: ADULT_SHARE_RATE };
+  }
+  return { feeRate: STANDARD_FEE_RATE, shareRate: STANDARD_SHARE_RATE };
+}
 
 /**
  * Calculate the creator's share after the platform fee.
  * Uses integer math (floor) to avoid floating-point drift.
  *
  * @param grossCents - Gross earnings in USDC cents
+ * @param shareRate  - Creator share as a decimal (default 0.95 for non-adult)
  * @returns Net earnings in USDC cents (integer)
  */
-export function calculateCreatorShare(grossCents: number): number {
-  return Math.floor(grossCents * CREATOR_SHARE_RATE);
+export function calculateCreatorShare(
+  grossCents: number,
+  shareRate: number = STANDARD_SHARE_RATE,
+): number {
+  return Math.floor(grossCents * shareRate);
 }
 
 /**

@@ -18,8 +18,7 @@ import { sendNewTipEmail } from "@/utils/email";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 import { processReferralCommission } from "@/utils/referral-commission";
-
-const PLATFORM_FEE_PERCENT = 5;
+import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
 
 /**
  * POST /api/tips
@@ -177,11 +176,11 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    const feeConfig = await getCreatorFeeConfig(creator_id);
+
     // Calculate platform fee and creator share
-    const platformFee = Math.round(
-      (amount_usdc * PLATFORM_FEE_PERCENT) / 100,
-    );
-    const creatorAmount = amount_usdc - platformFee;
+    const { platformFee, creatorAmount } = calculateFeeSplit(amount_usdc, feeConfig.feePercent);
 
     // Get or create creator wallet, then credit with creatorAmount
     const existingCreatorWallet = await db
@@ -217,7 +216,7 @@ export async function POST(request: NextRequest) {
         type: "tip_received",
         amount_usdc: creatorAmount,
         balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Tip received (5% fee: $${(platformFee / 100).toFixed(2)})`,
+        description: `Tip received (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`,
         reference_id: payment_tx.trim(),
         related_user_id: user.id,
       });
@@ -229,7 +228,7 @@ export async function POST(request: NextRequest) {
         type: "platform_fee",
         amount_usdc: -platformFee,
         balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Platform fee (5%) on tip`,
+        description: `Platform fee (${feeConfig.feePercent}%) on tip`,
         reference_id: payment_tx.trim(),
         related_user_id: user.id,
       });

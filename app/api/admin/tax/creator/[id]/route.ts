@@ -5,12 +5,12 @@ import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 import {
-  CREATOR_SHARE_RATE,
   DEFAULT_1099_THRESHOLD,
   formatTaxYear,
   calculateCreatorShare,
   isAboveThreshold,
 } from "@/utils/tax-calculations";
+import { getCreatorFeeConfig } from "@/utils/fees";
 
 interface MonthlyBreakdown {
   month: number;
@@ -111,6 +111,10 @@ export async function GET(
 
     const creator = creatorRows[0] as Record<string, unknown>;
 
+    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    const feeConfig = await getCreatorFeeConfig(creatorId);
+    const shareRate = feeConfig.shareRate;
+
     // --- Monthly earnings breakdown ---
     // Subscription earnings by month
     const subMonthly = await db.execute(sql`
@@ -184,8 +188,8 @@ export async function GET(
         ppv,
         total,
         gross_earnings_usdc: total,
-        net: calculateCreatorShare(total),
-        net_earnings_usdc: calculateCreatorShare(total),
+        net: calculateCreatorShare(total, shareRate),
+        net_earnings_usdc: calculateCreatorShare(total, shareRate),
       });
     }
 
@@ -203,13 +207,13 @@ export async function GET(
         tips,
         ppv,
         total,
-        net: calculateCreatorShare(total),
+        net: calculateCreatorShare(total, shareRate),
       });
     }
 
     // Annual totals
     const grossEarnings = monthly.reduce((s, m) => s + m.total, 0);
-    const netEarnings = calculateCreatorShare(grossEarnings);
+    const netEarnings = calculateCreatorShare(grossEarnings, shareRate);
 
     // --- Payout history for the year ---
     const payoutRows = await db.execute(sql`

@@ -11,8 +11,7 @@ import {
 } from "@/utils/db/schema";
 import { eq, and, sql, desc, gte } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
-
-const CREATOR_SHARE_MULTIPLIER = 0.95; // 5% platform fee
+import { getCreatorFeeConfig } from "@/utils/fees";
 
 /**
  * GET /api/earnings
@@ -54,6 +53,10 @@ export async function GET(request: NextRequest) {
 
     const totalEarningsCached = profileResult[0]?.total_earnings_usdc ?? 0;
 
+    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    const feeConfig = await getCreatorFeeConfig(user.id);
+    const creatorShareMultiplier = feeConfig.shareRate;
+
     // Calculate this month's earnings from subscriptions
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
@@ -85,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     const thisMonthEarnings = Math.round(
       ((monthSubEarnings[0]?.total ?? 0) + (monthTipEarnings[0]?.total ?? 0)) *
-        CREATOR_SHARE_MULTIPLIER,
+        creatorShareMultiplier,
     );
 
     // Calculate all-time earnings from subscriptions + tips
@@ -105,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     const totalEarningsCalc = Math.round(
       ((allTimeSubEarnings[0]?.total ?? 0) + (allTimeTipEarnings[0]?.total ?? 0)) *
-        CREATOR_SHARE_MULTIPLIER,
+        creatorShareMultiplier,
     );
 
     // Get total paid out

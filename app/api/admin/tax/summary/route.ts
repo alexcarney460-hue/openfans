@@ -5,10 +5,10 @@ import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 import {
-  CREATOR_SHARE_RATE,
   DEFAULT_1099_THRESHOLD,
   formatTaxYear,
 } from "@/utils/tax-calculations";
+import { STANDARD_SHARE_RATE, ADULT_SHARE_RATE } from "@/utils/fees";
 
 /**
  * GET /api/admin/tax/summary
@@ -129,15 +129,24 @@ export async function GET(request: NextRequest) {
           FLOOR(
             (COALESCE(se.total, 0)
               + COALESCE(te.total, 0)
-              + COALESCE(pe.total, 0)) * ${CREATOR_SHARE_RATE}
+              + COALESCE(pe.total, 0)) *
+            CASE
+              WHEN 'adult' = ANY(cp.categories) THEN ${ADULT_SHARE_RATE}
+              ELSE ${STANDARD_SHARE_RATE}
+            END
           )::int                                                     AS net_earnings_usdc,
           COALESCE(pt.total, 0)                                      AS total_payouts_usdc,
           CASE
             WHEN cti.user_id IS NOT NULL THEN true
             ELSE false
-          END                                                        AS has_tax_info
+          END                                                        AS has_tax_info,
+          CASE
+            WHEN 'adult' = ANY(cp.categories) THEN true
+            ELSE false
+          END                                                        AS is_adult
         FROM combined c
         INNER JOIN users_table u       ON u.id = c.creator_id
+        LEFT  JOIN creator_profiles cp ON cp.user_id = c.creator_id
         LEFT  JOIN sub_earnings se     ON se.creator_id = c.creator_id
         LEFT  JOIN tip_earnings te     ON te.creator_id = c.creator_id
         LEFT  JOIN ppv_earnings pe     ON pe.creator_id = c.creator_id

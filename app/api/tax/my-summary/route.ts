@@ -13,7 +13,8 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
-import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE, DEFAULT_1099_THRESHOLD, calculateCreatorShare } from "@/utils/tax-calculations";
+import { DEFAULT_1099_THRESHOLD, calculateCreatorShare } from "@/utils/tax-calculations";
+import { getCreatorFeeConfig } from "@/utils/fees";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -136,6 +137,10 @@ export async function GET(request: NextRequest) {
 
     const hasTaxInfo = (taxInfoResult as unknown as Array<unknown>).length > 0;
 
+    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    const feeConfig = await getCreatorFeeConfig(user.id);
+    const shareRate = feeConfig.shareRate;
+
     // Build lookup maps from query results
     const subsByMonth = new Map<number, number>();
     for (const row of monthlySubscriptions as unknown as Array<{ month_num: number; total: number }>) {
@@ -159,7 +164,7 @@ export async function GET(request: NextRequest) {
       const tips = tipsByMonth.get(monthNum) ?? 0;
       const ppv = ppvByMonth.get(monthNum) ?? 0;
       const total = subscriptions + tips + ppv;
-      const net = calculateCreatorShare(total);
+      const net = calculateCreatorShare(total, shareRate);
 
       return {
         month: name,
@@ -187,7 +192,7 @@ export async function GET(request: NextRequest) {
 
     // Annual totals
     const grossEarnings = monthlyBreakdown.reduce((sum, m) => sum + m.total, 0);
-    const netEarnings = calculateCreatorShare(grossEarnings);
+    const netEarnings = calculateCreatorShare(grossEarnings, shareRate);
     const platformFees = grossEarnings - netEarnings;
     const totalPayouts = Number((yearPayouts as unknown as Array<{ total: number }>)[0]?.total ?? 0);
 

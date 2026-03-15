@@ -18,8 +18,7 @@ import { sendNewSubscriberEmail } from "@/utils/email";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 import { processReferralCommission } from "@/utils/referral-commission";
-
-const PLATFORM_FEE_PERCENT = 5;
+import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
 
 const VALID_TIERS = ["basic", "premium", "vip"] as const;
 type SubscriptionTier = (typeof VALID_TIERS)[number];
@@ -340,11 +339,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    const feeConfig = await getCreatorFeeConfig(creator_id);
+
     // Calculate platform fee and creator share (skip for free trials)
-    const platformFee = priceUsdc > 0 ? Math.round(
-      (priceUsdc * PLATFORM_FEE_PERCENT) / 100,
-    ) : 0;
-    const creatorAmount = priceUsdc - platformFee;
+    const { platformFee, creatorAmount } = priceUsdc > 0
+      ? calculateFeeSplit(priceUsdc, feeConfig.feePercent)
+      : { platformFee: 0, creatorAmount: 0 };
 
     // Credit creator wallet only if there was an actual payment
     if (creatorAmount > 0) {
@@ -382,7 +383,7 @@ export async function POST(request: NextRequest) {
           type: "subscription_received",
           amount_usdc: creatorAmount,
           balance_after: updatedCreatorWallet.balance_usdc,
-          description: `Subscription received (5% fee: $${(platformFee / 100).toFixed(2)})`,
+          description: `Subscription received (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`,
           reference_id: payment_tx.trim(),
           related_user_id: user.id,
         });
@@ -395,7 +396,7 @@ export async function POST(request: NextRequest) {
             type: "platform_fee",
             amount_usdc: -platformFee,
             balance_after: updatedCreatorWallet.balance_usdc,
-            description: `Platform fee (5%) on subscription`,
+            description: `Platform fee (${feeConfig.feePercent}%) on subscription`,
             reference_id: payment_tx.trim(),
             related_user_id: user.id,
           });

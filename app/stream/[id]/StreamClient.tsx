@@ -16,10 +16,12 @@ import {
   DollarSign,
   PhoneOff,
   Clock,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LiveBadge } from "@/components/LiveBadge";
 import { ChatMessage, type ChatMessageData } from "@/components/ChatMessage";
+import { TipModal } from "@/components/TipModal";
 import {
   LiveKitRoom,
   VideoTrack,
@@ -65,6 +67,7 @@ interface StreamData {
 // Constants
 // ---------------------------------------------------------------------------
 
+const TIP_QUICK_AMOUNTS = [1, 5, 10, 25] as const;
 const CHAT_POLL_INTERVAL = 3000;
 const VIEWER_POLL_INTERVAL = 10000;
 const MAX_STREAM_DURATION_MS = 20 * 60 * 1000; // 20 minutes
@@ -117,6 +120,9 @@ export default function StreamClient({ streamId }: StreamClientProps) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ---- Tip state ----
+  const [tipModalOpen, setTipModalOpen] = useState(false);
 
   // ---- LiveKit state ----
   const [livekitToken, setLivekitToken] = useState<string | null>(null);
@@ -283,6 +289,15 @@ export default function StreamClient({ streamId }: StreamClientProps) {
     [sendMessage],
   );
 
+  // ---- Tip handlers ----
+  const openTipModal = useCallback(() => {
+    setTipModalOpen(true);
+  }, []);
+
+  const closeTipModal = useCallback(() => {
+    setTipModalOpen(false);
+  }, []);
+
   // ---- Pay & Join ----
   const handlePayAndWatch = useCallback(async () => {
     if (isJoining) return;
@@ -359,6 +374,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
   const showSubscribeGate = stream.is_subscriber_only && !isSubscribed;
   const showPaymentGate =
     stream.status === "live" && !isCreator && !hasJoined && !showSubscribeGate;
+  const showTipButton = stream.status === "live" && !isCreator && hasJoined;
 
   // ---- Render ----
   return (
@@ -473,9 +489,22 @@ export default function StreamClient({ streamId }: StreamClientProps) {
         {/* Chat header */}
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <h2 className="text-sm font-semibold text-white">Live Chat</h2>
-          {stream.status === "live" && (
-            <LiveBadge size="sm" viewerCount={viewerCount} />
-          )}
+          <div className="flex items-center gap-2">
+            {showTipButton && (
+              <button
+                onClick={() => openTipModal()}
+                className="group relative flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#00AFF0] to-[#0090c8] px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-[#00AFF0]/25 transition-all duration-300 hover:scale-105 hover:shadow-[#00AFF0]/40"
+                aria-label={`Send tip to ${stream.creator.display_name}`}
+              >
+                <Gift className="h-3.5 w-3.5 animate-[tip-pulse_2s_ease-in-out_infinite]" />
+                <span>Tip</span>
+                <span className="absolute inset-0 rounded-full bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            )}
+            {stream.status === "live" && (
+              <LiveBadge size="sm" viewerCount={viewerCount} />
+            )}
+          </div>
         </div>
 
         {/* Chat disabled state */}
@@ -518,6 +547,24 @@ export default function StreamClient({ streamId }: StreamClientProps) {
               )}
             </div>
 
+            {/* Quick-tip chips */}
+            {showTipButton && (
+              <div className="flex items-center gap-2 border-t border-gray-200 bg-gray-50 px-3 py-2">
+                <Gift className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  {TIP_QUICK_AMOUNTS.map((amt) => (
+                    <button
+                      key={amt}
+                      onClick={openTipModal}
+                      className="flex-shrink-0 rounded-full border border-[#00AFF0]/30 bg-[#00AFF0]/5 px-3 py-1 text-xs font-semibold text-[#00AFF0] transition-all duration-200 hover:border-[#00AFF0] hover:bg-[#00AFF0]/10 hover:scale-105 active:scale-95"
+                    >
+                      ${amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Chat input */}
             <div className="border-t border-gray-200 bg-white p-3">
               <div className="flex items-center gap-2">
@@ -554,6 +601,18 @@ export default function StreamClient({ streamId }: StreamClientProps) {
           </>
         )}
       </div>
+
+      {/* Tip Modal */}
+      {showTipButton && (
+        <TipModal
+          isOpen={tipModalOpen}
+          onClose={closeTipModal}
+          creatorName={stream.creator.display_name}
+          creatorUsername={stream.creator.username}
+          creatorId={stream.creator_id}
+        />
+      )}
+
     </div>
   );
 }

@@ -9,8 +9,7 @@ import { eq, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { generateViewerToken, generatePublisherToken } from "@/utils/streaming/livekit";
 import { UUID_REGEX } from "@/utils/streaming/constants";
-
-const PLATFORM_FEE_PERCENT = 10; // Higher fee for live streams — covers streaming infrastructure costs
+import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "";
 
 /**
@@ -147,9 +146,11 @@ export async function POST(
       VALUES (${streamId}, ${user.id}, ${ticketPrice}, ${purchaseTx})
     `);
 
-    // Credit creator (95%)
-    const platformFee = Math.round((ticketPrice * PLATFORM_FEE_PERCENT) / 100);
-    const creatorAmount = ticketPrice - platformFee;
+    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    const feeConfig = await getCreatorFeeConfig(stream.creator_id);
+
+    // Credit creator (minus platform fee)
+    const { platformFee, creatorAmount } = calculateFeeSplit(ticketPrice, feeConfig.feePercent);
 
     // Ensure creator wallet exists
     const existingCreatorWallet = await db
@@ -176,7 +177,7 @@ export async function POST(
       .returning();
 
     if (updatedCreatorWallet) {
-      const feeDescription = `Stream ticket sale: "${stream.title}" (5% fee: $${(platformFee / 100).toFixed(2)})`;
+      const feeDescription = `Stream ticket sale: "${stream.title}" (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`;
 
       // Creator earnings transaction (raw SQL — "stream_ticket_received" type not in Drizzle enum)
       await db.execute(sql`
@@ -194,7 +195,7 @@ export async function POST(
         type: "platform_fee",
         amount_usdc: -platformFee,
         balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Platform fee (10%) on stream ticket sale`,
+        description: `Platform fee (${feeConfig.feePercent}%) on stream ticket sale`,
         reference_id: purchaseTx,
         related_user_id: user.id,
       });

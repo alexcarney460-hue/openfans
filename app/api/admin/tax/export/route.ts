@@ -5,7 +5,8 @@ import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 
-import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE, DEFAULT_1099_THRESHOLD, calculateCreatorShare, formatTaxYear } from "@/utils/tax-calculations";
+import { DEFAULT_1099_THRESHOLD, calculateCreatorShare, formatTaxYear } from "@/utils/tax-calculations";
+import { STANDARD_SHARE_RATE, ADULT_SHARE_RATE } from "@/utils/fees";
 const DEFAULT_THRESHOLD_CENTS = DEFAULT_1099_THRESHOLD;
 
 /**
@@ -42,6 +43,7 @@ interface CreatorEarningsRow {
   zip_code: string | null;
   country: string | null;
   gross_earnings_cents: string; // bigint comes back as string
+  is_adult: boolean;
 }
 
 /**
@@ -118,11 +120,12 @@ export async function GET(request: NextRequest) {
     // --- Query: aggregate all creator earnings for the year ---
     // Uses a CTE to UNION ALL three revenue sources, then aggregates per creator.
     // LEFT JOINs creator_tax_info for tax reporting fields.
-    // Threshold is applied to net earnings (gross * CREATOR_SHARE_RATE >= threshold)
+    // LEFT JOINs creator_profiles to determine adult/standard fee rate.
+    // Threshold is applied to net earnings (gross * share_rate >= threshold)
 
     const thresholdCondition = includeBelowThreshold
       ? sql``
-      : sql`HAVING SUM(e.amount_cents) * ${CREATOR_SHARE_RATE} >= ${thresholdCents}`;
+      : sql`HAVING SUM(e.amount_cents) * CASE WHEN 'adult' = ANY(cp.categories) THEN ${ADULT_SHARE_RATE} ELSE ${STANDARD_SHARE_RATE} END >= ${thresholdCents}`;
 
     const result = await db.execute(sql`
       WITH earnings AS (
@@ -164,9 +167,11 @@ export async function GET(request: NextRequest) {
         cti.state,
         cti.zip_code,
         cti.country,
-        SUM(e.amount_cents)::bigint AS gross_earnings_cents
+        SUM(e.amount_cents)::bigint AS gross_earnings_cents,
+        CASE WHEN 'adult' = ANY(cp.categories) THEN true ELSE false END AS is_adult
       FROM earnings e
       JOIN users_table u ON u.id = e.creator_id
+      LEFT JOIN creator_profiles cp ON cp.user_id = e.creator_id
       LEFT JOIN creator_tax_info cti ON cti.user_id = e.creator_id
       GROUP BY
         e.creator_id,
@@ -179,7 +184,8 @@ export async function GET(request: NextRequest) {
         cti.city,
         cti.state,
         cti.zip_code,
-        cti.country
+        cti.country,
+        cp.categories
       ${thresholdCondition}
       ORDER BY SUM(e.amount_cents) DESC
     `);
@@ -232,7 +238,8 @@ export async function GET(request: NextRequest) {
 
     const csvRows = rows.map((row) => {
       const grossCents = Number(row.gross_earnings_cents);
-      const netCents = calculateCreatorShare(grossCents);
+      const shareRate = row.is_adult ? ADULT_SHARE_RATE : STANDARD_SHARE_RATE;
+      const netCents = calculateCreatorShare(grossCents, shareRate);
       const feeCents = grossCents - netCents;
 
       const recipientName = row.legal_name || row.display_name;

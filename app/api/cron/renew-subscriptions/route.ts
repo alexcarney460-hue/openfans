@@ -13,8 +13,7 @@ import {
 import { eq, and, sql, lte, gte } from "drizzle-orm";
 import { createNotification } from "@/utils/notifications";
 import { processReferralCommission } from "@/utils/referral-commission";
-
-const PLATFORM_FEE_PERCENT = 5;
+import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
 
 /**
  * GET /api/cron/renew-subscriptions
@@ -141,6 +140,9 @@ interface SubscriptionToRenew {
  * 3. If insufficient: mark expired, notify both parties
  */
 async function processRenewal(sub: SubscriptionToRenew): Promise<void> {
+  // Look up creator's fee rate before entering the transaction (read-only query)
+  const feeConfig = await getCreatorFeeConfig(sub.creator_id);
+
   await db.transaction(async (tx) => {
     // Lock the subscription row to prevent concurrent processing / double-charge
     const lockedRows = await tx.execute(sql`
@@ -166,9 +168,8 @@ async function processRenewal(sub: SubscriptionToRenew): Promise<void> {
       throw new InsufficientBalanceError();
     }
 
-    // Calculate fee split
-    const platformFee = Math.round((sub.price_usdc * PLATFORM_FEE_PERCENT) / 100);
-    const creatorAmount = sub.price_usdc - platformFee;
+    // Calculate fee split using creator's content-type-based rate
+    const { platformFee, creatorAmount } = calculateFeeSplit(sub.price_usdc, feeConfig.feePercent);
 
     // Atomically deduct from subscriber wallet (with balance check to prevent race conditions)
     const [updatedSubscriberWallet] = await tx
@@ -234,7 +235,7 @@ async function processRenewal(sub: SubscriptionToRenew): Promise<void> {
         type: "subscription_received",
         amount_usdc: creatorAmount,
         balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Auto-renewal received (5% fee: $${(platformFee / 100).toFixed(2)})`,
+        description: `Auto-renewal received (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`,
         reference_id: String(sub.id),
         related_user_id: sub.subscriber_id,
       });
@@ -246,7 +247,7 @@ async function processRenewal(sub: SubscriptionToRenew): Promise<void> {
         type: "platform_fee",
         amount_usdc: -platformFee,
         balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Platform fee (5%) on auto-renewal`,
+        description: `Platform fee (${feeConfig.feePercent}%) on auto-renewal`,
         reference_id: String(sub.id),
         related_user_id: sub.subscriber_id,
       });
@@ -271,8 +272,7 @@ async function processRenewal(sub: SubscriptionToRenew): Promise<void> {
   });
 
   // Process referral commission (fire-and-forget, outside transaction)
-  const platformFeeForCommission = Math.round((sub.price_usdc * PLATFORM_FEE_PERCENT) / 100);
-  const creatorAmountForCommission = sub.price_usdc - platformFeeForCommission;
+  const { creatorAmount: creatorAmountForCommission } = calculateFeeSplit(sub.price_usdc, feeConfig.feePercent);
   if (creatorAmountForCommission > 0) {
     processReferralCommission(
       sub.creator_id,

@@ -145,6 +145,29 @@ def send_dm(page, target, message_text):
             log(f"  Profile not found: {handle}")
             return False
 
+        # Follow them first if not already following (required for DMs on most accounts)
+        follow_btn = None
+        for sel in [
+            'button:has-text("Follow")',
+            'div[role="button"]:has-text("Follow")',
+        ]:
+            btn = page.query_selector(sel)
+            if btn and btn.is_visible():
+                text = btn.inner_text().strip()
+                # Only click if it says "Follow" (not "Following" or "Follow Back")
+                if text == "Follow":
+                    follow_btn = btn
+                    break
+
+        if follow_btn:
+            log(f"  Following @{handle} first...")
+            box = follow_btn.bounding_box()
+            if box:
+                page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            else:
+                follow_btn.click()
+            time.sleep(2)
+
         # Find and click the "Message" button
         message_btn = None
         for sel in [
@@ -158,7 +181,7 @@ def send_dm(page, target, message_text):
             message_btn = None
 
         if not message_btn:
-            log(f"  No Message button found for @{handle} (may need to follow first)")
+            log(f"  No Message button found for @{handle}")
             return False
 
         # Click Message button
@@ -260,12 +283,13 @@ def run(targets, dry_run=False):
             print(f"  \"{dm[:120]}...\"")
         return
 
-    # Launch browser
+    # Launch browser (use dedicated profile, ignore --no-sandbox to avoid exit 21)
+    dm_profile = str(Path.home() / ".ig_openfans_dms")
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
-            BROWSER_PROFILE,
+            dm_profile,
             headless=False,
-            channel="chrome",
+            channel="msedge",
             viewport=VIEWPORT,
             user_agent=USER_AGENT,
             ignore_default_args=["--no-sandbox", "--disable-extensions"],
