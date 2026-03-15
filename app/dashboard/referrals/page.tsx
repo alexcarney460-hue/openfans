@@ -169,7 +169,7 @@ export default function ReferralsPage() {
         </h1>
         <p className="mt-1 text-sm text-gray-500">
           Share your link with creators and fans. Earn {commissionRate}%
-          commission on referred creators' revenue.
+          commission on referred creators&apos; revenue.
         </p>
       </div>
 
