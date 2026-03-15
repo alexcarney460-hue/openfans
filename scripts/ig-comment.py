@@ -45,30 +45,35 @@ USER_AGENT = (
 )
 MIN_DELAY = 84    # ~84 seconds between comments
 MAX_DELAY = 100   # slight randomization up to 100s
-MAX_COMMENTS = 15  # per session
+MAX_COMMENTS = 50  # per session
 LOG_FILE = str(Path(__file__).parent.parent / "logs" / "comment-outreach.jsonl")
 
 
 # --- Target Creators (mid-tier OF creators with Instagram) ---
 TARGETS = [
-    "@xoharlowe",
-    "@anna0bea",
-    "@yourbabygraciegray",
-    "@alexas.secrettt",
-    "@laurencorarito",
-    "@misssophiedanielle_",
-    "@kimberlynicolexoxo",
-    "@girl_nextdoorkaty",
-    "@olivme.xoxo",
-    "@haileyhillxoxo",
-    "@Carrovinc",
-    "@lacyscottnextdoor",
-    "@antoinette_theresa_",
-    "@rubyknoxlive",
-    "@tyleranne.jpeg",
-    "@the_macymonroe",
-    "@_chanelharlow_",
-    "@noxie.xo",
+    # --- Batch 1 (already posted, will be auto-skipped) ---
+    "@xoharlowe", "@anna0bea", "@yourbabygraciegray", "@alexas.secrettt",
+    "@laurencorarito", "@misssophiedanielle_", "@kimberlynicolexoxo",
+    "@girl_nextdoorkaty", "@olivme.xoxo", "@Carrovinc", "@lacyscottnextdoor",
+    "@antoinette_theresa_", "@rubyknoxlive", "@tyleranne.jpeg",
+    "@the_macymonroe", "@_chanelharlow_", "@noxie.xo",
+    # --- Batch 2: From TheTab 2025 list ---
+    "@brandilovevip", "@martinasmeraldiofficial", "@givemeablakex",
+    "@arabicalinaangel", "@natashaniceofficial__", "@lexilunaxoxo",
+    "@abelladangerxo", "@theevaelfie", "@lilyphillip_s", "@theangelawhite",
+    "@alexadamsmedia", "@js.oficial10", "@reidyourmind",
+    # --- Batch 3: From EezyCollab IG models with OF ---
+    "@karlyetaylorreels", "@skye.brixton", "@leah_mifsud",
+    "@miss_ttkiss", "@monibalbontin", "@heidilavon", "@abbyberner",
+    "@ashleyk_hawaii", "@katiee_pierce", "@gabylambert",
+    "@cheyennegonz", "@world_of_blondes", "@whitneyjohns",
+    "@livefitelle", "@jiiz___", "@courtneycruises",
+    # --- Batch 4: From FHM list ---
+    "@haileyhillxoxo", "@samozivitelka_moni", "@katyshutt",
+    "@pixie.musc",
+    # --- Batch 5: Notable mid-tier with known handles ---
+    "@justgemmal", "@blacchyna", "@miamalkova",
+    "@nurayistiqbal.official", "@mosttalentedbaldman",
 ]
 
 

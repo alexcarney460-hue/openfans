@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Send, Users, MessageSquareOff, Lock } from "lucide-react";
+import { ArrowLeft, Send, Users, MessageSquareOff, Lock, Video, VideoOff, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LiveBadge } from "@/components/LiveBadge";
 import { ChatMessage, type ChatMessageData } from "@/components/ChatMessage";
@@ -283,40 +283,9 @@ export default function StreamClient({ streamId }: StreamClientProps) {
               title={stream.title}
             />
           ) : stream.stream_key ? (
-            <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-              <div className="rounded-full bg-[#00AFF0]/20 p-4">
-                <Users className="h-8 w-8 text-[#00AFF0]" />
-              </div>
-              <h2 className="text-lg font-semibold text-white">Your Stream is Live</h2>
-              <p className="max-w-md text-center text-sm text-gray-400">
-                Connect your streaming software (OBS, Streamlabs) using the stream key below. Your viewers will see the stream once you start broadcasting.
-              </p>
-              <div className="w-full max-w-md space-y-2">
-                <label className="text-xs font-medium text-gray-500">Stream Key</label>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-xs text-gray-300 font-mono truncate">
-                    {stream.stream_key}
-                  </code>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(stream.stream_key!);
-                    }}
-                    className="rounded-lg bg-[#00AFF0] px-3 py-2 text-xs font-medium text-white hover:bg-[#009dd8]"
-                  >
-                    Copy
-                  </button>
-                </div>
-                <p className="text-[10px] text-gray-600">
-                  RTMP URL: rtmp://stream.openfans.online/live
-                </p>
-              </div>
-            </div>
+            <CreatorWebcamView />
           ) : (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-gray-500">
-                Waiting for stream to start...
-              </p>
-            </div>
+            <ViewerLiveView creator={stream.creator} title={stream.title} />
           )}
         </div>
 
@@ -465,6 +434,149 @@ export default function StreamClient({ streamId }: StreamClientProps) {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+function CreatorWebcamView() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraOn, setCameraOn] = useState(true);
+  const [micOn, setMicOn] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function startCamera() {
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true,
+        });
+        if (cancelled) {
+          mediaStream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = mediaStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      } catch {
+        if (!cancelled) setError("Camera access denied. Please allow camera and microphone access.");
+      }
+    }
+
+    startCamera();
+    return () => {
+      cancelled = true;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  const toggleCamera = () => {
+    const tracks = streamRef.current?.getVideoTracks();
+    if (tracks) {
+      tracks.forEach((t) => { t.enabled = !t.enabled; });
+      setCameraOn((prev) => !prev);
+    }
+  };
+
+  const toggleMic = () => {
+    const tracks = streamRef.current?.getAudioTracks();
+    if (tracks) {
+      tracks.forEach((t) => { t.enabled = !t.enabled; });
+      setMicOn((prev) => !prev);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
+        <VideoOff className="h-10 w-10 text-gray-500" />
+        <p className="max-w-sm text-center text-sm text-gray-400">{error}</p>
+        <button
+          onClick={() => { setError(null); window.location.reload(); }}
+          className="rounded-lg bg-[#00AFF0] px-4 py-2 text-sm font-medium text-white hover:bg-[#009dd8]"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className="h-full w-full object-cover"
+        style={{ transform: "scaleX(-1)" }}
+      />
+      {/* Controls overlay */}
+      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3">
+        <button
+          onClick={toggleCamera}
+          className={`rounded-full p-3 transition-colors ${
+            cameraOn ? "bg-white/20 text-white hover:bg-white/30" : "bg-red-500 text-white hover:bg-red-600"
+          }`}
+          aria-label={cameraOn ? "Turn off camera" : "Turn on camera"}
+        >
+          {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+        </button>
+        <button
+          onClick={toggleMic}
+          className={`rounded-full p-3 transition-colors ${
+            micOn ? "bg-white/20 text-white hover:bg-white/30" : "bg-red-500 text-white hover:bg-red-600"
+          }`}
+          aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
+        >
+          {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+        </button>
+      </div>
+      <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+        </span>
+        <span className="text-xs font-semibold text-white">YOU ARE LIVE</span>
+      </div>
+    </div>
+  );
+}
+
+function ViewerLiveView({ creator, title }: { creator: StreamCreator; title: string }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-gray-900 to-black p-6">
+      {creator.avatar_url ? (
+        <img
+          src={creator.avatar_url}
+          alt={creator.display_name}
+          className="h-24 w-24 rounded-full object-cover ring-4 ring-[#00AFF0]/30"
+        />
+      ) : (
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#00AFF0] ring-4 ring-[#00AFF0]/30">
+          <span className="text-3xl font-bold text-white">
+            {(creator.display_name || "?")[0].toUpperCase()}
+          </span>
+        </div>
+      )}
+      <div className="text-center">
+        <h2 className="text-lg font-semibold text-white">{creator.display_name}</h2>
+        <p className="mt-1 text-sm text-gray-400">{title}</p>
+      </div>
+      <div className="flex items-center gap-2 rounded-full bg-red-500/20 px-4 py-1.5">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+        </span>
+        <span className="text-xs font-semibold text-red-400">LIVE NOW</span>
+      </div>
+      <p className="max-w-sm text-center text-xs text-gray-500">
+        Join the live chat below to interact with {creator.display_name}
+      </p>
+    </div>
+  );
+}
 
 function SubscribeOverlay({
   creatorName,
