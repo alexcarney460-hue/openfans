@@ -4,8 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { db } from "@/utils/db/db";
 import { creatorProfilesTable, usersTable } from "@/utils/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { isValidSolanaAddress } from "@/utils/validation";
+
+const VALID_PAYOUT_SCHEDULES = ["manual", "weekly", "monthly"] as const;
+type PayoutSchedule = (typeof VALID_PAYOUT_SCHEDULES)[number];
 
 /**
  * GET /api/creator-profile
@@ -16,11 +19,13 @@ export async function GET() {
     const { user, error } = await getAuthenticatedUser();
     if (error) return error;
 
-    const rows = await db
-      .select()
-      .from(creatorProfilesTable)
-      .where(eq(creatorProfilesTable.user_id, user.id))
-      .limit(1);
+    // Use raw SQL to include payout_schedule column (not in Drizzle schema)
+    const rows = await db.execute(sql`
+      SELECT *, COALESCE(payout_schedule, 'manual') AS payout_schedule
+      FROM creator_profiles
+      WHERE user_id = ${user.id}
+      LIMIT 1
+    `);
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -273,7 +278,20 @@ export async function PATCH(request: NextRequest) {
       updates.payout_wallet = trimmedWallet || null;
     }
 
-    if (Object.keys(updates).length === 0) {
+    // Handle payout_schedule update (stored via raw SQL, not in Drizzle schema)
+    let payoutScheduleUpdate: PayoutSchedule | null = null;
+    if (typeof body.payout_schedule === "string") {
+      const schedule = body.payout_schedule.trim().toLowerCase();
+      if (!VALID_PAYOUT_SCHEDULES.includes(schedule as PayoutSchedule)) {
+        return NextResponse.json(
+          { error: "payout_schedule must be 'manual', 'weekly', or 'monthly'", code: "INVALID_PAYOUT_SCHEDULE" },
+          { status: 400 },
+        );
+      }
+      payoutScheduleUpdate = schedule as PayoutSchedule;
+    }
+
+    if (Object.keys(updates).length === 0 && payoutScheduleUpdate === null) {
       return NextResponse.json(
         { error: "No valid fields to update", code: "NO_UPDATES" },
         { status: 400 },
@@ -320,20 +338,42 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    const updated = await db
-      .update(creatorProfilesTable)
-      .set(updates)
-      .where(eq(creatorProfilesTable.user_id, user.id))
-      .returning();
+    // If only payout_schedule is being updated, skip the Drizzle update
+    let updatedProfile;
+    if (Object.keys(updates).length > 0) {
+      const updated = await db
+        .update(creatorProfilesTable)
+        .set(updates)
+        .where(eq(creatorProfilesTable.user_id, user.id))
+        .returning();
 
-    if (updated.length === 0) {
-      return NextResponse.json(
-        { error: "Creator profile not found", code: "NOT_FOUND" },
-        { status: 404 },
-      );
+      if (updated.length === 0) {
+        return NextResponse.json(
+          { error: "Creator profile not found", code: "NOT_FOUND" },
+          { status: 404 },
+        );
+      }
+      updatedProfile = updated[0];
     }
 
-    return NextResponse.json({ data: updated[0] });
+    // Update payout_schedule via raw SQL (column not in Drizzle schema)
+    if (payoutScheduleUpdate !== null) {
+      await db.execute(sql`
+        UPDATE creator_profiles
+        SET payout_schedule = ${payoutScheduleUpdate}
+        WHERE user_id = ${user.id}
+      `);
+    }
+
+    // Fetch the final profile state including payout_schedule
+    const finalProfile = await db.execute(sql`
+      SELECT *, COALESCE(payout_schedule, 'manual') AS payout_schedule
+      FROM creator_profiles
+      WHERE user_id = ${user.id}
+      LIMIT 1
+    `);
+
+    return NextResponse.json({ data: finalProfile[0] ?? updatedProfile });
   } catch (err) {
     console.error("PATCH /api/creator-profile error:", err);
     return NextResponse.json(

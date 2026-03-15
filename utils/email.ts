@@ -69,6 +69,53 @@ async function sendEmail({ to, subject, body }: SendEmailOptions): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
+// Public raw sender — for pre-built HTML (e.g. onboarding templates)
+// ---------------------------------------------------------------------------
+
+/**
+ * Send an email with pre-built HTML (no wrapper applied).
+ * Fire-and-forget safe — resolves silently on missing API key or error.
+ */
+export async function sendRawEmail(
+  to: string,
+  subject: string,
+  html: string,
+): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.log(`[Email skipped - no RESEND_API_KEY] To: ${to}, Subject: ${subject}`);
+    return false;
+  }
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "OpenFans <notifications@openfans.online>",
+        to,
+        subject,
+        html,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "unknown");
+      console.error(`[Email failed] Status ${response.status}: ${text}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`[Email error]`, error);
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public helpers — fire-and-forget (never throw, never block)
 // ---------------------------------------------------------------------------
 

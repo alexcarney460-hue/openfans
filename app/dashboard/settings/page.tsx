@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -76,6 +76,9 @@ export default function SettingsPage() {
 
   const [showActivity, setShowActivity] = useState(true);
   const [allowMessages, setAllowMessages] = useState(false);
+
+  const [payoutSchedule, setPayoutSchedule] = useState<"manual" | "weekly" | "monthly">("manual");
+  const [payoutScheduleSaving, setPayoutScheduleSaving] = useState(false);
 
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -178,6 +181,11 @@ export default function SettingsPage() {
                   if (vipCents != null) {
                     setVipEnabled(true);
                     setVipPrice((vipCents / 100).toString());
+                  }
+
+                  // Load payout schedule
+                  if (cpJson.data.payout_schedule) {
+                    setPayoutSchedule(cpJson.data.payout_schedule);
                   }
                 }
               }
@@ -393,6 +401,35 @@ export default function SettingsPage() {
       setSaveMessage("Failed to save subscription pricing.");
     } finally {
       setPriceSaving(false);
+    }
+  };
+
+  const handleSavePayoutSchedule = async (schedule: "manual" | "weekly" | "monthly") => {
+    setPayoutScheduleSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const res = await fetch("/api/creator-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payout_schedule: schedule }),
+      });
+
+      if (res.ok) {
+        setPayoutSchedule(schedule);
+        setSaveMessage(
+          schedule === "manual"
+            ? "Payout schedule set to manual. Request payouts from your earnings page."
+            : `Payout schedule set to ${schedule}. Payouts will be processed automatically.`,
+        );
+      } else {
+        const json = await res.json().catch(() => ({ error: "Unknown error" }));
+        setSaveMessage(json.error ?? "Failed to update payout schedule.");
+      }
+    } catch {
+      setSaveMessage("Failed to update payout schedule.");
+    } finally {
+      setPayoutScheduleSaving(false);
     }
   };
 
@@ -910,6 +947,96 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payout Schedule (creators only) */}
+      {isCreator && (
+        <Card className="border-gray-200 bg-white">
+          <CardContent className="p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-1">Payout Schedule</h2>
+            <p className="text-xs text-muted-foreground mb-5">
+              Choose how often your earnings are automatically paid out to your connected wallet.
+              Minimum payout is $5.00 USDC.
+            </p>
+
+            <div className="space-y-3">
+              {([
+                {
+                  value: "manual" as const,
+                  label: "Manual",
+                  description: "Request payouts manually from your earnings page",
+                  icon: <Wallet className="h-5 w-5" />,
+                },
+                {
+                  value: "weekly" as const,
+                  label: "Weekly",
+                  description: "Automatically pay out every 7 days",
+                  icon: <CalendarClock className="h-5 w-5" />,
+                },
+                {
+                  value: "monthly" as const,
+                  label: "Monthly",
+                  description: "Automatically pay out every 30 days",
+                  icon: <CalendarClock className="h-5 w-5" />,
+                },
+              ]).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={payoutScheduleSaving}
+                  onClick={() => {
+                    if (option.value !== payoutSchedule) {
+                      handleSavePayoutSchedule(option.value);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-4 rounded-lg border p-4 text-left transition-colors disabled:opacity-50 ${
+                    payoutSchedule === option.value
+                      ? "border-[#00AFF0] bg-[#00AFF0]/5"
+                      : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                  }`}
+                >
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                    payoutSchedule === option.value
+                      ? "bg-[#00AFF0]/10 text-[#00AFF0]"
+                      : "bg-gray-100 text-gray-400"
+                  }`}>
+                    {option.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${
+                      payoutSchedule === option.value ? "text-[#00AFF0]" : "text-foreground"
+                    }`}>
+                      {option.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{option.description}</p>
+                  </div>
+                  <div className={`h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    payoutSchedule === option.value
+                      ? "border-[#00AFF0] bg-[#00AFF0]"
+                      : "border-gray-300"
+                  }`}>
+                    {payoutSchedule === option.value && (
+                      <div className="h-2 w-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {payoutScheduleSaving && (
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Updating payout schedule...
+              </div>
+            )}
+
+            {!walletAddress && payoutSchedule !== "manual" && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                You need to connect a wallet before automatic payouts can be processed.
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

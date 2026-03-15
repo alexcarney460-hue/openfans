@@ -19,6 +19,10 @@ import {
   ShieldCheck,
   UserCheck,
   Lock,
+  ChevronDown,
+  Check,
+  X,
+  Rocket,
 } from "lucide-react";
 import { useLanguage } from "@/utils/i18n/context";
 import { useTrack } from "@/hooks/useTrack";
@@ -157,12 +161,94 @@ const AVATAR_GRADIENTS = [
 ] as const;
 
 // -------------------------------------------------------------------
+// Comparison table data
+// -------------------------------------------------------------------
+type ComparisonRow = {
+  readonly label: string;
+  readonly openfans: string;
+  readonly onlyfans: string;
+  readonly patreon: string;
+  readonly highlight?: boolean;
+};
+
+const COMPARISON_ROWS: readonly ComparisonRow[] = [
+  {
+    label: "Creator Payout",
+    openfans: "95%",
+    onlyfans: "80%",
+    patreon: "88–95%",
+    highlight: true,
+  },
+  {
+    label: "Payout Speed",
+    openfans: "Instant",
+    onlyfans: "7–21 days",
+    patreon: "Monthly",
+    highlight: true,
+  },
+  {
+    label: "Crypto Native",
+    openfans: "Yes",
+    onlyfans: "No",
+    patreon: "No",
+  },
+  {
+    label: "Global Access",
+    openfans: "Yes",
+    onlyfans: "Restricted",
+    patreon: "Yes",
+  },
+] as const;
+
+// -------------------------------------------------------------------
+// FAQ data
+// -------------------------------------------------------------------
+type FaqItem = {
+  readonly question: string;
+  readonly answer: string;
+};
+
+const FAQ_ITEMS: readonly FaqItem[] = [
+  {
+    question: "How do I get paid?",
+    answer:
+      "You get paid in USDC (a stablecoin pegged 1:1 to the US dollar) directly to your Solana wallet. Payouts are instant — no waiting days or weeks for bank transfers.",
+  },
+  {
+    question: "What are the fees?",
+    answer:
+      "OpenFans charges a flat 5% platform fee on subscriptions and tips. That means you keep 95% of everything you earn. There are no hidden fees, no payout fees, and no currency conversion charges.",
+  },
+  {
+    question: "Do I need crypto experience?",
+    answer:
+      "Not at all. We guide you through setting up a Solana wallet in under two minutes. Once set up, everything works automatically — you earn in USDC and can convert to your local currency anytime.",
+  },
+  {
+    question: "How do subscriptions work?",
+    answer:
+      "You set your own monthly subscription price. Fans pay in USDC and get instant access to your exclusive content. You can also offer tiered pricing, pay-per-view posts, and accept tips.",
+  },
+  {
+    question: "Is my content protected?",
+    answer:
+      "Yes. All content is behind a paywall and only accessible to paying subscribers. We use watermarking, DRM protection, and DMCA enforcement to protect your work from unauthorized sharing.",
+  },
+  {
+    question: "Can I migrate from another platform?",
+    answer:
+      "Absolutely. You can import your content and start earning on OpenFans right away. Many creators run both platforms simultaneously during their transition.",
+  },
+] as const;
+
+// -------------------------------------------------------------------
 // Page Component
 // -------------------------------------------------------------------
 export default function LandingPageClient() {
   const { t } = useLanguage();
   const track = useTrack();
   const [activeTab, setActiveTab] = useState<"creators" | "fans">("creators");
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     track("page_view", "home");
@@ -473,6 +559,173 @@ export default function LandingPageClient() {
                     </Button>
                   </Link>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== COMPARISON TABLE ==================== */}
+        <section className="border-t border-gray-200 bg-gray-50 py-14 sm:py-20 lg:py-28">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 text-center sm:mb-12">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl md:text-4xl">
+                See How We Compare
+              </h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm text-gray-500 sm:mt-3 sm:text-base">
+                More money in your pocket, faster payouts, zero restrictions.
+              </p>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+              {/* Table header */}
+              <div className="grid grid-cols-4 border-b border-gray-200 bg-gray-50 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 sm:text-sm">
+                <div className="px-3 py-3 text-left sm:px-6 sm:py-4" />
+                <div className="flex items-center justify-center gap-1.5 px-3 py-3 text-[#00AFF0] sm:px-6 sm:py-4">
+                  <Rocket className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  OpenFans
+                </div>
+                <div className="px-3 py-3 sm:px-6 sm:py-4">OnlyFans</div>
+                <div className="px-3 py-3 sm:px-6 sm:py-4">Patreon</div>
+              </div>
+
+              {/* Table rows */}
+              {COMPARISON_ROWS.map((row, index) => (
+                <div
+                  key={row.label}
+                  className={`grid grid-cols-4 text-center text-sm sm:text-base ${
+                    index < COMPARISON_ROWS.length - 1
+                      ? "border-b border-gray-100"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center px-3 py-3 text-left text-xs font-medium text-gray-700 sm:px-6 sm:py-4 sm:text-sm">
+                    {row.label}
+                  </div>
+                  <div className="flex items-center justify-center px-3 py-3 sm:px-6 sm:py-4">
+                    <span
+                      className={`inline-flex items-center gap-1 text-xs font-semibold sm:text-sm ${
+                        row.highlight ? "text-[#00AFF0]" : "text-gray-900"
+                      }`}
+                    >
+                      {row.openfans === "Yes" ? (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      ) : null}
+                      {row.openfans}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center px-3 py-3 text-xs text-gray-500 sm:px-6 sm:py-4 sm:text-sm">
+                    {row.onlyfans === "No" ? (
+                      <X className="h-4 w-4 text-gray-300" />
+                    ) : (
+                      row.onlyfans
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center px-3 py-3 text-xs text-gray-500 sm:px-6 sm:py-4 sm:text-sm">
+                    {row.patreon === "No" ? (
+                      <X className="h-4 w-4 text-gray-300" />
+                    ) : (
+                      row.patreon
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== FAQ ==================== */}
+        <section className="py-14 sm:py-20 lg:py-28">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 text-center sm:mb-12">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl md:text-4xl">
+                Frequently Asked Questions
+              </h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm text-gray-500 sm:mt-3 sm:text-base">
+                Everything you need to know to get started.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {FAQ_ITEMS.map((item, index) => {
+                const isOpen = openFaq === index;
+                return (
+                  <div
+                    key={item.question}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-[#00AFF0]/30"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenFaq(isOpen ? null : index)
+                      }
+                      className="flex w-full items-center justify-between px-5 py-4 text-left sm:px-6 sm:py-5"
+                    >
+                      <span className="text-sm font-semibold text-gray-900 sm:text-base">
+                        {item.question}
+                      </span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 ${
+                          isOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    <div
+                      className={`overflow-hidden transition-all duration-200 ${
+                        isOpen ? "max-h-96" : "max-h-0"
+                      }`}
+                    >
+                      <p className="px-5 pb-4 text-sm leading-relaxed text-gray-500 sm:px-6 sm:pb-5 sm:text-base">
+                        {item.answer}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== FINAL CTA BANNER ==================== */}
+        <section className="border-t border-gray-200">
+          <div className="relative overflow-hidden bg-gradient-to-r from-[#00AFF0] to-[#0090c8] py-14 sm:py-20 lg:py-24">
+            {/* Decorative glow */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -bottom-20 -right-20 h-72 w-72 rounded-full bg-white/10 blur-3xl"
+            />
+
+            <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+              <h2 className="font-display text-2xl font-extrabold tracking-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">
+                Your Audience Is Waiting.
+                <br className="hidden sm:block" />{" "}
+                Start Earning Today.
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/80 sm:mt-6 sm:text-lg">
+                Join thousands of creators already keeping 95% of their
+                earnings. Set up your page in under 5 minutes.
+              </p>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row sm:gap-4">
+                <Link href="/signup">
+                  <Button
+                    size="lg"
+                    className="h-12 border-0 bg-white px-8 text-sm font-semibold text-[#00AFF0] shadow-lg shadow-black/10 transition-all hover:bg-gray-100 sm:h-13 sm:px-10 sm:text-base"
+                  >
+                    Create Your Page
+                  </Button>
+                </Link>
+                <Link href="/explore">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-12 border-white/30 px-8 text-sm font-semibold text-white transition-all hover:border-white hover:bg-white/10 sm:h-13 sm:px-10 sm:text-base"
+                  >
+                    Explore Creators
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
