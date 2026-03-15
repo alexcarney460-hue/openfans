@@ -178,19 +178,27 @@ export default function StreamControlPanel({ streamId, onStreamEnded }: StreamCo
     }
   }, [confirmEnd, streamId, onStreamEnded]);
 
+  const [moderationError, setModerationError] = useState<string | null>(null);
+
   const handlePinMessage = useCallback(async (messageId: string) => {
     setModeratingId(messageId);
+    setModerationError(null);
     try {
-      await fetch(`/api/streams/${streamId}/chat/${messageId}`, {
+      const res = await fetch(`/api/streams/${streamId}/chat/${messageId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pinned: true }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error ?? "Failed to pin message");
+      }
       setMessages((prev) =>
         prev.map((m) => (m.id === messageId ? { ...m, pinned: true } : m))
       );
-    } catch {
-      // Silently handle moderation failures
+    } catch (err) {
+      console.error("Pin message failed:", err);
+      setModerationError(err instanceof Error ? err.message : "Failed to pin message");
     } finally {
       setModeratingId(null);
     }
@@ -198,13 +206,19 @@ export default function StreamControlPanel({ streamId, onStreamEnded }: StreamCo
 
   const handleDeleteMessage = useCallback(async (messageId: string) => {
     setModeratingId(messageId);
+    setModerationError(null);
     try {
-      await fetch(`/api/streams/${streamId}/chat/${messageId}`, {
+      const res = await fetch(`/api/streams/${streamId}/chat/${messageId}`, {
         method: "DELETE",
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error ?? "Failed to delete message");
+      }
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
-    } catch {
-      // Silently handle moderation failures
+    } catch (err) {
+      console.error("Delete message failed:", err);
+      setModerationError(err instanceof Error ? err.message : "Failed to delete message");
     } finally {
       setModeratingId(null);
     }
@@ -286,6 +300,19 @@ export default function StreamControlPanel({ streamId, onStreamEnded }: StreamCo
           </Badge>
         </div>
         <CardContent className="p-0">
+          {moderationError && (
+            <div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">{moderationError}</span>
+              <button
+                onClick={() => setModerationError(null)}
+                className="shrink-0 text-red-400 hover:text-red-600"
+                aria-label="Dismiss"
+              >
+                &times;
+              </button>
+            </div>
+          )}
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <MessageSquare className="h-8 w-8 mb-2 opacity-40" />

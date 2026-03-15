@@ -179,7 +179,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
       const res = await fetch(`/api/streams/${streamId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: trimmed }),
+        body: JSON.stringify({ body: trimmed }),
       });
       if (res.ok) {
         setChatInput("");
@@ -271,6 +271,7 @@ export default function StreamClient({ streamId }: StreamClientProps) {
             <iframe
               src={stream.playback_url}
               className="absolute inset-0 h-full w-full"
+              sandbox="allow-scripts allow-same-origin"
               allow="autoplay; fullscreen; picture-in-picture"
               allowFullScreen
               title={stream.title}

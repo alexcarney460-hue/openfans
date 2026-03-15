@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/utils/api/auth";
+import { getAuthenticatedUser, getAuthenticatedAdmin } from "@/utils/api/auth";
 import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
 import { UUID_REGEX, MAX_CHAT_LENGTH, CHAT_RATE_LIMIT } from "@/utils/streaming/constants";
@@ -42,7 +42,8 @@ export async function GET(
 
     // Verify stream exists
     const streamRows = await db.execute(sql`
-      SELECT id, chat_enabled FROM live_streams WHERE id = ${streamId} LIMIT 1
+      SELECT id, chat_enabled, is_subscriber_only, creator_id
+      FROM live_streams WHERE id = ${streamId} LIMIT 1
     `);
 
     if (streamRows.length === 0) {
@@ -50,6 +51,39 @@ export async function GET(
         { error: "Stream not found", code: "NOT_FOUND" },
         { status: 404 },
       );
+    }
+
+    const streamRecord = streamRows[0];
+
+    // IMPORTANT-4: Block chat access for non-subscribers on subscriber-only streams
+    if (streamRecord.is_subscriber_only) {
+      const { user } = await getAuthenticatedUser();
+      const isCreator = user?.id === streamRecord.creator_id;
+      const isAdmin = user ? !(await getAuthenticatedAdmin()).error : false;
+
+      if (!isCreator && !isAdmin) {
+        if (!user) {
+          return NextResponse.json(
+            { error: "Subscription required to view chat", code: "SUBSCRIPTION_REQUIRED" },
+            { status: 403 },
+          );
+        }
+
+        const subRows = await db.execute(sql`
+          SELECT id FROM subscriptions
+          WHERE subscriber_id = ${user.id}
+            AND creator_id = ${streamRecord.creator_id}
+            AND status = 'active'
+          LIMIT 1
+        `);
+
+        if (subRows.length === 0) {
+          return NextResponse.json(
+            { error: "Subscription required to view chat", code: "SUBSCRIPTION_REQUIRED" },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     // Fetch messages with sender info

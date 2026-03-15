@@ -247,36 +247,38 @@ export async function DELETE(request: NextRequest) {
     const stream = streamRows[0];
 
     if (stream.status === "live") {
-      // Force-end the live stream
+      // Force-end the live stream inside a transaction
       const now = new Date().toISOString();
 
-      await db.execute(sql`
-        UPDATE live_streams
-        SET status = 'ended'::stream_status,
-            ended_at = ${now},
-            updated_at = ${now}
-        WHERE id = ${stream_id}
-      `);
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`
+          UPDATE live_streams
+          SET status = 'ended'::stream_status,
+              ended_at = ${now},
+              updated_at = ${now}
+          WHERE id = ${stream_id}
+        `);
 
-      // Mark all viewers as left
-      await db.execute(sql`
-        UPDATE live_stream_viewers
-        SET left_at = NOW()
-        WHERE stream_id = ${stream_id} AND left_at IS NULL
-      `);
+        // Mark all viewers as left
+        await tx.execute(sql`
+          UPDATE live_stream_viewers
+          SET left_at = NOW()
+          WHERE stream_id = ${stream_id} AND left_at IS NULL
+        `);
 
-      // Notify the creator that their stream was force-ended
-      await db.execute(sql`
-        INSERT INTO notifications (user_id, type, title, body, reference_id, created_at)
-        VALUES (
-          ${stream.creator_id as string},
-          'new_message',
-          ${"Stream ended by admin"},
-          ${`Your stream "${stream.title}" was ended by an admin. Reason: ${reason.trim()}`},
-          ${stream_id},
-          NOW()
-        )
-      `);
+        // Notify the creator that their stream was force-ended
+        await tx.execute(sql`
+          INSERT INTO notifications (user_id, type, title, body, reference_id, created_at)
+          VALUES (
+            ${stream.creator_id as string},
+            'new_message',
+            ${"Stream ended by admin"},
+            ${`Your stream "${stream.title}" was ended by an admin. Reason: ${reason.trim()}`},
+            ${stream_id},
+            NOW()
+          )
+        `);
+      });
 
       return NextResponse.json({
         data: {
@@ -288,23 +290,25 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (stream.status === "scheduled") {
-      // Delete the scheduled stream and associated records
-      await db.execute(sql`DELETE FROM live_chat_messages WHERE stream_id = ${stream_id}`);
-      await db.execute(sql`DELETE FROM live_stream_viewers WHERE stream_id = ${stream_id}`);
-      await db.execute(sql`DELETE FROM live_streams WHERE id = ${stream_id}`);
+      // Delete the scheduled stream and associated records inside a transaction
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`DELETE FROM live_chat_messages WHERE stream_id = ${stream_id}`);
+        await tx.execute(sql`DELETE FROM live_stream_viewers WHERE stream_id = ${stream_id}`);
+        await tx.execute(sql`DELETE FROM live_streams WHERE id = ${stream_id}`);
 
-      // Notify the creator that their scheduled stream was deleted
-      await db.execute(sql`
-        INSERT INTO notifications (user_id, type, title, body, reference_id, created_at)
-        VALUES (
-          ${stream.creator_id as string},
-          'new_message',
-          ${"Scheduled stream removed by admin"},
-          ${`Your scheduled stream "${stream.title}" was removed by an admin. Reason: ${reason.trim()}`},
-          ${stream_id},
-          NOW()
-        )
-      `);
+        // Notify the creator that their scheduled stream was deleted
+        await tx.execute(sql`
+          INSERT INTO notifications (user_id, type, title, body, reference_id, created_at)
+          VALUES (
+            ${stream.creator_id as string},
+            'new_message',
+            ${"Scheduled stream removed by admin"},
+            ${`Your scheduled stream "${stream.title}" was removed by an admin. Reason: ${reason.trim()}`},
+            ${stream_id},
+            NOW()
+          )
+        `);
+      });
 
       return NextResponse.json({
         data: {

@@ -309,7 +309,31 @@ export async function POST(request: NextRequest) {
         created_at, updated_at
     `);
 
-    return NextResponse.json({ data: result[0] }, { status: 201 });
+    const row = result[0];
+
+    // CRITICAL-3: Construct explicit response object.
+    // stream_key is intentionally returned to the creator for RTMP push configuration.
+    const responseData = {
+      id: row.id,
+      creator_id: row.creator_id,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      stream_key: row.stream_key, // Intentionally returned — creator needs this for RTMP push
+      playback_url: row.playback_url,
+      thumbnail_url: row.thumbnail_url,
+      scheduled_at: row.scheduled_at,
+      started_at: row.started_at,
+      ended_at: row.ended_at,
+      viewer_count: row.viewer_count,
+      peak_viewers: row.peak_viewers,
+      is_subscriber_only: row.is_subscriber_only,
+      chat_enabled: row.chat_enabled,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+
+    return NextResponse.json({ data: responseData }, { status: 201 });
   } catch (err) {
     console.error("POST /api/streams error:", err);
     return NextResponse.json(

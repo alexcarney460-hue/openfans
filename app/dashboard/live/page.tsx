@@ -66,6 +66,7 @@ function getRelativeTime(dateStr: string): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
+  if (diffMins <= 0) return "overdue";
   if (diffMins < 60) return `in ${diffMins}m`;
   if (diffHours < 24) return `in ${diffHours}h`;
   return `in ${diffDays}d`;

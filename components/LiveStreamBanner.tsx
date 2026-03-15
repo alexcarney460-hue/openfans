@@ -23,7 +23,16 @@ interface LiveStreamBannerProps {
 }
 
 export function LiveStreamBanner({ stream, className }: LiveStreamBannerProps) {
-  const [dismissed, setDismissed] = useState(false);
+  const storageKey = `live-banner-dismissed-${stream.id}`;
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return sessionStorage.getItem(storageKey) === "true"; } catch { return false; }
+  });
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try { sessionStorage.setItem(storageKey, "true"); } catch { /* private browsing */ }
+  };
 
   if (dismissed) return null;
 
@@ -95,7 +104,7 @@ export function LiveStreamBanner({ stream, className }: LiveStreamBannerProps) {
             Watch
           </Link>
           <button
-            onClick={() => setDismissed(true)}
+            onClick={handleDismiss}
             className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 sm:h-8 sm:w-8"
             aria-label="Dismiss live stream notification"
           >

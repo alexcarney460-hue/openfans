@@ -69,6 +69,27 @@ export async function GET(
 
     // Track viewer join if authenticated and stream is live
     const { user } = await getAuthenticatedUser();
+
+    const isCreator = user?.id === stream.creator_id;
+    const isAdmin = user ? !(await getAuthenticatedAdmin()).error : false;
+
+    // CRITICAL-1: Server-side subscriber gate — strip playback_url for non-subscribers
+    let isSubscribed = true; // default true for non-subscriber-only streams
+    if (stream.is_subscriber_only && !isCreator && !isAdmin) {
+      if (!user) {
+        isSubscribed = false;
+      } else {
+        const subRows = await db.execute(sql`
+          SELECT id FROM subscriptions
+          WHERE subscriber_id = ${user.id}
+            AND creator_id = ${stream.creator_id}
+            AND status = 'active'
+          LIMIT 1
+        `);
+        isSubscribed = subRows.length > 0;
+      }
+    }
+
     if (user && stream.status === "live" && user.id !== stream.creator_id) {
       // Upsert viewer record and update viewer_count atomically
       await db.execute(sql`
@@ -109,8 +130,14 @@ export async function GET(
       }
     }
 
-    // Only expose stream_key to the creator
-    const isCreator = user?.id === stream.creator_id;
+    // CRITICAL-4: Conditionally fetch stream_key for creator only
+    let streamKey: string | undefined;
+    if (isCreator) {
+      const keyRows = await db.execute(sql`
+        SELECT stream_key FROM live_streams WHERE id = ${streamId} LIMIT 1
+      `);
+      streamKey = keyRows[0]?.stream_key as string | undefined;
+    }
 
     return NextResponse.json({
       data: {
@@ -119,8 +146,10 @@ export async function GET(
         title: stream.title,
         description: stream.description,
         status: stream.status,
-        ...(isCreator ? { stream_key: undefined } : {}),
-        playback_url: stream.playback_url,
+        // stream_key only included for the creator (for RTMP push configuration)
+        ...(isCreator && streamKey ? { stream_key: streamKey } : {}),
+        // CRITICAL-1: Null out playback_url for non-subscribers on subscriber-only streams
+        playback_url: isSubscribed ? stream.playback_url : null,
         thumbnail_url: stream.thumbnail_url,
         scheduled_at: stream.scheduled_at,
         started_at: stream.started_at,
@@ -128,6 +157,7 @@ export async function GET(
         viewer_count: stream.viewer_count,
         peak_viewers: stream.peak_viewers,
         is_subscriber_only: stream.is_subscriber_only,
+        is_subscribed: stream.is_subscriber_only ? isSubscribed : undefined,
         chat_enabled: stream.chat_enabled,
         created_at: stream.created_at,
         updated_at: stream.updated_at,
@@ -264,6 +294,60 @@ export async function PATCH(
 
     // Build update query
     const now = new Date().toISOString();
+    const isEndingStream = status === "ended" || status === "cancelled";
+
+    // IMPORTANT-2: Wrap status update + viewer cleanup in a transaction
+    // when ending/cancelling to ensure atomicity
+    if (isEndingStream) {
+      const result = await db.transaction(async (tx) => {
+        const updated = await tx.execute(sql`
+          UPDATE live_streams
+          SET
+            title = COALESCE(${title?.trim() ?? null}, title),
+            description = CASE
+              WHEN ${description !== undefined} THEN ${description?.trim() ?? null}
+              ELSE description
+            END,
+            status = COALESCE(${status ?? null}::stream_status, status),
+            thumbnail_url = CASE
+              WHEN ${thumbnail_url !== undefined} THEN ${thumbnail_url ?? null}
+              ELSE thumbnail_url
+            END,
+            playback_url = CASE
+              WHEN ${playback_url !== undefined} THEN ${playback_url ?? null}
+              ELSE playback_url
+            END,
+            is_subscriber_only = COALESCE(${is_subscriber_only ?? null}::boolean, is_subscriber_only),
+            chat_enabled = COALESCE(${chat_enabled ?? null}::boolean, chat_enabled),
+            started_at = CASE
+              WHEN ${newStartedAt !== undefined} THEN ${newStartedAt ?? null}::timestamptz
+              ELSE started_at
+            END,
+            ended_at = CASE
+              WHEN ${newEndedAt !== undefined} THEN ${newEndedAt ?? null}::timestamptz
+              ELSE ended_at
+            END,
+            updated_at = ${now}
+          WHERE id = ${streamId}
+          RETURNING
+            id, creator_id, title, description, status,
+            playback_url, thumbnail_url, scheduled_at, started_at, ended_at,
+            viewer_count, peak_viewers, is_subscriber_only, chat_enabled,
+            created_at, updated_at
+        `);
+
+        // Mark all active viewers as left within the same transaction
+        await tx.execute(sql`
+          UPDATE live_stream_viewers
+          SET left_at = NOW()
+          WHERE stream_id = ${streamId} AND left_at IS NULL
+        `);
+
+        return updated;
+      });
+
+      return NextResponse.json({ data: result[0] });
+    }
 
     const result = await db.execute(sql`
       UPDATE live_streams
@@ -300,17 +384,6 @@ export async function PATCH(
         viewer_count, peak_viewers, is_subscriber_only, chat_enabled,
         created_at, updated_at
     `);
-
-    // If stream just ended, mark all active viewers as left
-    if (status === "ended" || status === "cancelled") {
-      db.execute(sql`
-        UPDATE live_stream_viewers
-        SET left_at = NOW()
-        WHERE stream_id = ${streamId} AND left_at IS NULL
-      `).catch((err) => {
-        console.warn("Failed to mark viewers as left:", err);
-      });
-    }
 
     return NextResponse.json({ data: result[0] });
   } catch (err) {
@@ -381,10 +454,12 @@ export async function DELETE(
       );
     }
 
-    // Delete associated records first, then the stream
-    await db.execute(sql`DELETE FROM live_chat_messages WHERE stream_id = ${streamId}`);
-    await db.execute(sql`DELETE FROM live_stream_viewers WHERE stream_id = ${streamId}`);
-    await db.execute(sql`DELETE FROM live_streams WHERE id = ${streamId}`);
+    // IMPORTANT-3: Delete associated records and stream in a single transaction
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`DELETE FROM live_chat_messages WHERE stream_id = ${streamId}`);
+      await tx.execute(sql`DELETE FROM live_stream_viewers WHERE stream_id = ${streamId}`);
+      await tx.execute(sql`DELETE FROM live_streams WHERE id = ${streamId}`);
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {

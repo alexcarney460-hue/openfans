@@ -104,6 +104,20 @@ function formatScheduledDate(dateString: string | null): string {
   });
 }
 
+function timeUntil(dateString: string | null): string {
+  if (!dateString) return "-";
+  const now = Date.now();
+  const target = new Date(dateString).getTime();
+  const diffMs = target - now;
+  if (diffMs <= 0) return "overdue";
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `in ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `in ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `in ${days}d`;
+}
+
 // ---------------------------------------------------------------------------
 // Status Badge
 // ---------------------------------------------------------------------------
@@ -199,9 +213,25 @@ function EndStreamModal({
 }) {
   const [reason, setReason] = useState("");
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !loading) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, loading]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={() => { if (!loading) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="text-base font-bold text-gray-900">
           {stream.status === "live" ? "End Stream" : "Delete Stream"}
         </h3>
@@ -316,16 +346,17 @@ export default function AdminStreamsPage() {
 
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        alert(json.error ?? "Failed to end stream");
+        setEndingLoading(false);
+        setError(json.error ?? "Failed to end stream");
         return;
       }
 
+      setEndingLoading(false);
       setEndingStream(null);
       fetchData();
     } catch {
-      alert("Failed to end stream");
-    } finally {
       setEndingLoading(false);
+      setError("Failed to end stream");
     }
   };
 
@@ -391,6 +422,20 @@ export default function AdminStreamsPage() {
           Refresh
         </button>
       </div>
+
+      {/* Error banner (dismissible) */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="shrink-0 text-red-400 hover:text-red-600"
+            aria-label="Dismiss error"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -536,7 +581,7 @@ export default function AdminStreamsPage() {
                       {stream.started_at
                         ? timeAgo(stream.started_at)
                         : stream.scheduled_at
-                          ? `In ${timeAgo(stream.scheduled_at)}`
+                          ? timeUntil(stream.scheduled_at)
                           : "-"}
                     </td>
 
