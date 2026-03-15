@@ -70,13 +70,11 @@ export async function GET(request: NextRequest) {
         avatar_url: usersTable.avatar_url,
         banner_url: usersTable.banner_url,
         is_verified: usersTable.is_verified,
-        wallet_address: usersTable.wallet_address,
         created_at: usersTable.created_at,
         // Creator profile fields
         profile_id: creatorProfilesTable.id,
         subscription_price_usdc: creatorProfilesTable.subscription_price_usdc,
         total_subscribers: creatorProfilesTable.total_subscribers,
-        total_earnings_usdc: creatorProfilesTable.total_earnings_usdc,
         categories: creatorProfilesTable.categories,
         is_featured: creatorProfilesTable.is_featured,
         post_count: sql<number>`(SELECT count(*)::int FROM posts WHERE posts.creator_id = ${usersTable.id})`,

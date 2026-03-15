@@ -106,110 +106,126 @@ export async function POST(
       });
     }
 
-    // Must pay: atomic wallet debit (WHERE balance_usdc >= amount)
+    // Must pay: validate ticket price
     const ticketPrice = stream.ticket_price as number;
-
-    const debitResult = await db
-      .update(walletsTable)
-      .set({
-        balance_usdc: sql`${walletsTable.balance_usdc} - ${ticketPrice}`,
-        updated_at: new Date(),
-      })
-      .where(
-        sql`${walletsTable.user_id} = ${user.id}
-            AND ${walletsTable.balance_usdc} >= ${ticketPrice}`,
-      )
-      .returning();
-
-    if (debitResult.length === 0) {
+    if (typeof ticketPrice !== "number" || !Number.isInteger(ticketPrice) || ticketPrice <= 0) {
       return NextResponse.json(
-        { error: "Insufficient balance", code: "INSUFFICIENT_BALANCE" },
-        { status: 402 },
+        { error: "Invalid ticket price", code: "INVALID_TICKET_PRICE" },
+        { status: 400 },
       );
     }
 
-    const buyerWallet = debitResult[0];
-
-    // Record buyer debit transaction (raw SQL — "stream_ticket" type not in Drizzle enum)
-    await db.execute(sql`
-      INSERT INTO wallet_transactions (wallet_id, user_id, type, amount_usdc, balance_after, description, reference_id, related_user_id)
-      VALUES (
-        ${buyerWallet.id}, ${user.id}, 'stream_ticket', ${-ticketPrice},
-        ${buyerWallet.balance_usdc}, ${"Stream ticket: \"" + stream.title + "\""}, ${streamId}, ${stream.creator_id}
-      )
-    `);
-
-    // Record purchase
-    const purchaseTx = crypto.randomUUID();
-    await db.execute(sql`
-      INSERT INTO live_stream_purchases (stream_id, buyer_id, amount_usdc, payment_tx)
-      VALUES (${streamId}, ${user.id}, ${ticketPrice}, ${purchaseTx})
-    `);
-
-    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
+    // Look up creator's fee rate BEFORE transaction (read-only, safe outside tx)
     const feeConfig = await getCreatorFeeConfig(stream.creator_id);
-
-    // Credit creator (minus platform fee)
     const { platformFee, creatorAmount } = calculateFeeSplit(ticketPrice, feeConfig.feePercent);
+    const purchaseTx = crypto.randomUUID();
 
-    // Ensure creator wallet exists
-    const existingCreatorWallet = await db
-      .select()
-      .from(walletsTable)
-      .where(eq(walletsTable.user_id, stream.creator_id))
-      .limit(1);
+    // Wrap entire financial flow in a single transaction
+    let buyerWalletBalance: number;
+    try {
+      await db.transaction(async (tx) => {
+        // 1. Atomic wallet debit
+        const debitResult = await tx
+          .update(walletsTable)
+          .set({
+            balance_usdc: sql`${walletsTable.balance_usdc} - ${ticketPrice}`,
+            updated_at: new Date(),
+          })
+          .where(
+            sql`${walletsTable.user_id} = ${user.id}
+                AND ${walletsTable.balance_usdc} >= ${ticketPrice}`,
+          )
+          .returning();
 
-    if (existingCreatorWallet.length === 0) {
-      await db
-        .insert(walletsTable)
-        .values({ user_id: stream.creator_id, balance_usdc: 0 })
-        .returning();
-    }
+        if (debitResult.length === 0) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
 
-    // Atomic credit to creator wallet
-    const [updatedCreatorWallet] = await db
-      .update(walletsTable)
-      .set({
-        balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
-        updated_at: new Date(),
-      })
-      .where(eq(walletsTable.user_id, stream.creator_id))
-      .returning();
+        const buyerWallet = debitResult[0];
+        buyerWalletBalance = buyerWallet.balance_usdc;
 
-    if (updatedCreatorWallet) {
-      const feeDescription = `Stream ticket sale: "${stream.title}" (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`;
+        // 2. Record buyer debit transaction
+        await tx.execute(sql`
+          INSERT INTO wallet_transactions (wallet_id, user_id, type, amount_usdc, balance_after, description, reference_id, related_user_id)
+          VALUES (
+            ${buyerWallet.id}, ${user.id}, 'stream_ticket', ${-ticketPrice},
+            ${buyerWallet.balance_usdc}, ${"Stream ticket: \"" + stream.title + "\""}, ${streamId}, ${stream.creator_id}
+          )
+        `);
 
-      // Creator earnings transaction (raw SQL — "stream_ticket_received" type not in Drizzle enum)
-      await db.execute(sql`
-        INSERT INTO wallet_transactions (wallet_id, user_id, type, amount_usdc, balance_after, description, reference_id, related_user_id)
-        VALUES (
-          ${updatedCreatorWallet.id}, ${stream.creator_id}, 'stream_ticket_received', ${creatorAmount},
-          ${updatedCreatorWallet.balance_usdc}, ${feeDescription}, ${purchaseTx}, ${user.id}
-        )
-      `);
+        // 3. Record purchase
+        await tx.execute(sql`
+          INSERT INTO live_stream_purchases (stream_id, buyer_id, amount_usdc, payment_tx)
+          VALUES (${streamId}, ${user.id}, ${ticketPrice}, ${purchaseTx})
+        `);
 
-      // Platform fee transaction record
-      await db.insert(walletTransactionsTable).values({
-        wallet_id: updatedCreatorWallet.id,
-        user_id: stream.creator_id,
-        type: "platform_fee",
-        amount_usdc: -platformFee,
-        balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Platform fee (${feeConfig.feePercent}%) on stream ticket sale`,
-        reference_id: purchaseTx,
-        related_user_id: user.id,
+        // 4. Ensure creator wallet exists
+        const existingCreatorWallet = await tx
+          .select()
+          .from(walletsTable)
+          .where(eq(walletsTable.user_id, stream.creator_id))
+          .limit(1);
+
+        if (existingCreatorWallet.length === 0) {
+          await tx
+            .insert(walletsTable)
+            .values({ user_id: stream.creator_id, balance_usdc: 0 });
+        }
+
+        // 5. Credit creator wallet
+        const [updatedCreatorWallet] = await tx
+          .update(walletsTable)
+          .set({
+            balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
+            updated_at: new Date(),
+          })
+          .where(eq(walletsTable.user_id, stream.creator_id))
+          .returning();
+
+        if (updatedCreatorWallet) {
+          const feeDescription = `Stream ticket sale: "${stream.title}" (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`;
+
+          // 6. Creator earnings transaction
+          await tx.execute(sql`
+            INSERT INTO wallet_transactions (wallet_id, user_id, type, amount_usdc, balance_after, description, reference_id, related_user_id)
+            VALUES (
+              ${updatedCreatorWallet.id}, ${stream.creator_id}, 'stream_ticket_received', ${creatorAmount},
+              ${updatedCreatorWallet.balance_usdc}, ${feeDescription}, ${purchaseTx}, ${user.id}
+            )
+          `);
+
+          // 7. Platform fee record
+          await tx.insert(walletTransactionsTable).values({
+            wallet_id: updatedCreatorWallet.id,
+            user_id: stream.creator_id,
+            type: "platform_fee",
+            amount_usdc: -platformFee,
+            balance_after: updatedCreatorWallet.balance_usdc,
+            description: `Platform fee (${feeConfig.feePercent}%) on stream ticket sale`,
+            reference_id: purchaseTx,
+            related_user_id: user.id,
+          });
+        }
+
+        // 8. Update creator total earnings
+        await tx
+          .update(creatorProfilesTable)
+          .set({
+            total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
+          })
+          .where(eq(creatorProfilesTable.user_id, stream.creator_id));
       });
+    } catch (txErr) {
+      if (txErr instanceof Error && txErr.message === "INSUFFICIENT_BALANCE") {
+        return NextResponse.json(
+          { error: "Insufficient balance", code: "INSUFFICIENT_BALANCE" },
+          { status: 402 },
+        );
+      }
+      throw txErr;
     }
 
-    // Update creator total earnings
-    await db
-      .update(creatorProfilesTable)
-      .set({
-        total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
-      })
-      .where(eq(creatorProfilesTable.user_id, stream.creator_id));
-
-    // Generate viewer token
+    // Generate viewer token (outside transaction — non-financial)
     const token = await generateViewerToken(stream.id, user.id, username);
     const now = new Date().toISOString();
 
