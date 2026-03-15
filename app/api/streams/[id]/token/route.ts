@@ -68,15 +68,31 @@ export async function GET(
       return NextResponse.json({ token, livekit_url: LIVEKIT_URL });
     }
 
-    // Non-creator must have purchased access
+    // Non-creator must have purchased access within the viewing window (20 minutes)
     const purchaseRows = await db.execute(sql`
       SELECT id FROM live_stream_purchases
       WHERE stream_id = ${streamId}
         AND buyer_id = ${user.id}
+        AND created_at > NOW() - INTERVAL '20 minutes'
       LIMIT 1
     `);
 
     if (purchaseRows.length === 0) {
+      // Check if they ever purchased (to give a more helpful error message)
+      const expiredRows = await db.execute(sql`
+        SELECT id FROM live_stream_purchases
+        WHERE stream_id = ${streamId}
+          AND buyer_id = ${user.id}
+        LIMIT 1
+      `);
+
+      if (expiredRows.length > 0) {
+        return NextResponse.json(
+          { error: "Viewing window expired", code: "WINDOW_EXPIRED" },
+          { status: 403 },
+        );
+      }
+
       return NextResponse.json(
         { error: "You have not purchased access to this stream", code: "ACCESS_DENIED" },
         { status: 403 },

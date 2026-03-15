@@ -93,6 +93,8 @@ export type TranslationKey =
   | "dash.referrals"
   | "dash.notifications"
   | "dash.verification"
+  | "dash.tax"
+  | "dash.support"
   | "dash.settings"
   | "dash.accountType"
   | "dash.admin"
@@ -201,6 +203,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.referrals": "Referrals",
     "dash.notifications": "Notifications",
     "dash.verification": "Verification",
+    "dash.tax": "Tax Info",
+    "dash.support": "Support",
     "dash.settings": "Settings",
     "dash.accountType": "Account Type",
     "dash.admin": "Admin",
@@ -270,6 +274,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.referrals": "Referidos",
     "dash.notifications": "Notificaciones",
     "dash.verification": "Verificacion",
+    "dash.tax": "Impuestos",
+    "dash.support": "Soporte",
     "dash.settings": "Configuracion",
     "dash.accountType": "Tipo de cuenta",
     "dash.admin": "Administrador",
@@ -336,6 +342,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.referrals": "Parrainages",
     "dash.notifications": "Notifications",
     "dash.verification": "Verification",
+    "dash.tax": "Fiscalite",
+    "dash.support": "Assistance",
     "dash.settings": "Parametres",
     "dash.accountType": "Type de compte",
     "dash.admin": "Administrateur",

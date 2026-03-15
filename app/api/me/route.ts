@@ -210,10 +210,8 @@ export async function DELETE() {
     const { user, error } = await getAuthenticatedUser();
     if (error) return error;
 
-    // Delete from our users_table (cascades to subscriptions, posts, messages, etc.)
-    await db.delete(usersTable).where(eq(usersTable.id, user.id));
-
-    // Delete from Supabase auth using the service role key (admin privileges required)
+    // Delete from Supabase auth FIRST using the service role key (admin privileges required).
+    // If this fails, we return an error without touching the database.
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -237,6 +235,10 @@ export async function DELETE() {
         { status: 500 },
       );
     }
+
+    // Auth user deleted successfully — now delete from our users_table
+    // (cascades to subscriptions, posts, messages, etc.)
+    await db.delete(usersTable).where(eq(usersTable.id, user.id));
 
     // Sign out the current session
     const supabase = createClient();

@@ -182,35 +182,41 @@ export async function POST(request: NextRequest) {
     // Calculate platform fee and creator share
     const { platformFee, creatorAmount } = calculateFeeSplit(amount_usdc, feeConfig.feePercent);
 
-    // Get or create creator wallet, then credit with creatorAmount
-    const existingCreatorWallet = await db
-      .select()
-      .from(walletsTable)
-      .where(eq(walletsTable.user_id, creator_id))
-      .limit(1);
+    // Wrap wallet credit + transaction records + earnings update in a single
+    // database transaction to prevent partial financial state on failure.
+    await db.transaction(async (tx) => {
+      // Get or create creator wallet, then credit with creatorAmount
+      const existingCreatorWallet = await tx
+        .select()
+        .from(walletsTable)
+        .where(eq(walletsTable.user_id, creator_id))
+        .limit(1);
 
-    let creatorWallet = existingCreatorWallet[0];
-    if (!creatorWallet) {
-      const [newWallet] = await db
-        .insert(walletsTable)
-        .values({ user_id: creator_id, balance_usdc: 0 })
+      let creatorWallet = existingCreatorWallet[0];
+      if (!creatorWallet) {
+        const [newWallet] = await tx
+          .insert(walletsTable)
+          .values({ user_id: creator_id, balance_usdc: 0 })
+          .returning();
+        creatorWallet = newWallet;
+      }
+
+      // Atomic credit to creator wallet
+      const [updatedCreatorWallet] = await tx
+        .update(walletsTable)
+        .set({
+          balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
+          updated_at: new Date(),
+        })
+        .where(eq(walletsTable.user_id, creator_id))
         .returning();
-      creatorWallet = newWallet;
-    }
 
-    // Atomic credit to creator wallet
-    const [updatedCreatorWallet] = await db
-      .update(walletsTable)
-      .set({
-        balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
-        updated_at: new Date(),
-      })
-      .where(eq(walletsTable.user_id, creator_id))
-      .returning();
+      if (!updatedCreatorWallet) {
+        throw new Error("Failed to credit creator wallet");
+      }
 
-    // Record wallet transaction for creator
-    if (updatedCreatorWallet) {
-      await db.insert(walletTransactionsTable).values({
+      // Record wallet transaction for creator
+      await tx.insert(walletTransactionsTable).values({
         wallet_id: updatedCreatorWallet.id,
         user_id: creator_id,
         type: "tip_received",
@@ -222,7 +228,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Record platform fee transaction
-      await db.insert(walletTransactionsTable).values({
+      await tx.insert(walletTransactionsTable).values({
         wallet_id: updatedCreatorWallet.id,
         user_id: creator_id,
         type: "platform_fee",
@@ -232,15 +238,15 @@ export async function POST(request: NextRequest) {
         reference_id: payment_tx.trim(),
         related_user_id: user.id,
       });
-    }
 
-    // Update creator's total_earnings_usdc
-    await db
-      .update(creatorProfilesTable)
-      .set({
-        total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
-      })
-      .where(eq(creatorProfilesTable.user_id, creator_id));
+      // Update creator's total_earnings_usdc
+      await tx
+        .update(creatorProfilesTable)
+        .set({
+          total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
+        })
+        .where(eq(creatorProfilesTable.user_id, creator_id));
+    });
 
     // Process referral commission if the creator was referred by someone
     processReferralCommission(

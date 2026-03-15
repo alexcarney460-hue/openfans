@@ -146,62 +146,76 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Atomic debit: only succeeds if sufficient funds above minimum
-    const updatedRows = await db
-      .update(walletsTable)
-      .set({
-        balance_usdc: sql`${walletsTable.balance_usdc} - ${amount_usdc}`,
-        updated_at: new Date(),
-      })
-      .where(
-        sql`${walletsTable.id} = ${wallet.id} AND ${walletsTable.balance_usdc} - ${walletsTable.minimum_balance_usdc} >= ${amount_usdc}`,
-      )
-      .returning();
+    // Wrap wallet debit + payout record + wallet transaction in a single
+    // database transaction to prevent partial state on failure.
+    let result: { payoutRecord: typeof payoutsTable.$inferSelect; txRecord: typeof walletTransactionsTable.$inferSelect; newBalance: number };
+    try {
+      result = await db.transaction(async (tx) => {
+        // Atomic debit: only succeeds if sufficient funds above minimum
+        const updatedRows = await tx
+          .update(walletsTable)
+          .set({
+            balance_usdc: sql`${walletsTable.balance_usdc} - ${amount_usdc}`,
+            updated_at: new Date(),
+          })
+          .where(
+            sql`${walletsTable.id} = ${wallet.id} AND ${walletsTable.balance_usdc} - ${walletsTable.minimum_balance_usdc} >= ${amount_usdc}`,
+          )
+          .returning();
 
-    if (updatedRows.length === 0) {
-      return NextResponse.json(
-        {
-          error: "Insufficient available balance. Please try again.",
-          code: "INSUFFICIENT_BALANCE",
-        },
-        { status: 400 },
-      );
+        if (updatedRows.length === 0) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+
+        const newBalance = updatedRows[0].balance_usdc;
+
+        // Create payout record (pending -- admin will process)
+        const [payoutRecord] = await tx
+          .insert(payoutsTable)
+          .values({
+            creator_id: user.id,
+            amount_usdc,
+            wallet_address: walletAddress,
+            status: "pending",
+          })
+          .returning();
+
+        // Record wallet transaction
+        const [txRecord] = await tx
+          .insert(walletTransactionsTable)
+          .values({
+            wallet_id: wallet.id,
+            user_id: user.id,
+            type: "withdrawal",
+            amount_usdc: -amount_usdc,
+            balance_after: newBalance,
+            description: `Payout request to ${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
+            reference_id: `payout:${payoutRecord.id}`,
+            status: "pending",
+          })
+          .returning();
+
+        return { payoutRecord, txRecord, newBalance };
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
+        return NextResponse.json(
+          {
+            error: "Insufficient available balance. Please try again.",
+            code: "INSUFFICIENT_BALANCE",
+          },
+          { status: 400 },
+        );
+      }
+      throw err;
     }
-
-    const newBalance = updatedRows[0].balance_usdc;
-
-    // Create payout record (pending -- admin will process)
-    const payoutRecord = await db
-      .insert(payoutsTable)
-      .values({
-        creator_id: user.id,
-        amount_usdc,
-        wallet_address: walletAddress,
-        status: "pending",
-      })
-      .returning();
-
-    // Record wallet transaction
-    const txRecord = await db
-      .insert(walletTransactionsTable)
-      .values({
-        wallet_id: wallet.id,
-        user_id: user.id,
-        type: "withdrawal",
-        amount_usdc: -amount_usdc,
-        balance_after: newBalance,
-        description: `Payout request to ${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
-        reference_id: `payout:${payoutRecord[0].id}`,
-        status: "pending",
-      })
-      .returning();
 
     return NextResponse.json(
       {
         data: {
-          payout: payoutRecord[0],
-          transaction: txRecord[0],
-          new_balance: newBalance,
+          payout: result.payoutRecord,
+          transaction: result.txRecord,
+          new_balance: result.newBalance,
         },
       },
       { status: 201 },

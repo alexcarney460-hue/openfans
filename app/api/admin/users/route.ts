@@ -23,6 +23,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.trim() ?? "";
     const status = searchParams.get("status") ?? "all";
 
+    // Pagination: clamp limit to 1-100, default 50; page starts at 1
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "50", 10) || 50, 1), 100);
+    const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10) || 1, 1);
+    const offset = (page - 1) * limit;
+
     const conditions = [];
 
     // Search filter
@@ -52,6 +57,13 @@ export async function GET(request: NextRequest) {
           )}`
         : undefined;
 
+    // Get total count for pagination metadata
+    const [countResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(usersTable)
+      .where(whereClause);
+    const total = countResult?.count ?? 0;
+
     const users = await db
       .select({
         id: usersTable.id,
@@ -67,12 +79,17 @@ export async function GET(request: NextRequest) {
       })
       .from(usersTable)
       .where(whereClause)
-      .orderBy(sql`${usersTable.created_at} DESC`);
+      .orderBy(sql`${usersTable.created_at} DESC`)
+      .limit(limit)
+      .offset(offset);
 
     return NextResponse.json({
       data: {
         users,
-        total: users.length,
+        total,
+        page,
+        limit,
+        total_pages: Math.ceil(total / limit),
       },
     });
   } catch (error) {

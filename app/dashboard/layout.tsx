@@ -29,6 +29,8 @@ import {
   Bookmark,
   Tag,
   Video,
+  Receipt,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -64,6 +66,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/promotions", labelKey: "dash.promotions", icon: Tag, creatorOnly: true },
   { href: "/dashboard/referrals", labelKey: "dash.referrals", icon: Share2, creatorOnly: true },
   { href: "/dashboard/verification", labelKey: "dash.verification", icon: ShieldCheck, creatorOnly: true },
+  { href: "/dashboard/tax", labelKey: "dash.tax", icon: Receipt, creatorOnly: true },
+  { href: "/dashboard/support", labelKey: "dash.support", icon: HelpCircle },
   { href: "/dashboard/notifications", labelKey: "dash.notifications", icon: Bell },
   { href: "/dashboard/settings", labelKey: "dash.settings", icon: Settings },
 ];

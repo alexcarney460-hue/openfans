@@ -93,7 +93,7 @@ export async function GET() {
     const message = error instanceof Error ? error.message : String(error);
     console.error("GET /api/admin/charts error:", message);
     return NextResponse.json(
-      { error: "Internal server error", code: "INTERNAL_ERROR", debug: message },
+      { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },
     );
   }

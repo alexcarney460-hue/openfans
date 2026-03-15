@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { usersTable } from "@/utils/db/schema";
+import { usersTable, creatorProfilesTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 
@@ -58,7 +58,7 @@ export async function POST(
       );
     }
 
-    // Update the verified status
+    // Update the verified status on users table
     const updated = await db
       .update(usersTable)
       .set({
@@ -74,6 +74,14 @@ export async function POST(
         { status: 500 },
       );
     }
+
+    // Also update verification_status on creator_profiles
+    await db
+      .update(creatorProfilesTable)
+      .set({
+        verification_status: body.verified ? "verified" : "unverified",
+      })
+      .where(eq(creatorProfilesTable.user_id, id));
 
     return NextResponse.json({
       data: {

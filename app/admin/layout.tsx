@@ -13,6 +13,9 @@ import {
   FileCheck,
   Flag,
   Scale,
+  MessageSquare,
+  Receipt,
+  Activity,
   Menu,
   X,
   ChevronLeft,
@@ -38,6 +41,9 @@ const NAV_ITEMS = [
   { href: "/admin/stories", label: "Stories", icon: BookOpen },
   { href: "/admin/moderation", label: "Moderation", icon: Flag },
   { href: "/admin/dmca", label: "DMCA", icon: Scale },
+  { href: "/admin/support", label: "Support", icon: MessageSquare },
+  { href: "/admin/tax", label: "Tax", icon: Receipt },
+  { href: "/admin/health", label: "Health", icon: Activity },
 ] as const;
 
 export default function AdminLayout({

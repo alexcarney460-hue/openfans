@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { postsTable, subscriptionsTable, usersTable } from "@/utils/db/schema";
+import { postsTable, subscriptionsTable, usersTable, ppvPurchasesTable } from "@/utils/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { createClient } from "@/utils/supabase/server";
@@ -54,6 +54,14 @@ export async function GET(
       data: { user },
     } = await supabase.auth.getUser();
 
+    // Check is_published — unpublished posts are only visible to the creator
+    if (post.is_published === false && user?.id !== post.creator_id) {
+      return NextResponse.json(
+        { error: "Post not found", code: "POST_NOT_FOUND" },
+        { status: 404 },
+      );
+    }
+
     // If the post is hidden, only the creator and admins can see it
     if (post.is_hidden) {
       const isOwner = user?.id === post.creator_id;
@@ -102,6 +110,22 @@ export async function GET(
 
     // Creator can always see their own posts
     if (user.id === post.creator_id) {
+      return NextResponse.json({ data: post });
+    }
+
+    // Check if user has a PPV purchase for this post (grants access regardless of subscription)
+    const ppvResults = await db
+      .select({ id: ppvPurchasesTable.id })
+      .from(ppvPurchasesTable)
+      .where(
+        and(
+          eq(ppvPurchasesTable.post_id, post.id),
+          eq(ppvPurchasesTable.buyer_id, user.id),
+        ),
+      )
+      .limit(1);
+
+    if (ppvResults.length > 0) {
       return NextResponse.json({ data: post });
     }
 

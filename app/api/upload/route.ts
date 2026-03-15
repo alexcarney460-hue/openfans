@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { validateMagicBytes } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
+import { getAuthenticatedUser } from "@/utils/api/auth";
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -35,20 +36,11 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
  */
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate (includes suspension check)
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError) return authError;
+
     const supabase = createClient();
-
-    // Authenticate
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized", code: "AUTH_REQUIRED" },
-        { status: 401 },
-      );
-    }
 
     // Rate limit: 20 requests per minute per user
     const rateLimited = await checkRateLimit(request, getRateLimitKey(request, user.id), "upload", 20, 60_000);
