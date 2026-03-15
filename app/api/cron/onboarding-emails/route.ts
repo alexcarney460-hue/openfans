@@ -32,127 +32,85 @@ interface StageResult {
 }
 
 // ---------------------------------------------------------------------------
+// HTML escaping for display names in email templates
+// ---------------------------------------------------------------------------
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// ---------------------------------------------------------------------------
 // Stage definitions
 // ---------------------------------------------------------------------------
 
-/**
- * Each onboarding stage defines:
- *  - step: the onboarding_step value the creator must be at to receive this email
- *  - daysAgo: how many days after signup this email fires
- *  - query: raw SQL to find eligible creators
- *  - template: function that builds the email from the creator's display name
- */
 interface OnboardingStage {
   readonly name: string;
   readonly step: number;
   readonly template: (name: string) => EmailTemplate;
-  readonly query: string;
+  readonly daysAgo: number;
+  readonly extraCondition?: string;
 }
+
+const STAGES: readonly OnboardingStage[] = [
+  {
+    name: "welcome",
+    step: 0,
+    daysAgo: 0,
+    template: welcomeCreatorEmail,
+  },
+  {
+    name: "profile_reminder",
+    step: 1,
+    daysAgo: 1,
+    template: profileReminderEmail,
+    extraCondition: `AND (
+      u.avatar_url IS NULL
+      OR u.bio IS NULL OR u.bio = ''
+      OR cp.subscription_price_usdc = 0
+    )`,
+  },
+  {
+    name: "first_post_nudge",
+    step: 2,
+    daysAgo: 3,
+    template: firstPostNudgeEmail,
+    extraCondition: `AND (SELECT COUNT(*) FROM posts WHERE posts.creator_id = u.id) = 0`,
+  },
+  {
+    name: "wallet_setup",
+    step: 3,
+    daysAgo: 5,
+    template: walletSetupEmail,
+    extraCondition: `AND u.wallet_address IS NULL`,
+  },
+  {
+    name: "verification_reminder",
+    step: 4,
+    daysAgo: 7,
+    template: verificationReminderEmail,
+    extraCondition: `AND u.is_verified = false`,
+  },
+];
 
 /**
- * Build a date range for "created exactly N days ago" (within a 24-hour window).
- * Returns [startOfDay, endOfDay] in ISO strings for use in SQL.
+ * Build UTC date bounds for "created exactly N days ago" (24-hour window).
  */
-function dayAgoBounds(daysAgo: number): { start: string; end: string } {
+function dayAgoBounds(daysAgo: number): { start: Date; end: Date } {
   const now = new Date();
-  const target = new Date(now);
-  target.setDate(target.getDate() - daysAgo);
-  const startOfDay = new Date(target);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(target);
-  endOfDay.setHours(23, 59, 59, 999);
-  return { start: startOfDay.toISOString(), end: endOfDay.toISOString() };
-}
-
-function buildStages(): readonly OnboardingStage[] {
-  const day0 = dayAgoBounds(0);
-  const day1 = dayAgoBounds(1);
-  const day3 = dayAgoBounds(3);
-  const day5 = dayAgoBounds(5);
-  const day7 = dayAgoBounds(7);
-
-  return [
-    {
-      name: "welcome",
-      step: 0,
-      template: welcomeCreatorEmail,
-      query: `
-        SELECT u.id AS user_id, u.email, u.display_name
-        FROM users_table u
-        JOIN creator_profiles cp ON cp.user_id = u.id
-        WHERE u.role = 'creator'
-          AND u.created_at >= '${day0.start}'
-          AND u.created_at <= '${day0.end}'
-          AND COALESCE(cp.onboarding_step, 0) = 0
-      `,
-    },
-    {
-      name: "profile_reminder",
-      step: 1,
-      template: profileReminderEmail,
-      query: `
-        SELECT u.id AS user_id, u.email, u.display_name
-        FROM users_table u
-        JOIN creator_profiles cp ON cp.user_id = u.id
-        WHERE u.role = 'creator'
-          AND u.created_at >= '${day1.start}'
-          AND u.created_at <= '${day1.end}'
-          AND COALESCE(cp.onboarding_step, 0) = 1
-          AND (
-            u.avatar_url IS NULL
-            OR u.bio IS NULL OR u.bio = ''
-            OR cp.subscription_price_usdc = 0
-          )
-      `,
-    },
-    {
-      name: "first_post_nudge",
-      step: 2,
-      template: firstPostNudgeEmail,
-      query: `
-        SELECT u.id AS user_id, u.email, u.display_name
-        FROM users_table u
-        JOIN creator_profiles cp ON cp.user_id = u.id
-        WHERE u.role = 'creator'
-          AND u.created_at >= '${day3.start}'
-          AND u.created_at <= '${day3.end}'
-          AND COALESCE(cp.onboarding_step, 0) = 2
-          AND (
-            SELECT COUNT(*) FROM posts WHERE posts.creator_id = u.id
-          ) = 0
-      `,
-    },
-    {
-      name: "wallet_setup",
-      step: 3,
-      template: walletSetupEmail,
-      query: `
-        SELECT u.id AS user_id, u.email, u.display_name
-        FROM users_table u
-        JOIN creator_profiles cp ON cp.user_id = u.id
-        WHERE u.role = 'creator'
-          AND u.created_at >= '${day5.start}'
-          AND u.created_at <= '${day5.end}'
-          AND COALESCE(cp.onboarding_step, 0) = 3
-          AND u.wallet_address IS NULL
-      `,
-    },
-    {
-      name: "verification_reminder",
-      step: 4,
-      template: verificationReminderEmail,
-      query: `
-        SELECT u.id AS user_id, u.email, u.display_name
-        FROM users_table u
-        JOIN creator_profiles cp ON cp.user_id = u.id
-        WHERE u.role = 'creator'
-          AND u.created_at >= '${day7.start}'
-          AND u.created_at <= '${day7.end}'
-          AND COALESCE(cp.onboarding_step, 0) = 4
-          AND u.is_verified = false
-      `,
-    },
-  ] as const;
+  const target = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysAgo,
+    0, 0, 0, 0,
+  ));
+  const endOfDay = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysAgo,
+    23, 59, 59, 999,
+  ));
+  return { start: target, end: endOfDay };
 }
 
 // ---------------------------------------------------------------------------
@@ -165,7 +123,7 @@ function buildStages(): readonly OnboardingStage[] {
  * Processes the creator onboarding email sequence. Each stage targets
  * creators at a specific day after signup who haven't yet completed the
  * relevant action. Progress is tracked via `onboarding_step` on
- * creator_profiles (added via raw SQL -- no schema change needed).
+ * creator_profiles.
  *
  * Protected by CRON_SECRET bearer token.
  */
@@ -193,10 +151,9 @@ export async function GET(request: NextRequest) {
     `);
 
     // ---- Process each stage ----
-    const stages = buildStages();
     const results: StageResult[] = [];
 
-    for (const stage of stages) {
+    for (const stage of STAGES) {
       const stageResult = await processStage(stage);
       results.push(stageResult);
     }
@@ -220,7 +177,7 @@ export async function GET(request: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
-// Stage processor
+// Stage processor — uses parameterized queries instead of string interpolation
 // ---------------------------------------------------------------------------
 
 async function processStage(stage: OnboardingStage): Promise<StageResult> {
@@ -232,31 +189,67 @@ async function processStage(stage: OnboardingStage): Promise<StageResult> {
   };
 
   try {
-    const rows = await db.execute(sql.raw(stage.query)) as unknown as CreatorRow[];
-    result.found = rows.length;
+    const bounds = dayAgoBounds(stage.daysAgo);
 
-    for (const row of rows) {
-      const { subject, html } = stage.template(row.display_name);
+    // Build parameterized query for this stage
+    const queryResult = await db.execute(sql`
+      SELECT u.id AS user_id, u.email, u.display_name
+      FROM users_table u
+      JOIN creator_profiles cp ON cp.user_id = u.id
+      WHERE u.role = 'creator'
+        AND u.is_suspended = false
+        AND u.created_at >= ${bounds.start}
+        AND u.created_at <= ${bounds.end}
+        AND COALESCE(cp.onboarding_step, 0) = ${stage.step}
+    `);
+
+    // db.execute returns rows directly as an array-like object
+    const rows = [...queryResult] as unknown as CreatorRow[];
+
+    // If the stage has extra conditions, we filter in SQL above for the base case.
+    // For stages with extra conditions, we need to run stage-specific queries.
+    let eligibleRows: CreatorRow[];
+
+    if (stage.extraCondition) {
+      // Re-query with the extra condition using parameterized base + raw condition
+      // The extra conditions only reference table columns, not user input, so sql.raw is safe here
+      const filteredResult = await db.execute(sql.join([
+        sql`
+          SELECT u.id AS user_id, u.email, u.display_name
+          FROM users_table u
+          JOIN creator_profiles cp ON cp.user_id = u.id
+          WHERE u.role = 'creator'
+            AND u.is_suspended = false
+            AND u.created_at >= ${bounds.start}
+            AND u.created_at <= ${bounds.end}
+            AND COALESCE(cp.onboarding_step, 0) = ${stage.step}
+        `,
+        sql.raw(stage.extraCondition),
+      ], sql` `));
+      eligibleRows = [...filteredResult] as unknown as CreatorRow[];
+    } else {
+      eligibleRows = rows;
+    }
+
+    result.found = eligibleRows.length;
+
+    for (const row of eligibleRows) {
+      // Escape display name to prevent XSS in email HTML
+      const safeName = escapeHtml(row.display_name || "Creator");
+      const { subject, html } = stage.template(safeName);
       const sent = await sendRawEmail(row.email, subject, html);
 
+      // Advance onboarding_step regardless of send success to avoid retry loops
+      await db.execute(sql`
+        UPDATE creator_profiles
+        SET onboarding_step = ${stage.step + 1}
+        WHERE user_id = ${row.user_id}
+          AND COALESCE(onboarding_step, 0) = ${stage.step}
+      `);
+
       if (sent) {
-        // Advance onboarding_step so this creator won't be picked up again
-        await db.execute(sql`
-          UPDATE creator_profiles
-          SET onboarding_step = ${stage.step + 1}
-          WHERE user_id = ${row.user_id}
-            AND COALESCE(onboarding_step, 0) = ${stage.step}
-        `);
         result.sent++;
       } else {
-        // sendRawEmail returns false on missing API key or error;
-        // still advance the step to avoid retrying endlessly
-        await db.execute(sql`
-          UPDATE creator_profiles
-          SET onboarding_step = ${stage.step + 1}
-          WHERE user_id = ${row.user_id}
-            AND COALESCE(onboarding_step, 0) = ${stage.step}
-        `);
         result.failed++;
       }
     }
