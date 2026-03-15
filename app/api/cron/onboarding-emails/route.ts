@@ -13,6 +13,7 @@ import {
   verificationReminderEmail,
 } from "@/utils/email-templates";
 import type { EmailTemplate } from "@/utils/email-templates";
+import { timingSafeEqual } from "crypto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -129,11 +130,16 @@ function dayAgoBounds(daysAgo: number): { start: Date; end: Date } {
  */
 export async function GET(request: NextRequest) {
   try {
-    // ---- Auth ----
+    // ---- Auth (timing-safe comparison) ----
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || !authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const expectedToken = `Bearer ${cronSecret}`;
+    if (!isTimingSafeEqual(authHeader, expectedToken)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -258,4 +264,16 @@ async function processStage(stage: OnboardingStage): Promise<StageResult> {
   }
 
   return result;
+}
+
+function isTimingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf-8");
+  const bufB = Buffer.from(b, "utf-8");
+
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+
+  return timingSafeEqual(bufA, bufB);
 }

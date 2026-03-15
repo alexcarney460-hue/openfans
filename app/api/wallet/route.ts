@@ -164,6 +164,17 @@ export async function POST(request: NextRequest) {
       let newBalance: number;
       try {
         const result = await db.transaction(async (tx) => {
+          // Check global transaction uniqueness (cross-table replay prevention)
+          const txUsed = await tx.execute(sql`
+            SELECT payment_tx FROM used_payment_transactions WHERE payment_tx = ${payment_tx.trim()}
+          `);
+          if ((txUsed as unknown as Array<unknown>).length > 0) {
+            throw new Error("DUPLICATE_TX");
+          }
+          await tx.execute(sql`
+            INSERT INTO used_payment_transactions (payment_tx, type, user_id) VALUES (${payment_tx.trim()}, 'deposit', ${user.id})
+          `);
+
           // 1. Check for duplicate within transaction (serialised)
           const existingTx = await tx
             .select({ id: walletTransactionsTable.id })

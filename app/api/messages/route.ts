@@ -209,6 +209,12 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+      if (price_usdc > 100000) {
+        return NextResponse.json(
+          { error: "Price too high", code: "PRICE_TOO_HIGH" },
+          { status: 400 },
+        );
+      }
       validatedPrice = price_usdc;
     }
 

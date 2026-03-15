@@ -12,7 +12,11 @@ import { eq, desc, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
 function generateReferralCode(username: string): string {
-  const suffix = Math.random().toString(36).substring(2, 6);
+  const randomBytes = new Uint8Array(4);
+  crypto.getRandomValues(randomBytes);
+  const suffix = Array.from(randomBytes)
+    .map((b) => b.toString(36).charAt(0))
+    .join("");
   return `${username}-${suffix}`;
 }
 

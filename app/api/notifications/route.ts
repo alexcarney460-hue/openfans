@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import { notificationsTable } from "@/utils/db/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
 /**
@@ -138,18 +138,16 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      // Mark each notification as read (only if owned by user)
-      for (const id of validIds) {
-        await db
-          .update(notificationsTable)
-          .set({ is_read: true })
-          .where(
-            and(
-              eq(notificationsTable.id, id),
-              eq(notificationsTable.user_id, user.id),
-            ),
-          );
-      }
+      // Mark notifications as read in a single batch query (only if owned by user)
+      await db
+        .update(notificationsTable)
+        .set({ is_read: true })
+        .where(
+          and(
+            inArray(notificationsTable.id, validIds),
+            eq(notificationsTable.user_id, user.id),
+          ),
+        );
 
       return NextResponse.json({ data: { success: true } });
     }

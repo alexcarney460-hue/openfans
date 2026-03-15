@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import { postsTable } from "@/utils/db/schema";
 import { eq, and, lte } from "drizzle-orm";
+import { timingSafeEqual } from "crypto";
 
 /**
  * GET /api/cron/publish-posts
@@ -14,11 +15,19 @@ import { eq, and, lte } from "drizzle-orm";
  * Protected by CRON_SECRET to prevent unauthorized invocations.
  */
 export async function GET(request: NextRequest) {
-  // Verify cron secret to prevent unauthorized calls
+  // Verify cron secret with timing-safe comparison
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !authHeader) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 },
+    );
+  }
+
+  const expectedToken = `Bearer ${cronSecret}`;
+  if (!isTimingSafeEqual(authHeader, expectedToken)) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 },
@@ -54,4 +63,16 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+function isTimingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf-8");
+  const bufB = Buffer.from(b, "utf-8");
+
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+
+  return timingSafeEqual(bufA, bufB);
 }

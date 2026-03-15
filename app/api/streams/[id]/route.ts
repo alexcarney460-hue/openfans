@@ -323,7 +323,7 @@ export async function PATCH(
               WHEN ${description !== undefined} THEN ${description?.trim() ?? null}
               ELSE description
             END,
-            status = COALESCE(${status ?? null}::stream_status, status),
+            status = COALESCE(${status ?? null}, status),
             thumbnail_url = CASE
               WHEN ${thumbnail_url !== undefined} THEN ${thumbnail_url ?? null}
               ELSE thumbnail_url
@@ -372,7 +372,7 @@ export async function PATCH(
           WHEN ${description !== undefined} THEN ${description?.trim() ?? null}
           ELSE description
         END,
-        status = COALESCE(${status ?? null}::stream_status, status),
+        status = COALESCE(${status ?? null}, status),
         thumbnail_url = CASE
           WHEN ${thumbnail_url !== undefined} THEN ${thumbnail_url ?? null}
           ELSE thumbnail_url

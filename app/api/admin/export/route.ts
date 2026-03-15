@@ -151,7 +151,12 @@ export async function GET(request: NextRequest) {
           .map((h) => {
             const val = row[h];
             if (val === null || val === undefined) return "";
-            const str = String(val);
+            let str = String(val);
+            // Prevent CSV formula injection: prefix dangerous leading characters
+            const firstChar = str.charAt(0);
+            if (firstChar === "=" || firstChar === "+" || firstChar === "-" || firstChar === "@" || firstChar === "\t" || firstChar === "\r") {
+              str = "'" + str;
+            }
             return str.includes(",") || str.includes('"') || str.includes("\n")
               ? `"${str.replace(/"/g, '""')}"`
               : str;

@@ -319,7 +319,20 @@ export async function POST(request: NextRequest) {
       : { platformFee: 0, creatorAmount: 0 };
 
     // Wrap subscription insert + promo counter + wallet credit in a single transaction
-    const newSub = await db.transaction(async (tx) => {
+    let newSub;
+    try {
+      newSub = await db.transaction(async (tx) => {
+      // Check global transaction uniqueness (cross-table replay prevention)
+      const txUsed = await tx.execute(sql`
+        SELECT payment_tx FROM used_payment_transactions WHERE payment_tx = ${payment_tx.trim()}
+      `);
+      if ((txUsed as unknown as Array<unknown>).length > 0) {
+        throw new Error("DUPLICATE_TX");
+      }
+      await tx.execute(sql`
+        INSERT INTO used_payment_transactions (payment_tx, type, user_id) VALUES (${payment_tx.trim()}, 'subscription', ${user.id})
+      `);
+
       // 1. Insert subscription record
       const [sub] = await tx
         .insert(subscriptionsTable)
@@ -415,6 +428,15 @@ export async function POST(request: NextRequest) {
 
       return sub;
     });
+    } catch (err) {
+      if (err instanceof Error && err.message === "DUPLICATE_TX") {
+        return NextResponse.json(
+          { error: "This transaction has already been used", code: "DUPLICATE_TX" },
+          { status: 409 },
+        );
+      }
+      throw err;
+    }
 
     // Process referral commission if the creator was referred by someone
     if (creatorAmount > 0) {

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
+import { isValidStorageUrl } from "@/utils/validation";
 
 /**
  * GET /api/stories
@@ -19,7 +20,7 @@ export async function GET() {
 
     const now = new Date();
 
-    // Fetch all active stories with creator info, ordered by creator then chronologically
+    // Fetch active stories only from creators the user is subscribed to (or their own)
     const stories = await db.execute(sql`
       SELECT
         s.id,
@@ -37,7 +38,15 @@ export async function GET() {
       FROM stories s
       JOIN users_table u ON u.id = s.creator_id
       LEFT JOIN story_views sv ON sv.story_id = s.id AND sv.viewer_id = ${user.id}
+      LEFT JOIN subscriptions sub
+        ON sub.creator_id = s.creator_id
+        AND sub.subscriber_id = ${user.id}
+        AND sub.status = 'active'
       WHERE s.expires_at > ${now.toISOString()}
+        AND (
+          s.creator_id = ${user.id}
+          OR sub.id IS NOT NULL
+        )
       ORDER BY u.username ASC, s.created_at ASC
     `);
 
@@ -142,10 +151,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate URL is from our storage (prevent javascript: URIs, external domains)
-    if (!media_url.startsWith("https://") && !media_url.startsWith("blob:")) {
+    // Validate URL is from our trusted storage (prevent SSRF, javascript: URIs, arbitrary domains)
+    if (!isValidStorageUrl(media_url)) {
       return NextResponse.json(
-        { error: "media_url must be a valid HTTPS URL", code: "INVALID_MEDIA_URL" },
+        { error: "media_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_MEDIA_URL" },
         { status: 400 },
       );
     }

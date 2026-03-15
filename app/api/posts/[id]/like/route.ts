@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { likesTable, postsTable } from "@/utils/db/schema";
+import { likesTable, postsTable, subscriptionsTable, ppvPurchasesTable } from "@/utils/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
@@ -29,7 +29,13 @@ export async function POST(
 
     // Check if post exists
     const postResults = await db
-      .select({ id: postsTable.id })
+      .select({
+        id: postsTable.id,
+        creator_id: postsTable.creator_id,
+        is_free: postsTable.is_free,
+        tier: postsTable.tier,
+        ppv_price_usdc: postsTable.ppv_price_usdc,
+      })
       .from(postsTable)
       .where(eq(postsTable.id, postId))
       .limit(1);
@@ -39,6 +45,43 @@ export async function POST(
         { error: "Post not found", code: "POST_NOT_FOUND" },
         { status: 404 },
       );
+    }
+
+    const post = postResults[0];
+
+    // If post is not free and user is not the creator, verify subscription or PPV purchase
+    if (!post.is_free && post.tier !== "free" && post.creator_id !== user.id) {
+      const activeSubscription = await db
+        .select({ id: subscriptionsTable.id })
+        .from(subscriptionsTable)
+        .where(
+          and(
+            eq(subscriptionsTable.subscriber_id, user.id),
+            eq(subscriptionsTable.creator_id, post.creator_id),
+            eq(subscriptionsTable.status, "active"),
+          ),
+        )
+        .limit(1);
+
+      if (activeSubscription.length === 0) {
+        const ppvPurchase = await db
+          .select({ id: ppvPurchasesTable.id })
+          .from(ppvPurchasesTable)
+          .where(
+            and(
+              eq(ppvPurchasesTable.buyer_id, user.id),
+              eq(ppvPurchasesTable.post_id, postId),
+            ),
+          )
+          .limit(1);
+
+        if (ppvPurchase.length === 0) {
+          return NextResponse.json(
+            { error: "Subscription required", code: "SUBSCRIPTION_REQUIRED" },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     // Check if user already liked

@@ -164,89 +164,114 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newTip = await db
-      .insert(tipsTable)
-      .values({
-        tipper_id: user.id,
-        creator_id,
-        post_id: post_id ? parseInt(String(post_id), 10) : null,
-        amount_usdc,
-        payment_tx: payment_tx.trim(),
-        message: message ? String(message).slice(0, 500) : null,
-      })
-      .returning();
-
     // Look up creator's fee rate (adult = 10%, non-adult = 5%)
     const feeConfig = await getCreatorFeeConfig(creator_id);
 
     // Calculate platform fee and creator share
     const { platformFee, creatorAmount } = calculateFeeSplit(amount_usdc, feeConfig.feePercent);
 
-    // Wrap wallet credit + transaction records + earnings update in a single
-    // database transaction to prevent partial financial state on failure.
-    await db.transaction(async (tx) => {
-      // Get or create creator wallet, then credit with creatorAmount
-      const existingCreatorWallet = await tx
-        .select()
-        .from(walletsTable)
-        .where(eq(walletsTable.user_id, creator_id))
-        .limit(1);
+    // Wrap tip insert + wallet credit + transaction records + earnings update
+    // in a single database transaction to prevent double-spend.
+    let newTip;
+    try {
+      newTip = await db.transaction(async (tx) => {
+        // Check global transaction uniqueness (cross-table replay prevention)
+        const txUsed = await tx.execute(sql`
+          SELECT payment_tx FROM used_payment_transactions WHERE payment_tx = ${payment_tx.trim()}
+        `);
+        if ((txUsed as unknown as Array<unknown>).length > 0) {
+          throw new Error("DUPLICATE_TX");
+        }
+        await tx.execute(sql`
+          INSERT INTO used_payment_transactions (payment_tx, type, user_id) VALUES (${payment_tx.trim()}, 'tip', ${user.id})
+        `);
 
-      let creatorWallet = existingCreatorWallet[0];
-      if (!creatorWallet) {
-        const [newWallet] = await tx
-          .insert(walletsTable)
-          .values({ user_id: creator_id, balance_usdc: 0 })
+        // Insert tip record inside the transaction
+        const [tip] = await tx
+          .insert(tipsTable)
+          .values({
+            tipper_id: user.id,
+            creator_id,
+            post_id: post_id ? parseInt(String(post_id), 10) : null,
+            amount_usdc,
+            payment_tx: payment_tx.trim(),
+            message: message ? String(message).slice(0, 500) : null,
+          })
           .returning();
-        creatorWallet = newWallet;
-      }
 
-      // Atomic credit to creator wallet
-      const [updatedCreatorWallet] = await tx
-        .update(walletsTable)
-        .set({
-          balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
-          updated_at: new Date(),
-        })
-        .where(eq(walletsTable.user_id, creator_id))
-        .returning();
+        // Get or create creator wallet, then credit with creatorAmount
+        const existingCreatorWallet = await tx
+          .select()
+          .from(walletsTable)
+          .where(eq(walletsTable.user_id, creator_id))
+          .limit(1);
 
-      if (!updatedCreatorWallet) {
-        throw new Error("Failed to credit creator wallet");
-      }
+        let creatorWallet = existingCreatorWallet[0];
+        if (!creatorWallet) {
+          const [newWallet] = await tx
+            .insert(walletsTable)
+            .values({ user_id: creator_id, balance_usdc: 0 })
+            .returning();
+          creatorWallet = newWallet;
+        }
 
-      // Record wallet transaction for creator
-      await tx.insert(walletTransactionsTable).values({
-        wallet_id: updatedCreatorWallet.id,
-        user_id: creator_id,
-        type: "tip_received",
-        amount_usdc: creatorAmount,
-        balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Tip received (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`,
-        reference_id: payment_tx.trim(),
-        related_user_id: user.id,
+        // Atomic credit to creator wallet
+        const [updatedCreatorWallet] = await tx
+          .update(walletsTable)
+          .set({
+            balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
+            updated_at: new Date(),
+          })
+          .where(eq(walletsTable.user_id, creator_id))
+          .returning();
+
+        if (!updatedCreatorWallet) {
+          throw new Error("Failed to credit creator wallet");
+        }
+
+        // Record wallet transaction for creator
+        await tx.insert(walletTransactionsTable).values({
+          wallet_id: updatedCreatorWallet.id,
+          user_id: creator_id,
+          type: "tip_received",
+          amount_usdc: creatorAmount,
+          balance_after: updatedCreatorWallet.balance_usdc,
+          description: `Tip received (${feeConfig.feePercent}% fee: $${(platformFee / 100).toFixed(2)})`,
+          reference_id: payment_tx.trim(),
+          related_user_id: user.id,
+        });
+
+        // Record platform fee transaction
+        await tx.insert(walletTransactionsTable).values({
+          wallet_id: updatedCreatorWallet.id,
+          user_id: creator_id,
+          type: "platform_fee",
+          amount_usdc: -platformFee,
+          balance_after: updatedCreatorWallet.balance_usdc,
+          description: `Platform fee (${feeConfig.feePercent}%) on tip`,
+          reference_id: payment_tx.trim(),
+          related_user_id: user.id,
+        });
+
+        // Update creator's total_earnings_usdc
+        await tx
+          .update(creatorProfilesTable)
+          .set({
+            total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
+          })
+          .where(eq(creatorProfilesTable.user_id, creator_id));
+
+        return tip;
       });
-
-      // Record platform fee transaction
-      await tx.insert(walletTransactionsTable).values({
-        wallet_id: updatedCreatorWallet.id,
-        user_id: creator_id,
-        type: "platform_fee",
-        amount_usdc: -platformFee,
-        balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Platform fee (${feeConfig.feePercent}%) on tip`,
-        reference_id: payment_tx.trim(),
-        related_user_id: user.id,
-      });
-
-      // Update creator's total_earnings_usdc
-      await tx
-        .update(creatorProfilesTable)
-        .set({
-          total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
-        })
-        .where(eq(creatorProfilesTable.user_id, creator_id));
-    });
+    } catch (err) {
+      if (err instanceof Error && err.message === "DUPLICATE_TX") {
+        return NextResponse.json(
+          { error: "This transaction has already been used", code: "DUPLICATE_TX" },
+          { status: 409 },
+        );
+      }
+      throw err;
+    }
 
     // Process referral commission if the creator was referred by someone
     processReferralCommission(
@@ -271,7 +296,7 @@ export async function POST(request: NextRequest) {
       "new_tip",
       "You received a tip!",
       `${tipperName} tipped you $${tipDollars} USDC.`,
-      String(newTip[0].id),
+      String(newTip.id),
     );
 
     // Send email notification to the creator (fire-and-forget)
@@ -284,7 +309,7 @@ export async function POST(request: NextRequest) {
       sendNewTipEmail(creatorEmail[0].email, tipperInfo[0]?.display_name ?? "Someone", tipDollars);
     }
 
-    return NextResponse.json({ data: newTip[0] }, { status: 201 });
+    return NextResponse.json({ data: newTip }, { status: 201 });
   } catch (error) {
     console.error("POST /api/tips error:", error);
     return NextResponse.json(

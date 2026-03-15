@@ -2,8 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { commentsTable, postsTable, usersTable } from "@/utils/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { commentsTable, postsTable, usersTable, subscriptionsTable, ppvPurchasesTable } from "@/utils/db/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
@@ -34,6 +34,24 @@ export async function GET(
       parseInt(url.searchParams.get("offset") ?? "0", 10) || 0,
       0,
     );
+
+    // Verify post exists, is published, and is not hidden before returning comments
+    const postCheck = await db
+      .select({
+        id: postsTable.id,
+        is_published: postsTable.is_published,
+        is_hidden: postsTable.is_hidden,
+      })
+      .from(postsTable)
+      .where(eq(postsTable.id, postId))
+      .limit(1);
+
+    if (postCheck.length === 0 || !postCheck[0].is_published || postCheck[0].is_hidden) {
+      return NextResponse.json(
+        { error: "Post not found", code: "POST_NOT_FOUND" },
+        { status: 404 },
+      );
+    }
 
     const comments = await db
       .select({
@@ -121,9 +139,15 @@ export async function POST(
       );
     }
 
-    // Check if post exists
+    // Check if post exists and user has access
     const postResults = await db
-      .select({ id: postsTable.id })
+      .select({
+        id: postsTable.id,
+        creator_id: postsTable.creator_id,
+        is_free: postsTable.is_free,
+        tier: postsTable.tier,
+        ppv_price_usdc: postsTable.ppv_price_usdc,
+      })
       .from(postsTable)
       .where(eq(postsTable.id, postId))
       .limit(1);
@@ -133,6 +157,45 @@ export async function POST(
         { error: "Post not found", code: "POST_NOT_FOUND" },
         { status: 404 },
       );
+    }
+
+    const post = postResults[0];
+
+    // If post is not free and user is not the creator, verify subscription or PPV purchase
+    if (!post.is_free && post.tier !== "free" && post.creator_id !== user.id) {
+      // Check for active subscription to the creator
+      const activeSubscription = await db
+        .select({ id: subscriptionsTable.id })
+        .from(subscriptionsTable)
+        .where(
+          and(
+            eq(subscriptionsTable.subscriber_id, user.id),
+            eq(subscriptionsTable.creator_id, post.creator_id),
+            eq(subscriptionsTable.status, "active"),
+          ),
+        )
+        .limit(1);
+
+      // Check for PPV purchase if no subscription
+      if (activeSubscription.length === 0) {
+        const ppvPurchase = await db
+          .select({ id: ppvPurchasesTable.id })
+          .from(ppvPurchasesTable)
+          .where(
+            and(
+              eq(ppvPurchasesTable.buyer_id, user.id),
+              eq(ppvPurchasesTable.post_id, postId),
+            ),
+          )
+          .limit(1);
+
+        if (ppvPurchase.length === 0) {
+          return NextResponse.json(
+            { error: "Subscription required", code: "SUBSCRIPTION_REQUIRED" },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     // Insert comment and increment count atomically in a transaction

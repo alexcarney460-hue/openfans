@@ -6,6 +6,8 @@ import { subscriptionsTable, usersTable } from "@/utils/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
+const ALLOWED_SUBSCRIBER_LIST_ROLES = ["creator", "admin"] as const;
+
 /**
  * GET /api/subscribers
  * Returns a list of users who have active subscriptions to the authenticated creator.
@@ -14,6 +16,21 @@ export async function GET() {
   try {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
+
+    // Only creators and admins can view subscriber lists
+    const userRecord = await db
+      .select({ role: usersTable.role })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .limit(1);
+
+    const userRole = userRecord[0]?.role;
+    if (!userRole || !ALLOWED_SUBSCRIBER_LIST_ROLES.includes(userRole as typeof ALLOWED_SUBSCRIBER_LIST_ROLES[number])) {
+      return NextResponse.json(
+        { error: "Only creators and admins can view subscribers", code: "FORBIDDEN" },
+        { status: 403 },
+      );
+    }
 
     const subscribers = await db
       .select({

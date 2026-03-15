@@ -14,6 +14,7 @@ import { eq, and, sql, lte, gte } from "drizzle-orm";
 import { createNotification } from "@/utils/notifications";
 import { processReferralCommission } from "@/utils/referral-commission";
 import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
+import { timingSafeEqual } from "crypto";
 
 /**
  * GET /api/cron/renew-subscriptions
@@ -27,11 +28,19 @@ import { getCreatorFeeConfig, calculateFeeSplit } from "@/utils/fees";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret to prevent unauthorized access
+    // Verify cron secret with timing-safe comparison
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || !authHeader) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const expectedToken = `Bearer ${cronSecret}`;
+    if (!isTimingSafeEqual(authHeader, expectedToken)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 },
@@ -374,4 +383,17 @@ async function expireOverdueSubscriptions(now: Date): Promise<number> {
     );
 
   return overdue.length;
+}
+
+function isTimingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf-8");
+  const bufB = Buffer.from(b, "utf-8");
+
+  // If lengths differ, still do a comparison to avoid timing leak on length
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+
+  return timingSafeEqual(bufA, bufB);
 }

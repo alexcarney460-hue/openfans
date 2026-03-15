@@ -30,14 +30,14 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/131.0.0.0 Safari/537.36"
 )
-BROWSER_PROFILE = str(Path.home() / ".ig_openfans_outreach")
+BROWSER_PROFILE = str(Path.home() / ".ig_of_bot")
 BASE = Path(__file__).resolve().parent.parent
 HANDLES_FILE = str(BASE / "content" / "ig-of-handles.txt")
 COMMENT_LOG = str(BASE / "logs" / "comment-outreach.jsonl")
 DM_LOG = str(BASE / "logs" / "dm-outreach.jsonl")
 
-COMMENT_DELAY = 42
-DM_DELAY = 55
+COMMENT_DELAY = 30
+DM_DELAY = 55  # disabled
 COMMENT_BATCH = 100
 DM_BATCH = 50
 BATCH_PAUSE = 300
@@ -332,37 +332,7 @@ def main():
 
                 time.sleep(random.randint(COMMENT_DELAY, COMMENT_DELAY + 6))
 
-            # --- DM ---
-            if d_idx < len(dm_targets):
-                target = dm_targets[d_idx]
-                d_idx += 1
-
-                # Pick DM
-                avail = [t for t in DM_TEMPLATES if t not in used_dms]
-                if not avail:
-                    used_dms.clear()
-                    avail = DM_TEMPLATES
-                template = random.choice(avail)
-                used_dms.add(template)
-                name = target.lstrip("@").split("_")[0].split(".")[0].capitalize()
-                dm = template.format(name=name)
-
-                log(f"[DM {d_count+1}] @{target.lstrip('@')}")
-                ok = do_dm(page, target, dm)
-                if ok:
-                    d_count += 1
-                    log_result(DM_LOG, target, dm, True)
-                    log(f"  Sent! ({d_count} total)")
-                else:
-                    log_result(DM_LOG, target, dm, False, "failed")
-                    log(f"  Failed")
-
-                # Batch pause for DMs
-                if d_count > 0 and d_count % DM_BATCH == 0:
-                    log(f"DM BATCH {d_count} done. Pausing {BATCH_PAUSE}s...")
-                    time.sleep(BATCH_PAUSE)
-
-                time.sleep(random.randint(DM_DELAY, DM_DELAY + 10))
+            # DMs disabled — too low success rate on new account
 
         browser.close()
 

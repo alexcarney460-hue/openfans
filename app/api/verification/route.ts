@@ -5,6 +5,7 @@ import { db } from "@/utils/db/db";
 import { creatorProfilesTable, usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
+import { isValidStorageUrl } from "@/utils/validation";
 
 /**
  * GET /api/verification
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate document and selfie URLs
+    // Validate document and selfie URLs (must be from trusted storage)
     if (!document_url || typeof document_url !== "string") {
       return NextResponse.json(
         { error: "Government ID photo is required", code: "MISSING_DOCUMENT" },
@@ -173,9 +174,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!isValidStorageUrl(document_url)) {
+      return NextResponse.json(
+        { error: "document_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_DOCUMENT_URL" },
+        { status: 400 },
+      );
+    }
+
     if (!selfie_url || typeof selfie_url !== "string") {
       return NextResponse.json(
         { error: "Selfie holding ID is required", code: "MISSING_SELFIE" },
+        { status: 400 },
+      );
+    }
+
+    if (!isValidStorageUrl(selfie_url)) {
+      return NextResponse.json(
+        { error: "selfie_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_SELFIE_URL" },
         { status: 400 },
       );
     }

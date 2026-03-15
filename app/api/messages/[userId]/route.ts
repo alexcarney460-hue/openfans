@@ -6,6 +6,7 @@ import { messagesTable, usersTable } from "@/utils/db/schema";
 import { eq, or, and, asc, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 import { createNotification } from "@/utils/notifications";
+import { isValidStorageUrl } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
 
 /**
@@ -176,6 +177,16 @@ export async function POST(
       );
     }
 
+    // Validate media_url if provided
+    if (media_url !== undefined && media_url !== null) {
+      if (typeof media_url !== "string" || !isValidStorageUrl(media_url)) {
+        return NextResponse.json(
+          { error: "media_url must be a valid HTTPS URL from an allowed domain", code: "INVALID_MEDIA_URL" },
+          { status: 400 },
+        );
+      }
+    }
+
     // Validate paid message fields
     const isPaid = is_paid === true;
     let validatedPrice: number | null = null;
@@ -184,6 +195,12 @@ export async function POST(
       if (typeof price_usdc !== "number" || price_usdc <= 0) {
         return NextResponse.json(
           { error: "price_usdc must be a positive number for paid messages", code: "INVALID_PRICE" },
+          { status: 400 },
+        );
+      }
+      if (price_usdc > 100000) {
+        return NextResponse.json(
+          { error: "Price too high", code: "PRICE_TOO_HIGH" },
           { status: 400 },
         );
       }

@@ -89,7 +89,7 @@ export async function POST(
       SELECT id, created_at FROM live_stream_purchases
       WHERE stream_id = ${streamId}
         AND buyer_id = ${user.id}
-        AND created_at > NOW() - INTERVAL '${sql.raw(String(VIEWING_WINDOW_MINUTES))} minutes'
+        AND created_at > NOW() - INTERVAL '20 minutes'
       ORDER BY created_at DESC
       LIMIT 1
     `);

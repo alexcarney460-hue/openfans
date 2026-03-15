@@ -19,9 +19,26 @@ export async function GET() {
     const { user, error } = await getAuthenticatedUser();
     if (error) return error;
 
-    // Use raw SQL to include payout_schedule column (not in Drizzle schema)
+    // Use raw SQL to include payout_schedule column (not in Drizzle schema).
+    // Explicitly select columns, excluding PII: verification_document_url,
+    // verification_selfie_url, legal_name, date_of_birth
     const rows = await db.execute(sql`
-      SELECT *, COALESCE(payout_schedule, 'manual') AS payout_schedule
+      SELECT
+        id,
+        user_id,
+        subscription_price_usdc,
+        premium_price_usdc,
+        vip_price_usdc,
+        total_subscribers,
+        total_earnings_usdc,
+        payout_wallet,
+        categories,
+        is_featured,
+        verification_status,
+        verification_submitted_at,
+        verification_notes,
+        created_at,
+        COALESCE(payout_schedule, 'manual') AS payout_schedule
       FROM creator_profiles
       WHERE user_id = ${user.id}
       LIMIT 1
@@ -192,11 +209,21 @@ export async function POST(request: NextRequest) {
       profile = inserted[0];
     }
 
-    // Promote user role to "creator" if not already
-    await db
-      .update(usersTable)
-      .set({ role: "creator", updated_at: new Date() })
-      .where(eq(usersTable.id, user.id));
+    // Promote user role to "creator" only from "subscriber".
+    // Never overwrite "admin" or demote existing "creator".
+    const currentUser = await db
+      .select({ role: usersTable.role })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .limit(1);
+
+    const currentRole = currentUser[0]?.role;
+    if (currentRole === "subscriber") {
+      await db
+        .update(usersTable)
+        .set({ role: "creator", updated_at: new Date() })
+        .where(eq(usersTable.id, user.id));
+    }
 
     return NextResponse.json(
       { data: profile },
@@ -365,9 +392,24 @@ export async function PATCH(request: NextRequest) {
       `);
     }
 
-    // Fetch the final profile state including payout_schedule
+    // Fetch the final profile state including payout_schedule (excluding PII columns)
     const finalProfile = await db.execute(sql`
-      SELECT *, COALESCE(payout_schedule, 'manual') AS payout_schedule
+      SELECT
+        id,
+        user_id,
+        subscription_price_usdc,
+        premium_price_usdc,
+        vip_price_usdc,
+        total_subscribers,
+        total_earnings_usdc,
+        payout_wallet,
+        categories,
+        is_featured,
+        verification_status,
+        verification_submitted_at,
+        verification_notes,
+        created_at,
+        COALESCE(payout_schedule, 'manual') AS payout_schedule
       FROM creator_profiles
       WHERE user_id = ${user.id}
       LIMIT 1
