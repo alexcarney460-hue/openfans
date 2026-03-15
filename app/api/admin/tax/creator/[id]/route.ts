@@ -170,12 +170,12 @@ export async function GET(
 
     // Assemble 12-month breakdown
     const monthly: MonthlyBreakdown[] = [];
+    const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     for (let m = 1; m <= 12; m++) {
       const subscriptions = subByMonth.get(m) ?? 0;
       const tips = tipByMonth.get(m) ?? 0;
       const ppv = ppvByMonth.get(m) ?? 0;
       const total = subscriptions + tips + ppv;
-      const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       monthly.push({
         month: m,
         month_name: MONTH_NAMES[m],
@@ -260,7 +260,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("GET /api/admin/tax/creator/[id] error:", error);
+    console.error("GET /api/admin/tax/creator/[id] error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },

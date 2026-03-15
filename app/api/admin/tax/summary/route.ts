@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
           )::int                                                     AS net_earnings_usdc,
           COALESCE(pt.total, 0)                                      AS total_payouts_usdc,
           CASE
-            WHEN cp.verification_status = 'verified' THEN true
+            WHEN cti.user_id IS NOT NULL THEN true
             ELSE false
           END                                                        AS has_tax_info
         FROM combined c
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         LEFT  JOIN tip_earnings te     ON te.creator_id = c.creator_id
         LEFT  JOIN ppv_earnings pe     ON pe.creator_id = c.creator_id
         LEFT  JOIN payout_totals pt    ON pt.creator_id = c.creator_id
-        LEFT  JOIN creator_profiles cp ON cp.user_id    = c.creator_id
+        LEFT  JOIN creator_tax_info cti ON cti.user_id  = c.creator_id
         WHERE (COALESCE(se.total, 0)
               + COALESCE(te.total, 0)
               + COALESCE(pe.total, 0)) > 0
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("GET /api/admin/tax/summary error:", error);
+    console.error("GET /api/admin/tax/summary error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },

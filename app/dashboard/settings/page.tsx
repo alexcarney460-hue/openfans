@@ -5,11 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock, CalendarClock, FileText } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useTrack } from "@/hooks/useTrack";
+import TaxInfoForm from "@/components/TaxInfoForm";
 
 interface ToggleSwitchProps {
   enabled: boolean;
@@ -95,20 +96,6 @@ export default function SettingsPage() {
   const track = useTrack();
   const [walletError, setWalletError] = useState<string | null>(null);
 
-  // Tax Information state
-  const [taxLegalName, setTaxLegalName] = useState("");
-  const [taxBusinessType, setTaxBusinessType] = useState("individual");
-  const [taxId, setTaxId] = useState("");
-  const [taxIdLast4, setTaxIdLast4] = useState<string | null>(null);
-  const [taxAddressLine1, setTaxAddressLine1] = useState("");
-  const [taxAddressLine2, setTaxAddressLine2] = useState("");
-  const [taxCity, setTaxCity] = useState("");
-  const [taxState, setTaxState] = useState("");
-  const [taxZipCode, setTaxZipCode] = useState("");
-  const [taxCountry, setTaxCountry] = useState("US");
-  const [taxSaving, setTaxSaving] = useState(false);
-  const [taxSaveError, setTaxSaveError] = useState<string | null>(null);
-  const [taxLoaded, setTaxLoaded] = useState(false);
 
   const handleConnectWallet = useCallback(async () => {
     track("wallet_connect_click");
@@ -174,10 +161,9 @@ export default function SettingsPage() {
           // Load creator profile data if creator
           if (user.role === "creator" || user.role === "admin") {
             try {
-              const [cpRes, vRes, taxRes] = await Promise.allSettled([
+              const [cpRes, vRes] = await Promise.allSettled([
                 fetch("/api/creator-profile"),
                 fetch("/api/verification"),
-                fetch("/api/tax-info"),
               ]);
               if (cpRes.status === "fulfilled" && cpRes.value.ok) {
                 const cpJson = await cpRes.value.json();
@@ -209,21 +195,6 @@ export default function SettingsPage() {
                 const vJson = await vRes.value.json();
                 if (vJson.data) {
                   setVerificationStatus(vJson.data.verification_status);
-                }
-              }
-              if (taxRes.status === "fulfilled" && taxRes.value.ok) {
-                const taxJson = await taxRes.value.json();
-                if (taxJson.data) {
-                  setTaxLegalName(taxJson.data.legal_name ?? "");
-                  setTaxBusinessType(taxJson.data.business_type ?? "individual");
-                  setTaxIdLast4(taxJson.data.tax_id_last4 ?? null);
-                  setTaxAddressLine1(taxJson.data.address_line1 ?? "");
-                  setTaxAddressLine2(taxJson.data.address_line2 ?? "");
-                  setTaxCity(taxJson.data.city ?? "");
-                  setTaxState(taxJson.data.state ?? "");
-                  setTaxZipCode(taxJson.data.zip_code ?? "");
-                  setTaxCountry(taxJson.data.country ?? "US");
-                  setTaxLoaded(true);
                 }
               }
             } catch {
@@ -461,45 +432,6 @@ export default function SettingsPage() {
       setSaveMessage("Failed to update payout schedule.");
     } finally {
       setPayoutScheduleSaving(false);
-    }
-  };
-
-  const handleSaveTaxInfo = async () => {
-    setTaxSaving(true);
-    setTaxSaveError(null);
-    setSaveMessage(null);
-
-    try {
-      const res = await fetch("/api/tax-info", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          legal_name: taxLegalName,
-          business_type: taxBusinessType,
-          tax_id: taxId,
-          address_line1: taxAddressLine1,
-          address_line2: taxAddressLine2 || undefined,
-          city: taxCity,
-          state: taxState,
-          zip_code: taxZipCode,
-          country: taxCountry,
-        }),
-      });
-
-      const json = await res.json();
-
-      if (res.ok) {
-        setSaveMessage("Tax information saved successfully.");
-        setTaxIdLast4(json.data?.tax_id_last4 ?? null);
-        setTaxId(""); // Clear raw tax ID from state
-        setTaxLoaded(true);
-      } else {
-        setTaxSaveError(json.error ?? "Failed to save tax information.");
-      }
-    } catch {
-      setTaxSaveError("Failed to save tax information.");
-    } finally {
-      setTaxSaving(false);
     }
   };
 
@@ -1112,199 +1044,7 @@ export default function SettingsPage() {
       )}
 
       {/* Tax Information (creators only) */}
-      {isCreator && (
-        <Card className="border-gray-200 bg-white">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-1">
-              <FileText className="h-5 w-5 text-[#00AFF0]" />
-              <h2 className="text-lg font-semibold text-foreground">Tax Information</h2>
-            </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              W-9 equivalent for 1099 reporting. Required for US-based creators.
-            </p>
-
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 mb-5">
-              Required for creators earning $600+ per year. Your tax ID is encrypted and never stored in plaintext.
-            </div>
-
-            {taxSaveError && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {taxSaveError}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {/* Legal Name */}
-              <div>
-                <Label htmlFor="taxLegalName" className="text-sm text-muted-foreground">
-                  Legal Name
-                </Label>
-                <Input
-                  id="taxLegalName"
-                  value={taxLegalName}
-                  onChange={(e) => setTaxLegalName(e.target.value)}
-                  placeholder="Full legal name as it appears on your tax return"
-                  maxLength={255}
-                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
-                />
-              </div>
-
-              {/* Business Type */}
-              <div>
-                <Label htmlFor="taxBusinessType" className="text-sm text-muted-foreground">
-                  Business Type
-                </Label>
-                <select
-                  id="taxBusinessType"
-                  value={taxBusinessType}
-                  onChange={(e) => setTaxBusinessType(e.target.value)}
-                  className="mt-1.5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-foreground focus:border-[#00AFF0]/50 focus:ring-2 focus:ring-[#00AFF0]/30 focus:outline-none"
-                >
-                  <option value="individual">Individual</option>
-                  <option value="sole_proprietor">Sole Proprietor</option>
-                  <option value="llc">LLC</option>
-                  <option value="corporation">Corporation</option>
-                  <option value="partnership">Partnership</option>
-                </select>
-              </div>
-
-              {/* Tax ID (SSN/EIN) */}
-              <div>
-                <Label htmlFor="taxId" className="text-sm text-muted-foreground">
-                  Tax ID (SSN or EIN)
-                </Label>
-                {taxIdLast4 && !taxId ? (
-                  <div className="mt-1.5 flex items-center gap-3">
-                    <div className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-muted-foreground font-mono tracking-wider">
-                      {"\u2022\u2022\u2022-\u2022\u2022-" + taxIdLast4}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="border-gray-200 shrink-0"
-                      onClick={() => setTaxIdLast4(null)}
-                    >
-                      Update
-                    </Button>
-                  </div>
-                ) : (
-                  <Input
-                    id="taxId"
-                    value={taxId}
-                    onChange={(e) => setTaxId(e.target.value)}
-                    placeholder="XXX-XX-XXXX or XX-XXXXXXX"
-                    maxLength={11}
-                    className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30 font-mono"
-                  />
-                )}
-                <p className="text-xs text-muted-foreground mt-1">
-                  SSN format: XXX-XX-XXXX | EIN format: XX-XXXXXXX
-                </p>
-              </div>
-
-              {/* Address */}
-              <div>
-                <Label htmlFor="taxAddressLine1" className="text-sm text-muted-foreground">
-                  Address Line 1
-                </Label>
-                <Input
-                  id="taxAddressLine1"
-                  value={taxAddressLine1}
-                  onChange={(e) => setTaxAddressLine1(e.target.value)}
-                  placeholder="Street address"
-                  maxLength={255}
-                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="taxAddressLine2" className="text-sm text-muted-foreground">
-                  Address Line 2 <span className="text-muted-foreground/60">(optional)</span>
-                </Label>
-                <Input
-                  id="taxAddressLine2"
-                  value={taxAddressLine2}
-                  onChange={(e) => setTaxAddressLine2(e.target.value)}
-                  placeholder="Apt, suite, unit, etc."
-                  maxLength={255}
-                  className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <Label htmlFor="taxCity" className="text-sm text-muted-foreground">
-                    City
-                  </Label>
-                  <Input
-                    id="taxCity"
-                    value={taxCity}
-                    onChange={(e) => setTaxCity(e.target.value)}
-                    placeholder="City"
-                    maxLength={100}
-                    className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="taxState" className="text-sm text-muted-foreground">
-                    State
-                  </Label>
-                  <Input
-                    id="taxState"
-                    value={taxState}
-                    onChange={(e) => setTaxState(e.target.value.toUpperCase())}
-                    placeholder="CA"
-                    maxLength={2}
-                    className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30 uppercase"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="taxZipCode" className="text-sm text-muted-foreground">
-                    ZIP Code
-                  </Label>
-                  <Input
-                    id="taxZipCode"
-                    value={taxZipCode}
-                    onChange={(e) => setTaxZipCode(e.target.value)}
-                    placeholder="90210"
-                    maxLength={10}
-                    className="mt-1.5 border-gray-200 bg-gray-50 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  className="bg-[#00AFF0] hover:bg-[#009dd8]"
-                  onClick={handleSaveTaxInfo}
-                  disabled={
-                    taxSaving ||
-                    !taxLegalName.trim() ||
-                    !taxAddressLine1.trim() ||
-                    !taxCity.trim() ||
-                    !taxState.trim() ||
-                    !taxZipCode.trim() ||
-                    (!taxId && !taxIdLast4)
-                  }
-                >
-                  {taxSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : taxLoaded ? (
-                    "Update Tax Info"
-                  ) : (
-                    "Save Tax Info"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <TaxInfoForm isCreator={isCreator} />
 
       {/* Save button */}
       <div className="flex justify-end">

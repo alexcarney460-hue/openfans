@@ -5,10 +5,8 @@ import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 
-import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE, DEFAULT_1099_THRESHOLD, calculateCreatorShare } from "@/utils/tax-calculations";
+import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE, DEFAULT_1099_THRESHOLD, calculateCreatorShare, formatTaxYear } from "@/utils/tax-calculations";
 const DEFAULT_THRESHOLD_CENTS = DEFAULT_1099_THRESHOLD;
-const MIN_TAX_YEAR = 2020;
-const MAX_TAX_YEAR = 2030;
 
 /**
  * Escape a value for CSV output.
@@ -76,10 +74,15 @@ export async function GET(request: NextRequest) {
     }
 
     const year = parseInt(yearParam, 10);
-    if (isNaN(year) || year < MIN_TAX_YEAR || year > MAX_TAX_YEAR) {
+
+    // Validate year range using formatTaxYear (throws for invalid years 2000-2100)
+    let taxYearRange: { start: Date; end: Date };
+    try {
+      taxYearRange = formatTaxYear(year);
+    } catch {
       return NextResponse.json(
         {
-          error: `Invalid year. Must be between ${MIN_TAX_YEAR} and ${MAX_TAX_YEAR}`,
+          error: "Invalid year. Must be an integer between 2000 and 2100",
           code: "INVALID_YEAR",
         },
         { status: 400 },
@@ -108,9 +111,9 @@ export async function GET(request: NextRequest) {
 
     const includeBelowThreshold = searchParams.get("include_below_threshold") === "true";
 
-    // Date boundaries for the tax year
-    const yearStart = `${year}-01-01`;
-    const yearEnd = `${year + 1}-01-01`;
+    // Date boundaries for the tax year (from shared utility)
+    const yearStart = taxYearRange.start.toISOString();
+    const yearEnd = taxYearRange.end.toISOString();
 
     // --- Query: aggregate all creator earnings for the year ---
     // Uses a CTE to UNION ALL three revenue sources, then aggregates per creator.
@@ -127,8 +130,8 @@ export async function GET(request: NextRequest) {
           s.creator_id,
           s.price_usdc AS amount_cents
         FROM subscriptions s
-        WHERE s.created_at >= ${yearStart}::date
-          AND s.created_at < ${yearEnd}::date
+        WHERE s.created_at >= ${yearStart}
+          AND s.created_at <= ${yearEnd}
 
         UNION ALL
 
@@ -136,8 +139,8 @@ export async function GET(request: NextRequest) {
           t.creator_id,
           t.amount_usdc AS amount_cents
         FROM tips t
-        WHERE t.created_at >= ${yearStart}::date
-          AND t.created_at < ${yearEnd}::date
+        WHERE t.created_at >= ${yearStart}
+          AND t.created_at <= ${yearEnd}
 
         UNION ALL
 
@@ -146,8 +149,8 @@ export async function GET(request: NextRequest) {
           pp.amount_usdc AS amount_cents
         FROM ppv_purchases pp
         JOIN posts p ON p.id = pp.post_id
-        WHERE pp.created_at >= ${yearStart}::date
-          AND pp.created_at < ${yearEnd}::date
+        WHERE pp.created_at >= ${yearStart}
+          AND pp.created_at <= ${yearEnd}
       )
       SELECT
         e.creator_id,
@@ -184,13 +187,28 @@ export async function GET(request: NextRequest) {
     const rows = result as unknown as CreatorEarningsRow[];
 
     if (!rows || rows.length === 0) {
-      return NextResponse.json(
-        {
-          error: `No creator earnings data found for tax year ${year}`,
-          code: "NO_DATA",
+      // Return empty CSV with header row only instead of 404
+      const emptyHeaders = [
+        "tax_year",
+        "payer_name",
+        "payer_ein",
+        "recipient_name",
+        "recipient_tin_last4",
+        "recipient_business_type",
+        "recipient_address",
+        "nonemployee_compensation_usd",
+        "gross_earnings_usd",
+        "platform_fees_usd",
+        "has_complete_tax_info",
+      ];
+      const emptyFilename = `1099-nec-data-${year}.csv`;
+      return new NextResponse(emptyHeaders.join(",") + "\n", {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${emptyFilename}"`,
+          "Cache-Control": "no-store",
         },
-        { status: 404 },
-      );
+      });
     }
 
     // --- Build CSV ---
@@ -266,7 +284,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("GET /api/admin/tax/export error:", error);
+    console.error("GET /api/admin/tax/export error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },

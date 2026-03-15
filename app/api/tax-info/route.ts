@@ -99,32 +99,6 @@ function validateState(val: unknown): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Ensure table exists
-// ---------------------------------------------------------------------------
-
-async function ensureTable() {
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS creator_tax_info (
-      id SERIAL PRIMARY KEY,
-      user_id UUID NOT NULL UNIQUE,
-      legal_name TEXT NOT NULL,
-      business_type TEXT NOT NULL,
-      tax_id_encrypted BYTEA NOT NULL,
-      tax_id_iv BYTEA NOT NULL,
-      tax_id_last4 TEXT NOT NULL,
-      address_line1 TEXT NOT NULL,
-      address_line2 TEXT,
-      city TEXT NOT NULL,
-      state TEXT NOT NULL,
-      zip_code TEXT NOT NULL,
-      country TEXT NOT NULL DEFAULT 'US',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-}
-
-// ---------------------------------------------------------------------------
 // GET /api/tax-info
 // Return creator's saved tax info with masked tax ID (last 4 only).
 // ---------------------------------------------------------------------------
@@ -147,8 +121,6 @@ export async function GET() {
         { status: 403 },
       );
     }
-
-    await ensureTable();
 
     const rows = await db.execute(sql`
       SELECT
@@ -281,8 +253,6 @@ export async function PUT(request: NextRequest) {
     // --- Encrypt tax ID ---
     const { encrypted, iv } = encryptTaxId(tax_id);
     const last4 = extractLast4(tax_id);
-
-    await ensureTable();
 
     // Upsert: insert or update on conflict (user_id is unique)
     await db.execute(sql`

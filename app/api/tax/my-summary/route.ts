@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
 import {
   usersTable,
-  creatorProfilesTable,
   subscriptionsTable,
   tipsTable,
   ppvPurchasesTable,
@@ -130,16 +129,12 @@ export async function GET(request: NextRequest) {
         AND ${payoutsTable.created_at} < ${yearEnd.toISOString()}
     `);
 
-    // Check if creator has tax info on file (legal_name as proxy for W-9 submission)
-    const profileResult = await db
-      .select({ legal_name: creatorProfilesTable.legal_name })
-      .from(creatorProfilesTable)
-      .where(eq(creatorProfilesTable.user_id, user.id))
-      .limit(1);
+    // Check if creator has tax info on file (existence of row in creator_tax_info)
+    const taxInfoResult = await db.execute(sql`
+      SELECT 1 FROM creator_tax_info WHERE user_id = ${user.id} LIMIT 1
+    `);
 
-    const hasLegalName = Boolean(
-      profileResult[0]?.legal_name && profileResult[0].legal_name.trim().length > 0,
-    );
+    const hasTaxInfo = (taxInfoResult as unknown as Array<unknown>).length > 0;
 
     // Build lookup maps from query results
     const subsByMonth = new Map<number, number>();
@@ -208,11 +203,11 @@ export async function GET(request: NextRequest) {
         monthly: monthlyBreakdown,
         quarterly: quarterlySummaries,
         is_above_threshold: netEarnings >= DEFAULT_1099_THRESHOLD,
-        has_tax_info: hasLegalName,
+        has_tax_info: hasTaxInfo,
       },
     });
   } catch (error) {
-    console.error("GET /api/tax/my-summary error:", error);
+    console.error("GET /api/tax/my-summary error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Internal server error", code: "INTERNAL_ERROR" },
       { status: 500 },

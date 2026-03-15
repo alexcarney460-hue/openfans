@@ -283,6 +283,7 @@ export default function AdminTaxPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedCreator, setExpandedCreator] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -335,11 +336,14 @@ export default function AdminTaxPage() {
   // Handle CSV export
   const handleExport = async () => {
     setExporting(true);
+    setExportError(null);
     try {
       const res = await fetch(
         `/api/admin/tax/export?year=${year}&format=csv`
       );
       if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setExportError(json.error ?? `Export failed with status ${res.status}`);
         return;
       }
       const blob = await res.blob();
@@ -352,7 +356,7 @@ export default function AdminTaxPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // Silently fail — user can retry
+      setExportError("Failed to export tax data. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -623,6 +627,19 @@ export default function AdminTaxPage() {
           </button>
         </div>
       </div>
+
+      {/* Export error message */}
+      {exportError && (
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{exportError}</span>
+          <button
+            onClick={() => setExportError(null)}
+            className="ml-4 text-xs font-medium text-red-500 hover:text-red-700"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Creator Earnings Table */}
       {filteredCreators.length === 0 ? (
