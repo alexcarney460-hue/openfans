@@ -38,7 +38,9 @@ export async function GET() {
         verification_submitted_at,
         verification_notes,
         created_at,
-        COALESCE(payout_schedule, 'manual') AS payout_schedule
+        COALESCE(payout_schedule, 'manual') AS payout_schedule,
+        COALESCE(is_founder, false) AS is_founder,
+        founder_number
       FROM creator_profiles
       WHERE user_id = ${user.id}
       LIMIT 1
@@ -227,6 +229,26 @@ export async function POST(request: NextRequest) {
         .returning();
 
       profile = inserted[0];
+
+      // Assign founder status if spots remain (first 100 creators)
+      try {
+        const founderCount = await db.execute(sql`
+          SELECT COUNT(*)::int AS cnt FROM creator_profiles WHERE is_founder = true
+        `);
+        const count = (founderCount[0] as { cnt: number }).cnt ?? 0;
+        if (count < 100) {
+          const founderNumber = count + 1;
+          await db.execute(sql`
+            UPDATE creator_profiles
+            SET is_founder = true, founder_number = ${founderNumber}
+            WHERE user_id = ${user.id}
+          `);
+          profile = { ...profile, is_founder: true, founder_number: founderNumber };
+        }
+      } catch (founderErr) {
+        // Non-critical: log but don't fail profile creation
+        console.error("Failed to assign founder status:", founderErr);
+      }
     }
 
     // Promote user role to "creator" only from "subscriber".

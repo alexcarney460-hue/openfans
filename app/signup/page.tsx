@@ -2,6 +2,7 @@ import Link from "next/link"
 import SignupForm from "@/components/SignupForm"
 import ProviderSigninBlock from "@/components/ProviderSigninBlock"
 import WalletConnectButton from "@/components/WalletConnectButton"
+import { FounderBannerSignup } from "@/components/FounderBannerSignup"
 
 interface SignupPageProps {
   searchParams: { ref?: string }
@@ -13,6 +14,9 @@ export default function Signup({ searchParams }: SignupPageProps) {
   return (
     <div className="bg-gray-50 flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[420px]">
+        {/* Founder Promotion Banner */}
+        <FounderBannerSignup />
+
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-2xl shadow-[#00AFF0]/5 sm:p-8">
           {/* Logo */}
           <div className="mb-6 flex justify-center">

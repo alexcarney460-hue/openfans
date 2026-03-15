@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock, CalendarClock, Globe, X, MapPin, Info } from "lucide-react";
+import { Camera, Wallet, Trash2, Loader2, ImageIcon, Copy, Check, Share2, ArrowRight, ShieldCheck, ShieldAlert, Shield, Clock, CalendarClock, Globe, X, MapPin, Info, Crown } from "lucide-react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -100,6 +100,8 @@ export default function SettingsPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("subscriber");
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [isFounder, setIsFounder] = useState(false);
+  const [founderNumber, setFounderNumber] = useState<number | null>(null);
   const { publicKey, connected, connecting, select, connect, wallets } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const track = useTrack();
@@ -198,6 +200,12 @@ export default function SettingsPage() {
                   if (vipCents != null) {
                     setVipEnabled(true);
                     setVipPrice((vipCents / 100).toString());
+                  }
+
+                  // Load founder status
+                  if (cpJson.data.is_founder) {
+                    setIsFounder(true);
+                    setFounderNumber(cpJson.data.founder_number ?? null);
                   }
 
                   // Load payout schedule
@@ -580,6 +588,28 @@ export default function SettingsPage() {
             : "border-red-200 bg-red-50 text-red-600"
         }`}>
           {saveMessage}
+        </div>
+      )}
+
+      {/* Founder Creator Badge */}
+      {isCreator && isFounder && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-md shadow-amber-500/20">
+            <Crown className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-amber-800">
+                Founding Creator{founderNumber ? ` #${founderNumber}` : ""}
+              </span>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+                Lifetime
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-amber-600/80">
+              You pay just 5% platform fee for life &mdash; even on adult content.
+            </p>
+          </div>
         </div>
       )}
 

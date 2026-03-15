@@ -23,6 +23,8 @@ import {
   Check,
   X,
   Rocket,
+  Crown,
+  Flame,
 } from "lucide-react";
 import { useLanguage } from "@/utils/i18n/context";
 import { useTrack } from "@/hooks/useTrack";
@@ -249,10 +251,29 @@ export default function LandingPageClient() {
   const track = useTrack();
   const [activeTab, setActiveTab] = useState<"creators" | "fans">("creators");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [founderData, setFounderData] = useState<{
+    total_founders: number;
+    spots_remaining: number;
+    is_active: boolean;
+  } | null>(null);
 
   useEffect(() => {
     track("page_view", "home");
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch founder count for the promotion banner
+  useEffect(() => {
+    fetch("/api/founder-count")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.total_founders !== undefined) {
+          setFounderData(data);
+        }
+      })
+      .catch(() => {
+        // Non-critical, silently fail
+      });
+  }, []);
 
   return (
     <div className="flex min-h-dvh flex-col overflow-x-hidden bg-white">
@@ -346,6 +367,147 @@ export default function LandingPageClient() {
             </span>
           </div>
         </section>
+
+        {/* ==================== FOUNDER PROMOTION ==================== */}
+        {founderData && (
+          <section className="relative overflow-hidden py-14 sm:py-20">
+            {/* Background glow */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(245,158,11,0.04) 0%, rgba(245,158,11,0.08) 50%, rgba(245,158,11,0.04) 100%)",
+              }}
+            />
+
+            <div className="relative mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+              <div className="rounded-2xl border border-amber-200/60 bg-white p-6 shadow-lg shadow-amber-500/5 sm:p-10">
+                {/* Badge */}
+                <div className="mb-4 flex justify-center">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/50 bg-amber-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-amber-700">
+                    <Crown className="h-3.5 w-3.5" />
+                    Limited Offer
+                  </div>
+                </div>
+
+                {/* Headline */}
+                <h2 className="text-center font-display text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl md:text-4xl">
+                  Be a{" "}
+                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                    Founding Creator
+                  </span>
+                </h2>
+
+                <p className="mx-auto mt-3 max-w-lg text-center text-sm leading-relaxed text-gray-500 sm:text-base">
+                  The first 100 creators pay just{" "}
+                  <span className="font-bold text-amber-600">5% platform fee forever</span>
+                  {" "}&mdash; even on adult content. Locked in for life.
+                </p>
+
+                {founderData.is_active ? (
+                  <>
+                    {/* Progress bar */}
+                    <div className="mx-auto mt-8 max-w-md">
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700">
+                          {founderData.total_founders} of 100 spots claimed
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            founderData.spots_remaining <= 10
+                              ? "text-red-600"
+                              : founderData.spots_remaining <= 20
+                                ? "text-amber-600"
+                                : "text-amber-500"
+                          }`}
+                        >
+                          {founderData.spots_remaining} left
+                        </span>
+                      </div>
+                      <div className="h-3 overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000 ease-out"
+                          style={{
+                            width: `${Math.min(100, (founderData.total_founders / 100) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Urgency text */}
+                    {founderData.spots_remaining <= 20 && (
+                      <div className="mt-4 flex items-center justify-center gap-1.5">
+                        <Flame
+                          className={`h-4 w-4 ${
+                            founderData.spots_remaining <= 10
+                              ? "text-red-500"
+                              : "text-amber-500"
+                          }`}
+                        />
+                        <span
+                          className={`text-sm font-semibold ${
+                            founderData.spots_remaining <= 10
+                              ? "text-red-600"
+                              : "text-amber-600"
+                          }`}
+                        >
+                          {founderData.spots_remaining <= 10
+                            ? `Only ${founderData.spots_remaining} spots remaining -- almost gone!`
+                            : `Hurry -- only ${founderData.spots_remaining} spots left!`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* CTA */}
+                    <div className="mt-6 text-center">
+                      <Link href="/signup">
+                        <Button
+                          size="lg"
+                          className="h-12 border-0 bg-gradient-to-r from-amber-500 to-orange-500 px-8 text-sm font-bold text-white shadow-lg shadow-amber-500/25 transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-amber-500/35 sm:px-10 sm:text-base"
+                        >
+                          <Crown className="mr-2 h-4 w-4" />
+                          Claim Your Founder Spot
+                        </Button>
+                      </Link>
+                    </div>
+
+                    {/* Value props */}
+                    <div className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-gray-500 sm:text-sm">
+                      <span className="flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-amber-500" />
+                        5% fee for life
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-amber-500" />
+                        All content types
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 text-amber-500" />
+                        Never expires
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  /* All spots claimed */
+                  <div className="mt-6 text-center">
+                    <p className="mb-4 text-sm font-medium text-gray-500">
+                      All 100 Founder spots have been claimed.
+                    </p>
+                    <Link href="/signup">
+                      <Button
+                        size="lg"
+                        className="h-12 border-0 bg-[#00AFF0] px-8 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-[#009ad6] sm:px-10 sm:text-base"
+                      >
+                        Sign Up as a Creator
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ==================== VALUE PROPS ==================== */}
         <section className="py-14 sm:py-20 lg:py-28">

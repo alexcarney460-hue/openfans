@@ -11,8 +11,7 @@
  */
 
 import { db } from "@/utils/db/db";
-import { creatorProfilesTable } from "@/utils/db/schema";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 // ── Fee rate constants ──────────────────────────────────────────────────────
 
@@ -113,18 +112,35 @@ export async function getCreatorFeeConfig(creatorId: string): Promise<FeeConfig>
   const cached = getCachedConfig(creatorId);
   if (cached) return cached;
 
-  const rows = await db
-    .select({ categories: creatorProfilesTable.categories })
-    .from(creatorProfilesTable)
-    .where(eq(creatorProfilesTable.user_id, creatorId))
-    .limit(1);
+  // Use raw SQL to include is_founder (not in Drizzle schema)
+  const rows = await db.execute(
+    sql`SELECT categories, COALESCE(is_founder, false) AS is_founder
+        FROM creator_profiles
+        WHERE user_id = ${creatorId}
+        LIMIT 1`,
+  );
 
   if (rows.length === 0) {
     // Default to standard fees if profile not found (shouldn't happen in normal flow)
     return getFeeConfigForType(false);
   }
 
-  const categories = rows[0].categories ?? [];
+  const row = rows[0] as { categories: string[] | null; is_founder: boolean };
+  const isFounder = row.is_founder === true;
+
+  // Founders always get the standard 5% fee, even for adult content
+  if (isFounder) {
+    const config: FeeConfig = {
+      feeRate: STANDARD_FEE_RATE,
+      shareRate: STANDARD_SHARE_RATE,
+      feePercent: STANDARD_FEE_PERCENT,
+      isAdult: isAdultCreator(row.categories ?? []),
+    };
+    setCachedConfig(creatorId, config);
+    return config;
+  }
+
+  const categories = row.categories ?? [];
   const adult = isAdultCreator(categories);
   const config = getFeeConfigForType(adult);
 

@@ -83,18 +83,20 @@ TARGETS = [
 # {url} gets replaced with openfans.online
 # Each comment should feel like a genuine creator-to-creator interaction.
 COMMENTS = [
-    "love your content! have you looked into platforms with better creator payouts? {url} does 95% -- just thought you should know",
-    "the grind is real! if you ever want to keep more of what you earn, check out {url} - 95% payouts and instant crypto deposits",
-    "you deserve to keep more of your money honestly. {url} only takes 5% vs the 20% you're probably losing now",
-    "seriously underrated! have you heard about {url}? creators keep 95% there -- way better deal than most platforms",
-    "queen! just wanted to put {url} on your radar -- 95% creator payouts + instant USDC. no more waiting weeks for your money",
-    "your hustle is inspiring! a friend switched to {url} and keeps way more of her earnings now. 95% payouts, instant deposits",
-    "ok but why are you still giving away 20% of your income? {url} lets you keep 95%. just saying",
-    "not trying to be weird but {url} is literally paying creators 95% of their earnings with instant payouts. thought of you",
-    "the fact that platforms still take 20% from creators like you is crazy. {url} only takes 5%. worth a look!",
-    "you're building something amazing! have you seen {url} yet? they're onboarding founders right now, 95% payouts",
-    "real talk -- you should look at {url}. 95% payouts, instant USDC, no bank delays. built for creators like you",
-    "your content is so good you deserve to keep almost all of it. {url} = 95% payouts. just throwing it out there",
+    "first 100 creators on {url} are locked in at 5% fees FOR LIFE. onlyfans charges 20%. do the math",
+    "they're locking in the first 100 creators at 5% platform fees forever. {url} -- onlyfans takes 4x that",
+    "if you're still paying 20% to onlyfans you need to see this. {url} is giving their first 100 creators 5% fees for life",
+    "imagine keeping 95% of everything you earn. forever. not a promo, that's the deal for the first 100 on {url}",
+    "onlyfans takes 20%. {url} is locking their first 100 creators in at 5% for life. spots are almost gone",
+    "you're literally giving away 20% of your income. the first 100 creators on {url} get 5% fees locked in permanently",
+    "heard about {url}? first 100 creators get 5% platform fees for life instead of the 20% onlyfans charges. just saying",
+    "5% fees. for life. that's the deal for the first 100 creators on {url}. onlyfans could never",
+    "why give onlyfans 20% when {url} is locking in 5% fees for life for their first 100 creators? spots filling up fast",
+    "the math is insane. 5% vs 20%. {url} is giving their first 100 creators lifetime locked rates. check it",
+    "not a drill -- {url} first 100 creators = 5% fees forever. that's $15K/year more in your pocket on a $10K month",
+    "your content is too good to give 20% away. {url} -- first 100 creators locked at 5% for life. founder spots open now",
+    "onlyfans: 20% forever. {url}: 5% locked for life for the first 100. the choice seems obvious",
+    "girl stop giving onlyfans a fifth of your money. {url} has 5% fees locked for life for their first 100 creators",
 ]
 
 URL = "openfans.online"
@@ -309,7 +311,7 @@ def run(targets: list, dry_run: bool = False):
 
     # Use a dedicated OpenFans browser profile for commenting
     # If not logged in yet, the script will wait for manual login
-    comment_profile = str(Path.home() / ".ig_openfans_comments")
+    comment_profile = str(Path.home() / ".ig_fresh_test")
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
             comment_profile,

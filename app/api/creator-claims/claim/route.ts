@@ -84,6 +84,27 @@ export async function POST(req: NextRequest) {
       VALUES (${user.id}, 999, ARRAY[]::text[])
     `);
 
+    // Assign founder status if spots remain (first 100 creators)
+    try {
+      const founderCount = rows<{ cnt: number }>(
+        await db.execute(sql`
+          SELECT COUNT(*)::int AS cnt FROM creator_profiles WHERE is_founder = true
+        `),
+      );
+      const count = founderCount[0]?.cnt ?? 0;
+      if (count < 100) {
+        const founderNumber = count + 1;
+        await db.execute(sql`
+          UPDATE creator_profiles
+          SET is_founder = true, founder_number = ${founderNumber}
+          WHERE user_id = ${user.id}
+        `);
+      }
+    } catch (founderErr) {
+      // Non-critical: log but don't fail the claim
+      console.error("Failed to assign founder status during claim:", founderErr);
+    }
+
     // Promote user role to creator (if currently subscriber)
     await db.execute(sql`
       UPDATE users_table
