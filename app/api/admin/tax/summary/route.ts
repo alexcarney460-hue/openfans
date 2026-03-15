@@ -174,11 +174,25 @@ export async function GET(request: NextRequest) {
       is_above_threshold: Boolean(row.is_above_threshold),
     }));
 
+    // Compute aggregate stats for the UI summary cards
+    const totalCreatorsWithEarnings = totalCount;
+    const creatorsAboveThreshold = creators.filter((c) => c.is_above_threshold).length;
+    const creatorsMissingTaxInfo = creators.filter((c) => !c.has_tax_info && c.is_above_threshold).length;
+    const totalPlatformRevenue = creators.reduce((sum, c) => sum + c.gross_earnings_usdc, 0);
+
     return NextResponse.json({
       data: {
         year,
-        threshold,
-        creators,
+        threshold_usdc: threshold,
+        total_creators_with_earnings: totalCreatorsWithEarnings,
+        creators_above_threshold: creatorsAboveThreshold,
+        creators_missing_tax_info: creatorsMissingTaxInfo,
+        total_platform_revenue_usdc: totalPlatformRevenue,
+        creators: creators.map((c) => ({
+          ...c,
+          creator_id: c.user_id,
+          needs_1099: c.is_above_threshold,
+        })),
         pagination: {
           page,
           limit,

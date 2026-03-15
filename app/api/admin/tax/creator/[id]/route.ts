@@ -14,11 +14,14 @@ import {
 
 interface MonthlyBreakdown {
   month: number;
+  month_name: string;
   subscriptions: number;
   tips: number;
   ppv: number;
   total: number;
+  gross_earnings_usdc: number;
   net: number;
+  net_earnings_usdc: number;
 }
 
 interface QuarterlyTotal {
@@ -172,13 +175,17 @@ export async function GET(
       const tips = tipByMonth.get(m) ?? 0;
       const ppv = ppvByMonth.get(m) ?? 0;
       const total = subscriptions + tips + ppv;
+      const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       monthly.push({
         month: m,
+        month_name: MONTH_NAMES[m],
         subscriptions,
         tips,
         ppv,
         total,
+        gross_earnings_usdc: total,
         net: calculateCreatorShare(total),
+        net_earnings_usdc: calculateCreatorShare(total),
       });
     }
 

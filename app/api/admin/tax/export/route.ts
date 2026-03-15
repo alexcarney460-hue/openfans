@@ -5,8 +5,8 @@ import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 
-import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE } from "@/utils/tax-calculations";
-const DEFAULT_THRESHOLD_CENTS = 60000; // $600
+import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE, DEFAULT_1099_THRESHOLD, calculateCreatorShare } from "@/utils/tax-calculations";
+const DEFAULT_THRESHOLD_CENTS = DEFAULT_1099_THRESHOLD;
 const MIN_TAX_YEAR = 2020;
 const MAX_TAX_YEAR = 2030;
 
@@ -112,16 +112,14 @@ export async function GET(request: NextRequest) {
     const yearStart = `${year}-01-01`;
     const yearEnd = `${year + 1}-01-01`;
 
-    // Net earnings threshold in cents (creator share only)
-    const netThresholdCents = Math.floor(thresholdCents * CREATOR_SHARE_RATE);
-
     // --- Query: aggregate all creator earnings for the year ---
     // Uses a CTE to UNION ALL three revenue sources, then aggregates per creator.
     // LEFT JOINs creator_tax_info for tax reporting fields.
+    // Threshold is applied to net earnings (gross * CREATOR_SHARE_RATE >= threshold)
 
     const thresholdCondition = includeBelowThreshold
       ? sql``
-      : sql`HAVING SUM(e.amount_cents) * ${CREATOR_SHARE_RATE} >= ${netThresholdCents}`;
+      : sql`HAVING SUM(e.amount_cents) * ${CREATOR_SHARE_RATE} >= ${thresholdCents}`;
 
     const result = await db.execute(sql`
       WITH earnings AS (
@@ -216,7 +214,7 @@ export async function GET(request: NextRequest) {
 
     const csvRows = rows.map((row) => {
       const grossCents = Number(row.gross_earnings_cents);
-      const netCents = Math.round(grossCents * CREATOR_SHARE_RATE);
+      const netCents = calculateCreatorShare(grossCents);
       const feeCents = grossCents - netCents;
 
       const recipientName = row.legal_name || row.display_name;

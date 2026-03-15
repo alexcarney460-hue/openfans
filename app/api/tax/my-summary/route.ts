@@ -14,9 +14,7 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
 
-import { PLATFORM_FEE_RATE } from "@/utils/tax-calculations";
-const CREATOR_SHARE = 0.95;
-const TAX_THRESHOLD_CENTS = 60000; // $600.00 in cents
+import { PLATFORM_FEE_RATE, CREATOR_SHARE_RATE, DEFAULT_1099_THRESHOLD, calculateCreatorShare } from "@/utils/tax-calculations";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -166,7 +164,7 @@ export async function GET(request: NextRequest) {
       const tips = tipsByMonth.get(monthNum) ?? 0;
       const ppv = ppvByMonth.get(monthNum) ?? 0;
       const total = subscriptions + tips + ppv;
-      const net = Math.round(total * CREATOR_SHARE);
+      const net = calculateCreatorShare(total);
 
       return {
         month: name,
@@ -194,7 +192,7 @@ export async function GET(request: NextRequest) {
 
     // Annual totals
     const grossEarnings = monthlyBreakdown.reduce((sum, m) => sum + m.total, 0);
-    const netEarnings = Math.round(grossEarnings * CREATOR_SHARE);
+    const netEarnings = calculateCreatorShare(grossEarnings);
     const platformFees = grossEarnings - netEarnings;
     const totalPayouts = Number((yearPayouts as unknown as Array<{ total: number }>)[0]?.total ?? 0);
 
@@ -209,7 +207,7 @@ export async function GET(request: NextRequest) {
         },
         monthly: monthlyBreakdown,
         quarterly: quarterlySummaries,
-        is_above_threshold: netEarnings >= TAX_THRESHOLD_CENTS,
+        is_above_threshold: netEarnings >= DEFAULT_1099_THRESHOLD,
         has_tax_info: hasLegalName,
       },
     });
