@@ -187,9 +187,14 @@ export default function ExplorePage() {
           return;
         }
         const json = await res.json();
-        const mapped = (json.data ?? []).map(mapApiCreator);
-        if (mapped.length > 0) {
-          setFeaturedCreators(mapped);
+        const apiCreators: ApiCreator[] = json.data ?? [];
+        // Filter out creators without a valid avatar image
+        const withImages = apiCreators.filter(
+          (c) => c.avatar_url && c.avatar_url.trim() !== "",
+        );
+        // Need at least 3 creators with images; otherwise fall back to mock data
+        if (withImages.length >= 3) {
+          setFeaturedCreators(withImages.map(mapApiCreator));
         } else {
           setFeaturedCreators(getFeaturedMockCreators());
         }
@@ -220,7 +225,15 @@ export default function ExplorePage() {
       }
       setError(null);
       const json = await res.json();
-      const mapped: MappedCreator[] = (json.data ?? []).map(mapApiCreator);
+      const apiCreators: ApiCreator[] = json.data ?? [];
+      // Sort creators: those with avatar images first, then those without
+      const withImages = apiCreators.filter(
+        (c) => c.avatar_url && c.avatar_url.trim() !== "",
+      );
+      const withoutImages = apiCreators.filter(
+        (c) => !c.avatar_url || c.avatar_url.trim() === "",
+      );
+      const mapped: MappedCreator[] = [...withImages, ...withoutImages].map(mapApiCreator);
 
       // Update dynamic categories from API if available
       if (json.categories && Array.isArray(json.categories) && json.categories.length > 0) {

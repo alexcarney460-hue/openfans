@@ -343,27 +343,23 @@ export default function LandingPageClient() {
           </div>
         </section>
 
-        {/* ==================== SOCIAL PROOF ==================== */}
+        {/* ==================== VALUE PROPS BAR ==================== */}
         <section className="border-y border-gray-200 bg-gray-50 py-4 sm:py-6">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-2 px-4 text-xs sm:gap-x-8 sm:text-sm text-gray-400">
             <span className="text-center">
-              <strong className="text-gray-600">10,000+</strong> {t("social.creators")}
+              <strong className="text-[#00AFF0]">100 Founder Spots</strong>
             </span>
             <span className="hidden text-gray-300 sm:inline">|</span>
             <span className="text-center">
-              <strong className="text-gray-600">$2.4M+</strong> {t("social.earned")}
+              <strong className="text-gray-600">95%</strong> creator payout
             </span>
             <span className="hidden text-gray-300 sm:inline">|</span>
             <span className="text-center">
-              <strong className="text-gray-600">500K+</strong> {t("social.subscribers")}
+              <strong className="text-gray-600">Instant</strong> payouts
             </span>
             <span className="hidden text-gray-300 sm:inline">|</span>
             <span className="text-center">
-              <strong className="text-[#00AFF0]">{t("social.fees")}</strong>
-            </span>
-            <span className="hidden text-gray-300 sm:inline">|</span>
-            <span className="text-center">
-              <strong className="text-[#00AFF0]">{t("social.payouts")}</strong>
+              <strong className="text-[#00AFF0]">0% processing fees</strong>
             </span>
           </div>
         </section>
@@ -869,8 +865,8 @@ export default function LandingPageClient() {
                 Start Earning Today.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/80 sm:mt-6 sm:text-lg">
-                Join thousands of creators already keeping 95% of their
-                earnings. Set up your page in under 5 minutes.
+                Keep 95% of every dollar you earn with instant crypto payouts.
+                Set up your page in under 5 minutes.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row sm:gap-4">
                 <Link href="/signup" className="w-full sm:w-auto">
