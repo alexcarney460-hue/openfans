@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, body: postBody, media_urls, media_type, tier, is_free, ppv_price_usdc, scheduled_at } = body;
+    const { title, body: postBody, media_urls, media_type, tier, is_free, ppv_price_usdc, scheduled_at, video_asset_id } = body;
 
     // Validate required fields
     if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -381,6 +381,41 @@ export async function POST(request: NextRequest) {
       // If date is in the past or now, publish immediately (isPublished stays true)
     }
 
+    // Validate video_asset_id if provided
+    let validatedVideoAssetId: string | null = null;
+    if (video_asset_id !== undefined && video_asset_id !== null) {
+      if (typeof video_asset_id !== "string" || video_asset_id.trim().length === 0) {
+        return NextResponse.json(
+          { error: "video_asset_id must be a non-empty string", code: "INVALID_VIDEO_ASSET_ID" },
+          { status: 400 },
+        );
+      }
+
+      // Verify the video asset exists and belongs to this creator
+      const videoCheck = await db.execute(sql`
+        SELECT id, creator_id, status FROM video_assets
+        WHERE id = ${video_asset_id.trim()}
+        LIMIT 1
+      `);
+
+      if (videoCheck.length === 0) {
+        return NextResponse.json(
+          { error: "Video asset not found", code: "VIDEO_NOT_FOUND" },
+          { status: 404 },
+        );
+      }
+
+      const videoAsset = videoCheck[0] as Record<string, unknown>;
+      if (videoAsset.creator_id !== user.id) {
+        return NextResponse.json(
+          { error: "Video asset not found", code: "VIDEO_NOT_FOUND" },
+          { status: 404 },
+        );
+      }
+
+      validatedVideoAssetId = video_asset_id.trim();
+    }
+
     const newPost = await db
       .insert(postsTable)
       .values({
@@ -397,7 +432,32 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ data: newPost[0] }, { status: 201 });
+    const createdPost = newPost[0];
+
+    // Link video asset to the post via raw SQL (adds video_asset_id column if needed)
+    if (validatedVideoAssetId && createdPost) {
+      // Ensure the video_asset_id column exists on the posts table
+      await db.execute(sql`
+        ALTER TABLE posts
+        ADD COLUMN IF NOT EXISTS video_asset_id TEXT
+        REFERENCES video_assets(id) ON DELETE SET NULL
+      `);
+
+      // Set the video_asset_id on the newly created post
+      await db.execute(sql`
+        UPDATE posts
+        SET video_asset_id = ${validatedVideoAssetId}
+        WHERE id = ${createdPost.id}
+      `);
+
+      // Return the post with video_asset_id included
+      return NextResponse.json(
+        { data: { ...createdPost, video_asset_id: validatedVideoAssetId } },
+        { status: 201 },
+      );
+    }
+
+    return NextResponse.json({ data: createdPost }, { status: 201 });
   } catch (error) {
     console.error("POST /api/posts error:", error);
     return NextResponse.json(

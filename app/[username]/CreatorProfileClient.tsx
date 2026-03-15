@@ -15,10 +15,12 @@ import {
   MessageCircle,
   UserPlus,
   UserCheck,
+  Play,
 } from "lucide-react";
 import { CreatorSubscribeSection } from "@/components/CreatorSubscribeSection";
 import { TipModal } from "@/components/TipModal";
 import { PPVUnlockModal } from "@/components/PPVUnlockModal";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { useTrack } from "@/hooks/useTrack";
 import { EXPLORE_CREATORS } from "@/app/explore/mock-data";
 
@@ -82,6 +84,9 @@ interface ApiPost {
   readonly is_ppv?: boolean;
   readonly ppv_price_usdc?: number | null;
   readonly has_purchased?: boolean;
+  readonly video_asset_id?: number | null;
+  readonly video_url?: string | null;
+  readonly video_thumbnail_url?: string | null;
 }
 
 // Generate placeholder posts for mock creators
@@ -569,7 +574,29 @@ export default function CreatorProfileClient() {
 
                     {isLocked ? (
                       <div className="relative px-4 pb-3">
-                        {/* Blurred placeholder content */}
+                        {/* Blurred video thumbnail for locked video posts */}
+                        {(post.video_url || post.video_thumbnail_url || post.media_type === "video") && (
+                          <div className="relative mb-3 overflow-hidden rounded-lg">
+                            <div className="aspect-video bg-gray-200">
+                              {post.video_thumbnail_url ? (
+                                <img
+                                  src={post.video_thumbnail_url}
+                                  alt=""
+                                  className="h-full w-full object-cover blur-xl scale-110"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-gray-200 to-gray-300 blur-xl" />
+                              )}
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+                                <Lock className="h-6 w-6 text-white" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {/* Blurred placeholder text content */}
                         <div className="select-none blur-sm" aria-hidden="true">
                           <p className="mb-1 text-sm font-semibold text-gray-900">
                             {post.title ?? "Exclusive Content"}
@@ -609,8 +636,18 @@ export default function CreatorProfileClient() {
                           )}
                         </div>
 
-                        {/* Media */}
-                        {post.media_urls && post.media_urls.length > 0 && (
+                        {/* Video Player — if post has a video asset */}
+                        {post.video_url && (
+                          <div className="mt-3">
+                            <VideoPlayer
+                              src={post.video_url}
+                              poster={post.video_thumbnail_url ?? undefined}
+                            />
+                          </div>
+                        )}
+
+                        {/* Media grid — images or legacy video */}
+                        {!post.video_url && post.media_urls && post.media_urls.length > 0 && (
                           <div className={`mt-3 ${
                             post.media_urls.length === 1
                               ? ""
@@ -621,7 +658,7 @@ export default function CreatorProfileClient() {
                             {post.media_urls.map((url, idx) => (
                               <div
                                 key={idx}
-                                className={`overflow-hidden bg-gray-100 ${
+                                className={`relative overflow-hidden bg-gray-100 ${
                                   post.media_urls.length === 1
                                     ? "aspect-[4/3]"
                                     : post.media_urls.length === 3 && idx === 0
@@ -630,12 +667,19 @@ export default function CreatorProfileClient() {
                                 }`}
                               >
                                 {post.media_type === "video" ? (
-                                  <video
-                                    src={url}
-                                    className="h-full w-full object-cover"
-                                    controls
-                                    preload="metadata"
-                                  />
+                                  <>
+                                    <video
+                                      src={url}
+                                      className="h-full w-full object-cover"
+                                      controls
+                                      preload="metadata"
+                                    />
+                                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50">
+                                        <Play className="ml-0.5 h-4 w-4 text-white" fill="white" />
+                                      </div>
+                                    </div>
+                                  </>
                                 ) : (
                                   <img
                                     src={url}

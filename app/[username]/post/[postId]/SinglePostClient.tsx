@@ -8,9 +8,11 @@ import {
   ArrowLeft,
   BadgeCheck,
   Lock,
+  Play,
 } from "lucide-react";
 import { SubscribeButton } from "@/components/SubscribeButton";
 import { PostInteractions } from "@/components/PostInteractions";
+import { VideoPlayer } from "@/components/VideoPlayer";
 
 function timeAgo(dateString: string): string {
   const now = new Date();
@@ -42,6 +44,9 @@ interface ApiPost {
   readonly views_count: number;
   readonly created_at: string;
   readonly is_locked?: boolean;
+  readonly video_asset_id?: number | null;
+  readonly video_url?: string | null;
+  readonly video_thumbnail_url?: string | null;
 }
 
 interface ApiCreator {
@@ -205,42 +210,82 @@ export default function SinglePostClient() {
           </p>
         </div>
 
-        {/* Media */}
-        {post.media_urls && post.media_urls.length > 0 && (
+        {/* Video Player — if post has a video asset and is unlocked */}
+        {!isLocked && post.video_url && (
+          <div className="mb-4 overflow-hidden rounded-xl">
+            <VideoPlayer
+              src={post.video_url}
+              poster={post.video_thumbnail_url ?? undefined}
+            />
+          </div>
+        )}
+
+        {/* Locked video/media — blurred thumbnail with lock overlay */}
+        {isLocked && (post.video_url || post.video_thumbnail_url || (post.media_urls && post.media_urls.length > 0)) && (
           <div className="relative mb-4 overflow-hidden rounded-xl">
-            <div
-              className={
-                isLocked
-                  ? "flex aspect-video items-center justify-center bg-gray-100 blur-xl"
-                  : "flex aspect-video items-center justify-center bg-gray-100"
-              }
-            >
-              <div className="flex h-full w-full items-center justify-center bg-[#00AFF0]/10">
-                <span className="text-sm text-gray-300">
-                  {post.media_type === "video" ? "Video Content" : "Image Content"}
-                </span>
+            <div className="aspect-video bg-gray-100">
+              {post.video_thumbnail_url ? (
+                <img
+                  src={post.video_thumbnail_url}
+                  alt=""
+                  className="h-full w-full object-cover blur-xl scale-110"
+                  aria-hidden="true"
+                />
+              ) : post.media_urls && post.media_urls.length > 0 ? (
+                <img
+                  src={post.media_urls[0]}
+                  alt=""
+                  className="h-full w-full object-cover blur-xl scale-110"
+                  aria-hidden="true"
+                />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-gray-200 to-gray-300" />
+              )}
+            </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/40 backdrop-blur-sm">
+              <div className="rounded-full bg-white/10 p-4">
+                {post.video_url || post.media_type === "video" ? (
+                  <Play className="h-8 w-8 text-white" />
+                ) : (
+                  <Lock className="h-8 w-8 text-white" />
+                )}
+              </div>
+              <div className="text-center">
+                <p className="mb-1 text-base font-semibold text-white">
+                  This content is for subscribers only
+                </p>
+                <p className="mb-4 text-sm text-white/50">
+                  Subscribe to {creator.display_name} to unlock all premium
+                  content
+                </p>
+                <SubscribeButton
+                  price={subscriptionPrice}
+                  size="lg"
+                />
               </div>
             </div>
-            {isLocked && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/40 backdrop-blur-sm">
-                <div className="rounded-full bg-white/10 p-4">
-                  <Lock className="h-8 w-8 text-white" />
-                </div>
-                <div className="text-center">
-                  <p className="mb-1 text-base font-semibold text-white">
-                    This content is for subscribers only
-                  </p>
-                  <p className="mb-4 text-sm text-white/50">
-                    Subscribe to {creator.display_name} to unlock all premium
-                    content
-                  </p>
-                  <SubscribeButton
-                    price={subscriptionPrice}
-                    size="lg"
-                  />
-                </div>
-              </div>
-            )}
+          </div>
+        )}
+
+        {/* Unlocked image media (non-video) */}
+        {!isLocked && !post.video_url && post.media_urls && post.media_urls.length > 0 && (
+          <div className="relative mb-4 overflow-hidden rounded-xl">
+            <div className="flex aspect-video items-center justify-center bg-gray-100">
+              {post.media_type === "video" ? (
+                <video
+                  src={post.media_urls[0]}
+                  className="h-full w-full object-contain"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <img
+                  src={post.media_urls[0]}
+                  alt={post.title ?? "Post media"}
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
           </div>
         )}
 
