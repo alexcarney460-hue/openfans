@@ -231,6 +231,13 @@ export function StoryViewer({
   // ---- Touch handlers for swipe / hold ----
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Clean up hold timer on unmount
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    };
+  }, []);
+
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       const touch = e.touches[0];

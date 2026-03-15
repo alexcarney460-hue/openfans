@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Film,
   Eye,
@@ -339,6 +339,8 @@ export default function AdminStoriesPage() {
   });
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [creatorSearch, setCreatorSearch] = useState("");
+  const [creatorSearchInput, setCreatorSearchInput] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -394,6 +396,29 @@ export default function AdminStoriesPage() {
   useEffect(() => {
     fetchStories(1);
   }, [fetchStories]);
+
+  // Debounced creator search (400ms)
+  const handleCreatorSearchChange = useCallback(
+    (value: string) => {
+      setCreatorSearchInput(value);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        setCreatorSearch(value);
+      }, 400);
+    },
+    [],
+  );
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   // -------------------------------------------------------------------------
   // Remove story
@@ -508,8 +533,8 @@ export default function AdminStoriesPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
-          value={creatorSearch}
-          onChange={(e) => setCreatorSearch(e.target.value)}
+          value={creatorSearchInput}
+          onChange={(e) => handleCreatorSearchChange(e.target.value)}
           placeholder="Filter by creator username..."
           className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#00AFF0] focus:outline-none focus:ring-1 focus:ring-[#00AFF0]"
         />

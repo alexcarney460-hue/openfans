@@ -91,24 +91,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Collect IDs for batch delete
-    const storyIds = expiredStories.map((s) => s.id as string);
+    // Only delete stories whose media was successfully cleaned up.
+    // Stories with media errors are left in place for manual review.
+    const failedSet = new Set(mediaErrors);
+    const safeToDeleteIds = expiredStories
+      .map((s) => s.id as string)
+      .filter((id) => !failedSet.has(id));
 
-    // Delete story_views for these stories (cascade should handle, but explicit)
-    await db.execute(sql`
-      DELETE FROM story_views
-      WHERE story_id = ANY(${storyIds}::uuid[])
-    `);
+    if (safeToDeleteIds.length > 0) {
+      // Delete story_views for these stories (cascade should handle, but explicit)
+      await db.execute(sql`
+        DELETE FROM story_views
+        WHERE story_id = ANY(${safeToDeleteIds}::uuid[])
+      `);
 
-    // Delete the stories
-    const deleteResult = await db.execute(sql`
-      DELETE FROM stories
-      WHERE expires_at < ${cutoff.toISOString()}
-    `);
+      // Delete the stories
+      await db.execute(sql`
+        DELETE FROM stories
+        WHERE id = ANY(${safeToDeleteIds}::uuid[])
+      `);
+    }
 
     return NextResponse.json({
       success: true,
-      deleted: storyIds.length,
+      deleted: safeToDeleteIds.length,
+      skipped_due_to_media_errors: mediaErrors.length,
       media_deleted: mediaDeleted,
       media_errors: mediaErrors.length > 0 ? mediaErrors : undefined,
       timestamp: now.toISOString(),

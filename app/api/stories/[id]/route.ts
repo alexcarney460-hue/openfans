@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, getAuthenticatedAdmin } from "@/utils/api/auth";
 import { db } from "@/utils/db/db";
 import { sql } from "drizzle-orm";
+import { createClient } from "@/utils/supabase/server";
 
 /**
  * GET /api/stories/[id]
@@ -70,47 +71,44 @@ export async function GET(
       );
     }
 
-    // Record view (upsert) and increment views_count atomically if first view
-    // Only record views for non-owners
+    // Record view and increment views_count atomically using a CTE.
+    // The UPDATE only fires when a new view row is actually inserted,
+    // preventing race-condition double-counts.
+    // Only record views for non-owners.
     if (!isOwner) {
-      const insertResult = await db.execute(sql`
-        INSERT INTO story_views (story_id, viewer_id, viewed_at)
-        VALUES (${storyId}, ${user.id}, ${new Date().toISOString()})
-        ON CONFLICT (story_id, viewer_id) DO NOTHING
-        RETURNING id
+      const viewResult = await db.execute(sql`
+        WITH inserted AS (
+          INSERT INTO story_views (id, story_id, viewer_id, viewed_at)
+          VALUES (gen_random_uuid(), ${storyId}, ${user.id}, NOW())
+          ON CONFLICT (story_id, viewer_id) DO NOTHING
+          RETURNING id
+        )
+        UPDATE stories SET views_count = views_count + 1
+        WHERE id = ${storyId} AND EXISTS (SELECT 1 FROM inserted)
+        RETURNING views_count
       `);
 
-      // If a row was inserted (first view), increment the counter
-      if (insertResult.length > 0) {
-        const updateResult = await db.execute(sql`
-          UPDATE stories
-          SET views_count = views_count + 1
-          WHERE id = ${storyId}
-          RETURNING views_count
-        `);
+      // Send milestone notifications at 10, 50, 100, 500 views
+      const newViewCount = viewResult.length > 0
+        ? (viewResult[0].views_count as number)
+        : null;
 
-        // Send milestone notifications at 10, 50, 100, 500 views
-        const newViewCount = updateResult.length > 0
-          ? (updateResult[0].views_count as number)
-          : null;
-
-        if (newViewCount !== null) {
-          const MILESTONES = [10, 50, 100, 500] as const;
-          if (MILESTONES.includes(newViewCount as typeof MILESTONES[number])) {
-            const creatorId = story.creator_id as string;
-            db.execute(sql`
-              INSERT INTO notifications (user_id, type, title, body, reference_id)
-              VALUES (
-                ${creatorId},
-                'new_message',
-                ${`Your story reached ${newViewCount} views!`},
-                ${`Your story${story.caption ? ` "${(story.caption as string).slice(0, 50)}"` : ""} just hit ${newViewCount} views. Keep creating!`},
-                ${storyId}
-              )
-            `).catch((notifErr) => {
-              console.warn("Failed to create story milestone notification:", notifErr);
-            });
-          }
+      if (newViewCount !== null) {
+        const MILESTONES = [10, 50, 100, 500] as const;
+        if (MILESTONES.includes(newViewCount as typeof MILESTONES[number])) {
+          const creatorId = story.creator_id as string;
+          db.execute(sql`
+            INSERT INTO notifications (user_id, type, title, body, reference_id)
+            VALUES (
+              ${creatorId},
+              'new_message',
+              ${`Your story reached ${newViewCount} views!`},
+              ${`Your story${story.caption ? ` "${(story.caption as string).slice(0, 50)}"` : ""} just hit ${newViewCount} views. Keep creating!`},
+              ${storyId}
+            )
+          `).catch((notifErr) => {
+            console.warn("Failed to create story milestone notification:", notifErr);
+          });
         }
       }
     }
@@ -208,6 +206,23 @@ export async function DELETE(
     await db.execute(sql`
       DELETE FROM stories WHERE id = ${storyId}
     `);
+
+    // Best-effort cleanup of storage media (don't fail the request)
+    try {
+      const mediaUrl = story.media_url as string;
+      if (mediaUrl) {
+        const parsed = new URL(mediaUrl);
+        const match = parsed.pathname.match(
+          /\/storage\/v1\/object\/public\/([^/]+)\/(.+)/,
+        );
+        if (match) {
+          const supabase = createClient();
+          await supabase.storage.from(match[1]).remove([match[2]]);
+        }
+      }
+    } catch (storageErr) {
+      console.warn("Failed to delete story media from storage:", storageErr);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

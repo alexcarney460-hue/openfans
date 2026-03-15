@@ -69,7 +69,7 @@ export function StoryRing({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex flex-col items-center gap-1.5 focus:outline-none",
+        "group flex flex-col items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0] focus-visible:ring-offset-2 rounded-full",
         className,
       )}
       aria-label={

@@ -233,6 +233,13 @@ export async function DELETE(request: NextRequest) {
       console.warn("Failed to log admin story removal (audit table may not exist):", logErr);
     });
 
+    // Delete highlight items referencing this story
+    await db.execute(sql`
+      DELETE FROM story_highlight_items WHERE story_id = ${story_id}
+    `).catch(() => {
+      // story_highlight_items table might not exist yet
+    });
+
     // Delete associated views
     await db.execute(sql`
       DELETE FROM story_views WHERE story_id = ${story_id}

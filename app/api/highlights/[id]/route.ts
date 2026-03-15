@@ -168,9 +168,6 @@ export async function PATCH(
 
     const { name, cover_url } = body;
 
-    // Build SET clauses dynamically
-    const updates: string[] = [];
-
     if (name !== undefined) {
       if (typeof name !== "string" || name.trim().length === 0) {
         return NextResponse.json(
@@ -201,21 +198,32 @@ export async function PATCH(
     }
 
     const now = new Date().toISOString();
-
-    // Use conditional update to handle partial fields
     const trimmedName = name !== undefined ? name.trim() : null;
-    const result = await db.execute(sql`
-      UPDATE story_highlights
-      SET
-        name = COALESCE(${trimmedName}, name),
-        cover_url = CASE
-          WHEN ${cover_url !== undefined} THEN ${cover_url ?? null}
-          ELSE cover_url
-        END,
-        updated_at = ${now}
-      WHERE id = ${highlightId}
-      RETURNING id, creator_id, name, cover_url, position, created_at, updated_at
-    `);
+
+    // Use separate queries to avoid passing JS booleans into SQL
+    let result;
+    if (cover_url !== undefined) {
+      // Update both name and cover_url
+      result = await db.execute(sql`
+        UPDATE story_highlights
+        SET
+          name = COALESCE(${trimmedName}, name),
+          cover_url = ${cover_url ?? null},
+          updated_at = ${now}
+        WHERE id = ${highlightId}
+        RETURNING id, creator_id, name, cover_url, position, created_at, updated_at
+      `);
+    } else {
+      // Update name only
+      result = await db.execute(sql`
+        UPDATE story_highlights
+        SET
+          name = COALESCE(${trimmedName}, name),
+          updated_at = ${now}
+        WHERE id = ${highlightId}
+        RETURNING id, creator_id, name, cover_url, position, created_at, updated_at
+      `);
+    }
 
     return NextResponse.json({ data: result[0] });
   } catch (err) {
