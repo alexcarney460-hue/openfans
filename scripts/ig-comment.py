@@ -272,6 +272,21 @@ def comment_on_latest_post(page, target: str, comment_text: str) -> bool:
 
 def run(targets: list, dry_run: bool = False):
     """Run the comment outreach campaign."""
+    # Skip targets we've already successfully commented on
+    already_posted = set()
+    if Path(LOG_FILE).exists():
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    entry = json.loads(line.strip())
+                    if entry.get("success"):
+                        already_posted.add(entry["target"])
+                except (json.JSONDecodeError, KeyError):
+                    pass
+    targets = [t for t in targets if t not in already_posted]
+    if already_posted:
+        log(f"Skipping {len(already_posted)} already-posted targets: {already_posted}")
+
     random.shuffle(targets)  # Randomize order
     used_comments = set()
     success_count = 0

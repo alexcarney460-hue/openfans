@@ -26,8 +26,10 @@ interface StreamData {
   readonly status: "live" | "ended" | "scheduled";
   readonly chat_enabled: boolean;
   readonly is_subscriber_only: boolean;
+  readonly is_subscribed?: boolean;
   readonly started_at: string | null;
   readonly ended_at: string | null;
+  readonly viewer_count?: number;
   readonly creator: StreamCreator;
 }
 
@@ -93,9 +95,9 @@ export default function StreamClient({ streamId }: StreamClientProps) {
         }
         const data = await res.json();
         if (!cancelled) {
-          const streamPayload: StreamData = data.stream ?? data;
+          const streamPayload: StreamData = data.data ?? data.stream ?? data;
           setStream(streamPayload);
-          setIsSubscribed(data.is_subscribed ?? false);
+          setIsSubscribed(streamPayload.is_subscribed ?? data.is_subscribed ?? false);
           setLoading(false);
         }
       } catch {
@@ -120,8 +122,8 @@ export default function StreamClient({ streamId }: StreamClientProps) {
         const res = await fetch(`/api/streams/${streamId}/chat`);
         if (res.ok && !cancelled) {
           const data = await res.json();
-          const incoming: ChatMessageData[] = data.messages ?? data;
-          setMessages(incoming);
+          const incoming: ChatMessageData[] = data.data ?? data.messages ?? data;
+          setMessages(Array.isArray(incoming) ? incoming : []);
         }
       } catch {
         // Silently retry on next interval
@@ -142,8 +144,9 @@ export default function StreamClient({ streamId }: StreamClientProps) {
       try {
         const res = await fetch(`/api/streams/${streamId}/viewers`);
         if (res.ok && !cancelled) {
-          const data: ViewerData = await res.json();
-          setViewerCount(data.count);
+          const json = await res.json();
+          const viewerData = json.data ?? json;
+          setViewerCount(viewerData.viewer_count ?? viewerData.count ?? 0);
         }
       } catch {
         // Silently retry on next interval
