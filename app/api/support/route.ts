@@ -118,6 +118,20 @@ export async function POST(request: NextRequest) {
 
     const { subject, category, body, priority } = reqBody;
 
+    // Rate limit: max 5 tickets per hour per user
+    const recentTickets = await db.execute(sql`
+      SELECT COUNT(*)::int AS count FROM support_tickets
+      WHERE user_id = ${user.id}
+        AND created_at > NOW() - INTERVAL '1 hour'
+    `);
+    const ticketCount = (recentTickets as unknown as Array<{ count: number }>)[0]?.count ?? 0;
+    if (ticketCount >= 5) {
+      return NextResponse.json(
+        { error: "Too many tickets. Please wait before creating another.", code: "RATE_LIMITED" },
+        { status: 429 },
+      );
+    }
+
     // Validate subject
     if (!subject || typeof subject !== "string" || subject.trim().length === 0) {
       return NextResponse.json(

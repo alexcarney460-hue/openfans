@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   RefreshCw,
   Loader2,
@@ -231,9 +231,15 @@ export default function AdminSupportPage() {
     }
   }, [filter, searchQuery]);
 
+  // Debounce search — wait 400ms after typing stops before fetching
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchTickets();
+    }, searchQuery ? 400 : 0);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [fetchTickets, searchQuery]);
 
   // ---- View ticket detail ----
   const handleViewTicket = async (ticketId: number) => {

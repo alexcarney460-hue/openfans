@@ -655,6 +655,7 @@ export default function LandingPageClient() {
                   >
                     <button
                       type="button"
+                      aria-expanded={isOpen}
                       onClick={() =>
                         setOpenFaq(isOpen ? null : index)
                       }
@@ -670,6 +671,7 @@ export default function LandingPageClient() {
                       />
                     </button>
                     <div
+                      aria-hidden={!isOpen}
                       className={`overflow-hidden transition-all duration-200 ${
                         isOpen ? "max-h-96" : "max-h-0"
                       }`}

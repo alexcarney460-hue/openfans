@@ -147,63 +147,82 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Atomically debit the wallet — only succeeds if sufficient funds above minimum
-        const updatedRows = await db
-          .update(walletsTable)
-          .set({
-            balance_usdc: sql`${walletsTable.balance_usdc} - ${availableBalance}`,
-            updated_at: now,
-          })
-          .where(
-            sql`${walletsTable.id} = ${creator.wallet_id}
-              AND ${walletsTable.balance_usdc} - ${walletsTable.minimum_balance_usdc} >= ${availableBalance}`,
-          )
-          .returning();
+        // Wrap debit + payout + transaction in a single DB transaction
+        let payoutCreated = false;
+        let payoutId: number | null = null;
 
-        if (updatedRows.length === 0) {
-          results.skipped_insufficient_balance++;
-          results.details.push({
-            user_id: creator.user_id,
-            amount_usdc: availableBalance,
-            status: "skipped",
-            reason: "Balance changed during processing (race condition)",
+        try {
+          await db.transaction(async (tx) => {
+            // Atomically debit the wallet — only succeeds if sufficient funds above minimum
+            const updatedRows = await tx
+              .update(walletsTable)
+              .set({
+                balance_usdc: sql`${walletsTable.balance_usdc} - ${availableBalance}`,
+                updated_at: now,
+              })
+              .where(
+                sql`${walletsTable.id} = ${creator.wallet_id}
+                  AND ${walletsTable.balance_usdc} - ${walletsTable.minimum_balance_usdc} >= ${availableBalance}`,
+              )
+              .returning();
+
+            if (updatedRows.length === 0) {
+              throw new Error("INSUFFICIENT_BALANCE");
+            }
+
+            const newBalance = updatedRows[0].balance_usdc;
+
+            // Create the payout record (pending for admin processing)
+            const payoutRecord = await tx
+              .insert(payoutsTable)
+              .values({
+                creator_id: creator.user_id,
+                amount_usdc: availableBalance,
+                wallet_address: creator.wallet_address,
+                status: "pending",
+              })
+              .returning();
+
+            payoutId = payoutRecord[0].id;
+
+            // Record the wallet transaction
+            await tx.insert(walletTransactionsTable).values({
+              wallet_id: creator.wallet_id,
+              user_id: creator.user_id,
+              type: "withdrawal",
+              amount_usdc: -availableBalance,
+              balance_after: newBalance,
+              description: `Auto-payout (${creator.payout_schedule}) to ${creator.wallet_address.slice(0, 4)}...${creator.wallet_address.slice(-4)}`,
+              reference_id: `payout:${payoutRecord[0].id}`,
+              status: "pending",
+            });
+
+            payoutCreated = true;
           });
-          continue;
+        } catch (txErr) {
+          if (txErr instanceof Error && txErr.message === "INSUFFICIENT_BALANCE") {
+            results.skipped_insufficient_balance++;
+            results.details.push({
+              user_id: creator.user_id,
+              amount_usdc: availableBalance,
+              status: "skipped",
+              reason: "Balance changed during processing (race condition)",
+            });
+            continue;
+          }
+          throw txErr;
         }
 
-        const newBalance = updatedRows[0].balance_usdc;
+        if (!payoutCreated) continue;
 
-        // Create the payout record (pending for admin processing)
-        const payoutRecord = await db
-          .insert(payoutsTable)
-          .values({
-            creator_id: creator.user_id,
-            amount_usdc: availableBalance,
-            wallet_address: creator.wallet_address,
-            status: "pending",
-          })
-          .returning();
-
-        // Record the wallet transaction
-        await db.insert(walletTransactionsTable).values({
-          wallet_id: creator.wallet_id,
-          user_id: creator.user_id,
-          type: "withdrawal",
-          amount_usdc: -availableBalance,
-          balance_after: newBalance,
-          description: `Auto-payout (${creator.payout_schedule}) to ${creator.wallet_address.slice(0, 4)}...${creator.wallet_address.slice(-4)}`,
-          reference_id: `payout:${payoutRecord[0].id}`,
-          status: "pending",
-        });
-
-        // Notify the creator
+        // Notify the creator (outside transaction — non-critical)
         const payoutDollars = (availableBalance / 100).toFixed(2);
-        createNotification(
+        await createNotification(
           creator.user_id,
           "payout_completed",
-          "Auto-payout initiated",
+          "Auto-payout queued",
           `A ${creator.payout_schedule} payout of $${payoutDollars} USDC has been queued for processing.`,
-          String(payoutRecord[0].id),
+          String(payoutId),
         );
 
         results.payouts_created++;

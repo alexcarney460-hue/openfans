@@ -19,6 +19,14 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get("from") || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const to = searchParams.get("to") || new Date().toISOString().slice(0, 10);
 
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!DATE_RE.test(from) || !DATE_RE.test(to)) {
+      return NextResponse.json(
+        { error: "Invalid date format. Use YYYY-MM-DD", code: "INVALID_DATE" },
+        { status: 400 },
+      );
+    }
+
     let rows: Record<string, unknown>[];
     let filename: string;
 
