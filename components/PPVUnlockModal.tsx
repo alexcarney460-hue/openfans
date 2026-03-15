@@ -155,7 +155,7 @@ export function PPVUnlockModal({
       const msg = err instanceof Error ? err.message : "Transaction failed";
       setTxState({ status: "error", message: msg });
     }
-  }, [publicKey, sendTransaction, connection, priceDollars, postId, onUnlocked]);
+  }, [publicKey, sendTransaction, connection, priceDollars, postId, onUnlocked, track]);
 
   if (!isOpen) return null;
 

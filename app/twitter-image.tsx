@@ -52,6 +52,7 @@ export default async function Image() {
 
         {/* Logo */}
         <img
+          alt="OpenFans"
           src={logoBase64}
           width={600}
           height={170}

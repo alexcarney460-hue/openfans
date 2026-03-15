@@ -63,7 +63,7 @@ export default function SinglePostClient() {
 
   useEffect(() => {
     track("post_view", params.postId);
-  }, [params.postId]);
+  }, [params.postId, track]);
 
   useEffect(() => {
     async function fetchData() {

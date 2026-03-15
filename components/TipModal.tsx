@@ -162,7 +162,7 @@ export function TipModal({
       const msg = err instanceof Error ? err.message : "Transaction failed";
       setTxState({ status: "error", message: msg });
     }
-  }, [publicKey, sendTransaction, connection, parsedAmount, isValidAmount, creatorId, message]);
+  }, [publicKey, sendTransaction, connection, parsedAmount, isValidAmount, creatorId, message, creatorUsername, track]);
 
   if (!isOpen) return null;
 

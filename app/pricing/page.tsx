@@ -139,7 +139,7 @@ export default function PricingPage() {
 
   useEffect(() => {
     track("page_view", "pricing");
-  }, []);
+  }, [track]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
