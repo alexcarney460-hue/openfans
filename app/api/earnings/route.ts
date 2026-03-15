@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       .where(eq(usersTable.id, user.id))
       .limit(1);
 
-    if (userResult.length === 0 || userResult[0].role !== "creator") {
+    if (userResult.length === 0 || (userResult[0].role !== "creator" && userResult[0].role !== "admin")) {
       return NextResponse.json(
         { error: "Only creators can view earnings", code: "NOT_CREATOR" },
         { status: 403 },
