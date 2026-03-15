@@ -177,7 +177,36 @@ export async function signup(currentState: { message: string }, formData: FormDa
         return { message: "Failed to setup user account" }
     }
 
-    const redirectPath = data.role === 'creator' ? '/onboarding' : '/dashboard'
+    // Determine redirect path based on role and referral
+    let redirectPath = data.role === 'creator' ? '/onboarding' : '/dashboard'
+
+    // If the new user is a fan and was referred, redirect to the referrer's profile
+    // so they can subscribe immediately
+    if (data.role !== 'creator' && data.ref) {
+        try {
+            const referrerAffiliate = await db
+                .select({ user_id: affiliatesTable.user_id })
+                .from(affiliatesTable)
+                .where(eq(affiliatesTable.referral_code, data.ref))
+                .limit(1)
+
+            if (referrerAffiliate.length > 0) {
+                const referrerUser = await db
+                    .select({ username: usersTable.username })
+                    .from(usersTable)
+                    .where(eq(usersTable.id, referrerAffiliate[0].user_id))
+                    .limit(1)
+
+                if (referrerUser[0]?.username) {
+                    redirectPath = `/${referrerUser[0].username}`
+                }
+            }
+        } catch (refRedirectErr) {
+            // Don't fail signup if redirect lookup fails — just go to dashboard
+            console.error("Referral redirect lookup error:", refRedirectErr instanceof Error ? refRedirectErr.message : "Unknown error")
+        }
+    }
+
     revalidatePath("/", "layout")
     redirect(redirectPath)
 }

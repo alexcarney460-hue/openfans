@@ -14,7 +14,6 @@ import {
   DollarSign,
   Wallet,
   BarChart3,
-  Gift,
   Settings,
   Bell,
   Menu,
@@ -27,6 +26,7 @@ import {
   Share2,
   ShieldCheck,
   Bookmark,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -55,7 +55,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/earnings", labelKey: "dash.earnings", icon: DollarSign, creatorOnly: true },
   { href: "/dashboard/analytics", labelKey: "dash.analytics", icon: BarChart3, creatorOnly: true },
   { href: "/dashboard/wallet", labelKey: "dash.wallet", icon: Wallet },
-  { href: "/dashboard/affiliate", labelKey: "dash.affiliates", icon: Gift, creatorOnly: true },
+  { href: "/dashboard/promotions", labelKey: "dash.promotions", icon: Tag, creatorOnly: true },
   { href: "/dashboard/referrals", labelKey: "dash.referrals", icon: Share2, creatorOnly: true },
   { href: "/dashboard/verification", labelKey: "dash.verification", icon: ShieldCheck, creatorOnly: true },
   { href: "/dashboard/notifications", labelKey: "dash.notifications", icon: Bell },

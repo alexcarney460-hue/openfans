@@ -62,9 +62,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { subscription_price, categories, payout_wallet } = body;
+    const { subscription_price, premium_price, vip_price, categories, payout_wallet } = body;
 
-    // Validate subscription price
+    // Validate subscription price (basic tier, required)
     if (
       subscription_price === undefined ||
       subscription_price === null ||
@@ -87,6 +87,44 @@ export async function POST(request: NextRequest) {
 
     const priceInCents = Math.round(Number(subscription_price) * 100);
 
+    // Validate and convert tier prices (null means tier not offered)
+    let premiumCents: number | null = null;
+    if (premium_price !== undefined && premium_price !== null) {
+      const premVal = Number(premium_price);
+      if (isNaN(premVal) || premVal <= 0) {
+        return NextResponse.json(
+          { error: "premium_price must be a positive number", code: "INVALID_PREMIUM_PRICE" },
+          { status: 400 },
+        );
+      }
+      premiumCents = Math.round(premVal * 100);
+      if (premiumCents <= priceInCents) {
+        return NextResponse.json(
+          { error: "Premium price must be greater than Basic price", code: "INVALID_TIER_PRICING" },
+          { status: 400 },
+        );
+      }
+    }
+
+    let vipCents: number | null = null;
+    if (vip_price !== undefined && vip_price !== null) {
+      const vipVal = Number(vip_price);
+      if (isNaN(vipVal) || vipVal <= 0) {
+        return NextResponse.json(
+          { error: "vip_price must be a positive number", code: "INVALID_VIP_PRICE" },
+          { status: 400 },
+        );
+      }
+      vipCents = Math.round(vipVal * 100);
+      const referencePrice = premiumCents ?? priceInCents;
+      if (vipCents <= referencePrice) {
+        return NextResponse.json(
+          { error: "VIP price must be greater than " + (premiumCents ? "Premium" : "Basic") + " price", code: "INVALID_TIER_PRICING" },
+          { status: 400 },
+        );
+      }
+    }
+
     // Check if a creator profile already exists
     const existing = await db
       .select({ id: creatorProfilesTable.id })
@@ -100,6 +138,8 @@ export async function POST(request: NextRequest) {
       // Update existing profile
       const updates: Record<string, unknown> = {
         subscription_price_usdc: priceInCents,
+        premium_price_usdc: premiumCents,
+        vip_price_usdc: vipCents,
         categories: categories.map(String),
       };
       if (typeof payout_wallet === "string" && payout_wallet.trim()) {
@@ -137,6 +177,8 @@ export async function POST(request: NextRequest) {
         .values({
           user_id: user.id,
           subscription_price_usdc: priceInCents,
+          premium_price_usdc: premiumCents,
+          vip_price_usdc: vipCents,
           categories: categories.map(String),
           payout_wallet: validatedWallet,
         })
@@ -170,6 +212,8 @@ export async function POST(request: NextRequest) {
  *
  * Body (all optional):
  *   - subscription_price: number (USDC, e.g. 9.99)
+ *   - premium_price: number | null (USDC, null to disable)
+ *   - vip_price: number | null (USDC, null to disable)
  *   - categories: string[]
  *   - payout_wallet: string
  */
@@ -196,6 +240,24 @@ export async function PATCH(request: NextRequest) {
       updates.subscription_price_usdc = Math.round(Number(body.subscription_price) * 100);
     }
 
+    // Handle premium_price (null to disable, number to set)
+    if (body.premium_price !== undefined) {
+      if (body.premium_price === null) {
+        updates.premium_price_usdc = null;
+      } else if (!isNaN(Number(body.premium_price)) && Number(body.premium_price) > 0) {
+        updates.premium_price_usdc = Math.round(Number(body.premium_price) * 100);
+      }
+    }
+
+    // Handle vip_price (null to disable, number to set)
+    if (body.vip_price !== undefined) {
+      if (body.vip_price === null) {
+        updates.vip_price_usdc = null;
+      } else if (!isNaN(Number(body.vip_price)) && Number(body.vip_price) > 0) {
+        updates.vip_price_usdc = Math.round(Number(body.vip_price) * 100);
+      }
+    }
+
     if (Array.isArray(body.categories) && body.categories.length > 0) {
       updates.categories = body.categories.map(String);
     }
@@ -216,6 +278,46 @@ export async function PATCH(request: NextRequest) {
         { error: "No valid fields to update", code: "NO_UPDATES" },
         { status: 400 },
       );
+    }
+
+    // Validate tier pricing hierarchy: basic < premium < vip
+    // Fetch current profile values to compare against
+    const currentProfile = await db
+      .select({
+        subscription_price_usdc: creatorProfilesTable.subscription_price_usdc,
+        premium_price_usdc: creatorProfilesTable.premium_price_usdc,
+        vip_price_usdc: creatorProfilesTable.vip_price_usdc,
+      })
+      .from(creatorProfilesTable)
+      .where(eq(creatorProfilesTable.user_id, user.id))
+      .limit(1);
+
+    if (currentProfile.length > 0) {
+      const current = currentProfile[0];
+      const effectiveBasic = (updates.subscription_price_usdc as number | undefined) ?? current.subscription_price_usdc;
+      const effectivePremium = updates.premium_price_usdc !== undefined
+        ? (updates.premium_price_usdc as number | null)
+        : current.premium_price_usdc;
+      const effectiveVip = updates.vip_price_usdc !== undefined
+        ? (updates.vip_price_usdc as number | null)
+        : current.vip_price_usdc;
+
+      if (effectivePremium !== null && effectivePremium !== undefined && effectivePremium <= effectiveBasic) {
+        return NextResponse.json(
+          { error: "Premium price must be greater than Basic price", code: "INVALID_TIER_PRICING" },
+          { status: 400 },
+        );
+      }
+
+      if (effectiveVip !== null && effectiveVip !== undefined) {
+        const referencePrice = effectivePremium ?? effectiveBasic;
+        if (effectiveVip <= referencePrice) {
+          return NextResponse.json(
+            { error: `VIP price must be greater than ${effectivePremium ? "Premium" : "Basic"} price`, code: "INVALID_TIER_PRICING" },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     const updated = await db

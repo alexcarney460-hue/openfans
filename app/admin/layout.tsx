@@ -10,7 +10,9 @@ import {
   UserCog,
   DollarSign,
   Shield,
+  FileCheck,
   Flag,
+  Scale,
   Menu,
   X,
   ChevronLeft,
@@ -27,7 +29,9 @@ const NAV_ITEMS = [
   { href: "/admin/creators", label: "Creators", icon: Users },
   { href: "/admin/users", label: "Users", icon: UserCog },
   { href: "/admin/verification", label: "Verification", icon: Shield },
+  { href: "/admin/compliance", label: "Compliance", icon: FileCheck },
   { href: "/admin/moderation", label: "Moderation", icon: Flag },
+  { href: "/admin/dmca", label: "DMCA", icon: Scale },
 ] as const;
 
 export default function AdminLayout({

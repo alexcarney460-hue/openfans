@@ -10,6 +10,7 @@ export interface Message {
   readonly isRead: boolean;
   readonly isFailed: boolean;
   readonly isOptimistic: boolean;
+  readonly isBroadcast?: boolean;
 }
 
 export interface Conversation {
@@ -22,6 +23,7 @@ export interface Conversation {
   readonly lastMessageTime: string;
   readonly unreadCount: number;
   readonly messages: readonly Message[];
+  readonly lastMessageIsBroadcast?: boolean;
 }
 
 export interface ApiConversation {
@@ -31,6 +33,7 @@ export interface ApiConversation {
   readonly body: string;
   readonly media_url: string | null;
   readonly is_read: boolean;
+  readonly is_broadcast: boolean;
   readonly created_at: string;
   readonly partner_id: string;
   readonly partner_username: string;
@@ -48,6 +51,7 @@ export interface ApiMessage {
   readonly is_paid: boolean;
   readonly price_usdc: number | null;
   readonly is_read: boolean;
+  readonly is_broadcast: boolean;
   readonly created_at: string;
 }
 

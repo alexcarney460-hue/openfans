@@ -1,7 +1,7 @@
 "use client";
 
 import type { Conversation } from "@/app/dashboard/messages/types";
-import { Search, Plus, MessageSquare } from "lucide-react";
+import { Search, Plus, MessageSquare, Megaphone } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 
 interface ConversationListProps {
@@ -9,6 +9,8 @@ interface ConversationListProps {
   readonly activeConversationId: string | null;
   readonly onSelectConversation: (conversationId: string) => void;
   readonly onNewMessage: () => void;
+  readonly onBroadcast?: () => void;
+  readonly isCreator?: boolean;
 }
 
 export default function ConversationList({
@@ -16,6 +18,8 @@ export default function ConversationList({
   activeConversationId,
   onSelectConversation,
   onNewMessage,
+  onBroadcast,
+  isCreator = false,
 }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -43,13 +47,25 @@ export default function ConversationList({
       <div className="border-b border-gray-200 p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
-          <button
-            onClick={onNewMessage}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-            aria-label="New message"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {isCreator && onBroadcast && (
+              <button
+                onClick={onBroadcast}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-[#00AFF0]/10 hover:text-[#00AFF0]"
+                aria-label="Broadcast message"
+                title="Send broadcast to all subscribers"
+              >
+                <Megaphone className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              onClick={onNewMessage}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              aria-label="New message"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -139,12 +155,15 @@ export default function ConversationList({
                   </span>
                 </div>
                 <p
-                  className={`mt-0.5 truncate text-xs ${
+                  className={`mt-0.5 flex items-center gap-1 truncate text-xs ${
                     hasUnread
                       ? "font-medium text-gray-700"
                       : "text-gray-400"
                   }`}
                 >
+                  {conversation.lastMessageIsBroadcast && (
+                    <Megaphone className="h-3 w-3 flex-shrink-0 text-[#00AFF0]" />
+                  )}
                   {conversation.lastMessage || "No messages yet"}
                 </p>
               </div>

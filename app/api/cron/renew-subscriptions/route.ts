@@ -12,6 +12,7 @@ import {
 } from "@/utils/db/schema";
 import { eq, and, sql, lte, gte } from "drizzle-orm";
 import { createNotification } from "@/utils/notifications";
+import { processReferralCommission } from "@/utils/referral-commission";
 
 const PLATFORM_FEE_PERCENT = 5;
 
@@ -70,6 +71,18 @@ export async function GET(request: NextRequest) {
 
     for (const sub of expiringSubscriptions) {
       results.processed++;
+
+      // Free trials ($0 subs) should not auto-renew — expire them instead
+      if (sub.price_usdc === 0) {
+        try {
+          await expireSubscription(sub);
+          results.expired++;
+        } catch (error) {
+          console.error(`Error expiring free trial subscription ${sub.id}:`, error);
+          results.errors++;
+        }
+        continue;
+      }
 
       try {
         await processRenewal(sub);
@@ -256,6 +269,19 @@ async function processRenewal(sub: SubscriptionToRenew): Promise<void> {
       .set({ expires_at: newExpiresAt })
       .where(eq(subscriptionsTable.id, sub.id));
   });
+
+  // Process referral commission (fire-and-forget, outside transaction)
+  const platformFeeForCommission = Math.round((sub.price_usdc * PLATFORM_FEE_PERCENT) / 100);
+  const creatorAmountForCommission = sub.price_usdc - platformFeeForCommission;
+  if (creatorAmountForCommission > 0) {
+    processReferralCommission(
+      sub.creator_id,
+      "subscription",
+      creatorAmountForCommission,
+      `renewal-${sub.id}`,
+      sub.subscriber_id,
+    );
+  }
 
   // Notify subscriber about successful renewal (outside transaction -- non-critical)
   const creatorInfo = await db

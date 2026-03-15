@@ -41,6 +41,8 @@ export async function GET(
         // Creator profile
         profile_id: creatorProfilesTable.id,
         subscription_price_usdc: creatorProfilesTable.subscription_price_usdc,
+        premium_price_usdc: creatorProfilesTable.premium_price_usdc,
+        vip_price_usdc: creatorProfilesTable.vip_price_usdc,
         total_subscribers: creatorProfilesTable.total_subscribers,
         total_earnings_usdc: creatorProfilesTable.total_earnings_usdc,
         categories: creatorProfilesTable.categories,

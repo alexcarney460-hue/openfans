@@ -8,6 +8,7 @@ import {
   creatorProfilesTable,
   walletsTable,
   walletTransactionsTable,
+  promotionsTable,
 } from "@/utils/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/utils/api/auth";
@@ -16,6 +17,7 @@ import { createNotification } from "@/utils/notifications";
 import { sendNewSubscriberEmail } from "@/utils/email";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
+import { processReferralCommission } from "@/utils/referral-commission";
 
 const PLATFORM_FEE_PERCENT = 5;
 
@@ -93,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { creator_id, tier, payment_tx } = body;
+    const { creator_id, tier, payment_tx, promo_code } = body;
 
     // Validate required fields
     if (!creator_id || typeof creator_id !== "string") {
@@ -147,6 +149,8 @@ export async function POST(request: NextRequest) {
       .select({
         user_id: creatorProfilesTable.user_id,
         subscription_price_usdc: creatorProfilesTable.subscription_price_usdc,
+        premium_price_usdc: creatorProfilesTable.premium_price_usdc,
+        vip_price_usdc: creatorProfilesTable.vip_price_usdc,
         payout_wallet: creatorProfilesTable.payout_wallet,
       })
       .from(creatorProfilesTable)
@@ -157,6 +161,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Creator not found", code: "CREATOR_NOT_FOUND" },
         { status: 404 },
+      );
+    }
+
+    // Validate that the requested tier is offered by the creator
+    const profile = creatorProfile[0];
+    const tierPriceMap: Record<string, number | null> = {
+      basic: profile.subscription_price_usdc,
+      premium: profile.premium_price_usdc,
+      vip: profile.vip_price_usdc,
+    };
+
+    const tierPrice = tierPriceMap[tier];
+    if (tierPrice === null || tierPrice === undefined) {
+      return NextResponse.json(
+        { error: `This creator does not offer a ${tier} tier`, code: "TIER_NOT_OFFERED" },
+        { status: 400 },
       );
     }
 
@@ -183,40 +203,115 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate subscription price is within safe bounds
-    const priceUsdc = creatorProfile[0].subscription_price_usdc;
-    if (!isValidAmount(priceUsdc)) {
+    // Use the tier-specific price
+    const basePriceUsdc = tierPrice;
+    if (!isValidAmount(basePriceUsdc)) {
       return NextResponse.json(
         { error: "Subscription price is outside the valid range", code: "INVALID_AMOUNT" },
         { status: 400 },
       );
     }
 
-    // Verify the Solana transaction on-chain against the PLATFORM wallet
-    const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || "";
-    if (!platformWallet) {
-      return NextResponse.json(
-        { error: "Platform wallet not configured", code: "CONFIG_ERROR" },
-        { status: 500 },
-      );
+    // ── Promo code validation ──────────────────────────────────────────
+    let validatedPromo: {
+      id: number;
+      type: "discount" | "free_trial";
+      discount_percent: number | null;
+      trial_days: number | null;
+    } | null = null;
+
+    if (promo_code && typeof promo_code === "string" && promo_code.trim().length > 0) {
+      const normalizedCode = promo_code.trim().toUpperCase();
+
+      const promos = await db
+        .select()
+        .from(promotionsTable)
+        .where(
+          and(
+            eq(promotionsTable.creator_id, creator_id),
+            eq(promotionsTable.code, normalizedCode),
+          ),
+        )
+        .limit(1);
+
+      if (promos.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid promo code", code: "INVALID_PROMO" },
+          { status: 400 },
+        );
+      }
+
+      const promo = promos[0];
+
+      if (!promo.is_active) {
+        return NextResponse.json(
+          { error: "This promo code is no longer active", code: "PROMO_INACTIVE" },
+          { status: 400 },
+        );
+      }
+
+      if (promo.expires_at && new Date(promo.expires_at).getTime() < Date.now()) {
+        return NextResponse.json(
+          { error: "This promo code has expired", code: "PROMO_EXPIRED" },
+          { status: 400 },
+        );
+      }
+
+      if (promo.max_uses !== null && promo.current_uses >= promo.max_uses) {
+        return NextResponse.json(
+          { error: "This promo code has reached its maximum uses", code: "PROMO_MAXED" },
+          { status: 400 },
+        );
+      }
+
+      validatedPromo = {
+        id: promo.id,
+        type: promo.type as "discount" | "free_trial",
+        discount_percent: promo.discount_percent,
+        trial_days: promo.trial_days,
+      };
     }
 
-    const verification = await verifyTransaction(
-      payment_tx.trim(),
-      priceUsdc,
-      platformWallet,
-    );
-
-    if (!verification.verified) {
-      return NextResponse.json(
-        { error: verification.error ?? "Transaction verification failed", code: "INVALID_TX" },
-        { status: 400 },
-      );
-    }
-
-    // Set expiry to 30 days from now
+    // ── Calculate effective price and expiry ────────────────────────────
+    const isFreeTrial = validatedPromo?.type === "free_trial";
+    let priceUsdc: number;
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    if (isFreeTrial) {
+      priceUsdc = 0;
+      const trialDays = validatedPromo!.trial_days ?? 7;
+      expiresAt.setDate(expiresAt.getDate() + trialDays);
+    } else if (validatedPromo?.type === "discount" && validatedPromo.discount_percent) {
+      priceUsdc = Math.round(basePriceUsdc * (100 - validatedPromo.discount_percent) / 100);
+      expiresAt.setDate(expiresAt.getDate() + 30);
+    } else {
+      priceUsdc = basePriceUsdc;
+      expiresAt.setDate(expiresAt.getDate() + 30);
+    }
+
+    // ── On-chain verification (skip for free trials) ───────────────────
+    if (!isFreeTrial) {
+      const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET || "";
+      if (!platformWallet) {
+        return NextResponse.json(
+          { error: "Platform wallet not configured", code: "CONFIG_ERROR" },
+          { status: 500 },
+        );
+      }
+
+      const verification = await verifyTransaction(
+        payment_tx.trim(),
+        priceUsdc,
+        platformWallet,
+      );
+
+      if (!verification.verified) {
+        return NextResponse.json(
+          { error: verification.error ?? "Transaction verification failed", code: "INVALID_TX" },
+          { status: 400 },
+        );
+      }
+    }
 
     const newSub = await db
       .insert(subscriptionsTable)
@@ -231,71 +326,101 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    // Calculate platform fee and creator share
-    const platformFee = Math.round(
+    // Increment promo usage counter atomically with row-level lock
+    if (validatedPromo) {
+      await db.transaction(async (tx) => {
+        const lockedRows = await tx.execute(sql`
+          SELECT current_uses, max_uses FROM promotions WHERE id = ${validatedPromo.id} FOR UPDATE
+        `);
+        const lockedPromo = lockedRows[0] as { current_uses: number; max_uses: number | null } | undefined;
+        if (lockedPromo && lockedPromo.max_uses !== null && lockedPromo.current_uses >= lockedPromo.max_uses) {
+          throw new Error("PROMO_MAXED");
+        }
+        await tx.update(promotionsTable).set({ current_uses: sql`current_uses + 1` }).where(eq(promotionsTable.id, validatedPromo.id));
+      });
+    }
+
+    // Calculate platform fee and creator share (skip for free trials)
+    const platformFee = priceUsdc > 0 ? Math.round(
       (priceUsdc * PLATFORM_FEE_PERCENT) / 100,
-    );
+    ) : 0;
     const creatorAmount = priceUsdc - platformFee;
 
-    // Get or create creator wallet, then credit with creatorAmount
-    const existingCreatorWallet = await db
-      .select()
-      .from(walletsTable)
-      .where(eq(walletsTable.user_id, creator_id))
-      .limit(1);
+    // Credit creator wallet only if there was an actual payment
+    if (creatorAmount > 0) {
+      // Get or create creator wallet, then credit with creatorAmount
+      const existingCreatorWallet = await db
+        .select()
+        .from(walletsTable)
+        .where(eq(walletsTable.user_id, creator_id))
+        .limit(1);
 
-    let creatorWallet = existingCreatorWallet[0];
-    if (!creatorWallet) {
-      const [newWallet] = await db
-        .insert(walletsTable)
-        .values({ user_id: creator_id, balance_usdc: 0 })
+      let creatorWallet = existingCreatorWallet[0];
+      if (!creatorWallet) {
+        const [newWallet] = await db
+          .insert(walletsTable)
+          .values({ user_id: creator_id, balance_usdc: 0 })
+          .returning();
+        creatorWallet = newWallet;
+      }
+
+      // Atomic credit to creator wallet
+      const [updatedCreatorWallet] = await db
+        .update(walletsTable)
+        .set({
+          balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
+          updated_at: new Date(),
+        })
+        .where(eq(walletsTable.user_id, creator_id))
         .returning();
-      creatorWallet = newWallet;
+
+      // Record wallet transaction for creator
+      if (updatedCreatorWallet) {
+        await db.insert(walletTransactionsTable).values({
+          wallet_id: updatedCreatorWallet.id,
+          user_id: creator_id,
+          type: "subscription_received",
+          amount_usdc: creatorAmount,
+          balance_after: updatedCreatorWallet.balance_usdc,
+          description: `Subscription received (5% fee: $${(platformFee / 100).toFixed(2)})`,
+          reference_id: payment_tx.trim(),
+          related_user_id: user.id,
+        });
+
+        // Record platform fee transaction
+        if (platformFee > 0) {
+          await db.insert(walletTransactionsTable).values({
+            wallet_id: updatedCreatorWallet.id,
+            user_id: creator_id,
+            type: "platform_fee",
+            amount_usdc: -platformFee,
+            balance_after: updatedCreatorWallet.balance_usdc,
+            description: `Platform fee (5%) on subscription`,
+            reference_id: payment_tx.trim(),
+            related_user_id: user.id,
+          });
+        }
+      }
+
+      // Update creator's total_earnings_usdc
+      await db
+        .update(creatorProfilesTable)
+        .set({
+          total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
+        })
+        .where(eq(creatorProfilesTable.user_id, creator_id));
     }
 
-    // Atomic credit to creator wallet
-    const [updatedCreatorWallet] = await db
-      .update(walletsTable)
-      .set({
-        balance_usdc: sql`${walletsTable.balance_usdc} + ${creatorAmount}`,
-        updated_at: new Date(),
-      })
-      .where(eq(walletsTable.user_id, creator_id))
-      .returning();
-
-    // Record wallet transaction for creator
-    if (updatedCreatorWallet) {
-      await db.insert(walletTransactionsTable).values({
-        wallet_id: updatedCreatorWallet.id,
-        user_id: creator_id,
-        type: "subscription_received",
-        amount_usdc: creatorAmount,
-        balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Subscription received (5% fee: $${(platformFee / 100).toFixed(2)})`,
-        reference_id: payment_tx.trim(),
-        related_user_id: user.id,
-      });
-
-      // Record platform fee transaction
-      await db.insert(walletTransactionsTable).values({
-        wallet_id: updatedCreatorWallet.id,
-        user_id: creator_id,
-        type: "platform_fee",
-        amount_usdc: -platformFee,
-        balance_after: updatedCreatorWallet.balance_usdc,
-        description: `Platform fee (5%) on subscription`,
-        reference_id: payment_tx.trim(),
-        related_user_id: user.id,
-      });
+    // Process referral commission if the creator was referred by someone
+    if (creatorAmount > 0) {
+      processReferralCommission(
+        creator_id,
+        "subscription",
+        creatorAmount,
+        payment_tx.trim(),
+        user.id,
+      );
     }
-
-    // Update creator's total_earnings_usdc
-    await db
-      .update(creatorProfilesTable)
-      .set({
-        total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
-      })
-      .where(eq(creatorProfilesTable.user_id, creator_id));
 
     // Notify the creator about the new subscriber
     const subscriberInfo = await db

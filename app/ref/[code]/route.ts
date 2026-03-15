@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
 import { db } from "@/utils/db/db";
 import { affiliatesTable, usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
 
 /**
  * GET /ref/[code]
- * Resolves a referral code and redirects:
- *   - Fans → creator's profile page with ?ref= param (so they can subscribe)
- *   - Everyone → signup page with ?ref= param as fallback
- *
- * The referral code is tied to a creator. Visiting their link shows their profile
- * so fans can see who they're subscribing to.
+ * Resolves a referral code and redirects based on auth status:
+ *   - NOT logged in → /signup?ref=CODE (so they sign up with the code)
+ *   - Logged in → /@creator-username (the referrer's profile)
  */
 export async function GET(
   _request: NextRequest,
@@ -30,14 +28,20 @@ export async function GET(
       .limit(1);
 
     if (rows.length === 0 || !rows[0].is_active) {
-      // Invalid or inactive code → redirect to signup with code anyway
+      // Invalid or inactive code — redirect to signup with code anyway
       // (the signup will just ignore an invalid code gracefully)
       return NextResponse.redirect(
         new URL(`/signup?ref=${encodeURIComponent(code)}`, _request.url),
       );
     }
 
-    // Get the creator's username
+    // Check if visitor is logged in
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Get the creator's username for profile redirect
     const userRows = await db
       .select({ username: usersTable.username })
       .from(usersTable)
@@ -46,16 +50,18 @@ export async function GET(
 
     const username = userRows[0]?.username;
 
-    if (username) {
-      // Redirect to creator's profile with ref param
-      // Fans land on the creator's page and can subscribe; the ref code is
-      // stored in a cookie or passed to signup if they decide to create an account
-      return NextResponse.redirect(
-        new URL(`/${username}?ref=${encodeURIComponent(code)}`, _request.url),
-      );
+    if (user) {
+      // Logged in — redirect to the referrer's profile page
+      if (username) {
+        return NextResponse.redirect(
+          new URL(`/${username}`, _request.url),
+        );
+      }
+      // Fallback if no username found
+      return NextResponse.redirect(new URL("/", _request.url));
     }
 
-    // Fallback: no username found, go to signup
+    // Not logged in — redirect to signup with ref code
     return NextResponse.redirect(
       new URL(`/signup?ref=${encodeURIComponent(code)}`, _request.url),
     );

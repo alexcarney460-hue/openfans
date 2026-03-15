@@ -48,7 +48,9 @@ export const creatorProfilesTable = pgTable('creator_profiles', {
     .notNull()
     .unique()
     .references(() => usersTable.id, { onDelete: 'cascade' }),
-  subscription_price_usdc: integer('subscription_price_usdc').notNull(), // cents
+  subscription_price_usdc: integer('subscription_price_usdc').notNull(), // cents (basic tier)
+  premium_price_usdc: integer('premium_price_usdc'), // cents, null = not offered
+  vip_price_usdc: integer('vip_price_usdc'), // cents, null = not offered
   total_subscribers: integer('total_subscribers').notNull().default(0),
   total_earnings_usdc: integer('total_earnings_usdc').notNull().default(0), // cents
   payout_wallet: text('payout_wallet'),
@@ -185,6 +187,7 @@ export const messagesTable = pgTable('messages', {
   is_paid: boolean('is_paid').notNull().default(false),
   price_usdc: integer('price_usdc'), // cents, nullable
   is_read: boolean('is_read').notNull().default(false),
+  is_broadcast: boolean('is_broadcast').notNull().default(false),
   created_at: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -572,3 +575,75 @@ export const contentReportsTable = pgTable('content_reports', {
 
 export type InsertContentReport = typeof contentReportsTable.$inferInsert;
 export type SelectContentReport = typeof contentReportsTable.$inferSelect;
+
+// ─── DMCA Requests ──────────────────────────────────────────────────────────
+
+export const dmcaRequestsTable = pgTable('dmca_requests', {
+  id: serial('id').primaryKey(),
+  complainant_name: text('complainant_name').notNull(),
+  complainant_email: text('complainant_email').notNull(),
+  copyrighted_work: text('copyrighted_work').notNull(),
+  infringing_urls: text('infringing_urls').notNull(),
+  good_faith: boolean('good_faith').notNull(),
+  accuracy_statement: boolean('accuracy_statement').notNull(),
+  signature: text('signature').notNull(),
+  status: text('status', { enum: ['pending', 'approved', 'rejected', 'counter_filed'] }).notNull().default('pending'),
+  admin_notes: text('admin_notes'),
+  post_id: integer('post_id').references(() => postsTable.id, { onDelete: 'set null' }),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolved_at: timestamp('resolved_at', { withTimezone: true }),
+}, (table) => ({
+  statusIdx: index('dmca_requests_status_idx').on(table.status),
+  createdAtIdx: index('dmca_requests_created_at_idx').on(table.created_at),
+}));
+
+export type InsertDmcaRequest = typeof dmcaRequestsTable.$inferInsert;
+export type SelectDmcaRequest = typeof dmcaRequestsTable.$inferSelect;
+
+// ─── 2257 Compliance Records ────────────────────────────────────────────────
+// Required by 18 U.S.C. § 2257 — age verification records for all creators.
+// Auto-created when an admin approves a creator's KYC verification.
+
+export const complianceRecordsTable = pgTable('compliance_records', {
+  id: serial('id').primaryKey(),
+  creator_id: text('creator_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  legal_name: text('legal_name').notNull(),
+  date_of_birth: text('date_of_birth').notNull(),
+  document_type: text('document_type', {
+    enum: ['passport', 'drivers_license', 'national_id', 'other'],
+  }).notNull().default('other'),
+  document_url: text('document_url').notNull(),
+  selfie_url: text('selfie_url').notNull(),
+  verified_at: timestamp('verified_at', { withTimezone: true }).notNull(),
+  verified_by: text('verified_by').references(() => usersTable.id), // admin who approved
+  is_active: boolean('is_active').notNull().default(true),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  creatorIdIdx: index('compliance_records_creator_id_idx').on(table.creator_id),
+  isActiveIdx: index('compliance_records_is_active_idx').on(table.is_active),
+}));
+
+export type InsertComplianceRecord = typeof complianceRecordsTable.$inferInsert;
+export type SelectComplianceRecord = typeof complianceRecordsTable.$inferSelect;
+
+// ─── Promotions ─────────────────────────────────────────────────────────────
+// Creator promo codes: discount subscriptions or offer free trials.
+
+export const promotionsTable = pgTable('promotions', {
+  id: serial('id').primaryKey(),
+  creator_id: text('creator_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(),
+  type: text('type', { enum: ['discount', 'free_trial'] }).notNull(),
+  discount_percent: integer('discount_percent'), // 10-90%, null for free trials
+  trial_days: integer('trial_days'), // 1-30, null for discounts
+  max_uses: integer('max_uses'), // null = unlimited
+  current_uses: integer('current_uses').notNull().default(0),
+  expires_at: timestamp('expires_at', { withTimezone: true }),
+  is_active: boolean('is_active').notNull().default(true),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  creatorCodeUnique: unique().on(table.creator_id, table.code),
+}));
+
+export type InsertPromotion = typeof promotionsTable.$inferInsert;
+export type SelectPromotion = typeof promotionsTable.$inferSelect;

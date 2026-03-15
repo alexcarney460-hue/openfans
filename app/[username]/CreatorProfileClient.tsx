@@ -55,6 +55,8 @@ interface ApiCreatorData {
   readonly created_at: string;
   readonly profile_id: number;
   readonly subscription_price_usdc: number;
+  readonly premium_price_usdc?: number | null;
+  readonly vip_price_usdc?: number | null;
   readonly total_subscribers: number;
   readonly categories: string[];
   readonly is_featured: boolean;
@@ -279,6 +281,8 @@ export default function CreatorProfileClient() {
   }
 
   const subscriptionPrice = (creator.subscription_price_usdc ?? 0) / 100;
+  const premiumPrice = creator.premium_price_usdc != null ? creator.premium_price_usdc / 100 : null;
+  const vipPrice = creator.vip_price_usdc != null ? creator.vip_price_usdc / 100 : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -371,6 +375,8 @@ export default function CreatorProfileClient() {
               creatorName={creator.display_name}
               creatorUsername={creator.username}
               subscriptionPrice={subscriptionPrice}
+              premiumPrice={premiumPrice}
+              vipPrice={vipPrice}
             />
           </div>
         </div>
@@ -427,6 +433,34 @@ export default function CreatorProfileClient() {
                 {category}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* Subscription Tiers */}
+        {(premiumPrice !== null || vipPrice !== null) && (
+          <div className="mb-6">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Subscription Tiers</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-gray-200 bg-white p-3 text-center">
+                <p className="text-xs font-semibold text-[#00AFF0] mb-0.5">Basic</p>
+                <p className="text-lg font-bold text-gray-900">${subscriptionPrice.toFixed(2)}<span className="text-xs font-normal text-gray-400">/mo</span></p>
+                <p className="text-xs text-gray-400 mt-0.5">Basic content</p>
+              </div>
+              {premiumPrice !== null && (
+                <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 text-center">
+                  <p className="text-xs font-semibold text-purple-600 mb-0.5">Premium</p>
+                  <p className="text-lg font-bold text-gray-900">${premiumPrice.toFixed(2)}<span className="text-xs font-normal text-gray-400">/mo</span></p>
+                  <p className="text-xs text-gray-400 mt-0.5">Basic + Premium</p>
+                </div>
+              )}
+              {vipPrice !== null && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-center">
+                  <p className="text-xs font-semibold text-amber-600 mb-0.5">VIP</p>
+                  <p className="text-lg font-bold text-gray-900">${vipPrice.toFixed(2)}<span className="text-xs font-normal text-gray-400">/mo</span></p>
+                  <p className="text-xs text-gray-400 mt-0.5">All content</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

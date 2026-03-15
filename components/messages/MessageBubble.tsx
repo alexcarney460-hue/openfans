@@ -1,7 +1,7 @@
 "use client";
 
 import type { Message } from "@/app/dashboard/messages/types";
-import { DollarSign, Check, CheckCheck, AlertCircle } from "lucide-react";
+import { DollarSign, Check, CheckCheck, AlertCircle, Megaphone } from "lucide-react";
 
 interface MessageBubbleProps {
   readonly message: Message;
@@ -26,6 +26,17 @@ export default function MessageBubble({ message, isSent }: MessageBubbleProps) {
           ${message.isOptimistic && !message.isFailed ? "opacity-80" : ""}
         `}
       >
+        {message.isBroadcast && (
+          <div
+            className={`mb-1.5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide ${
+              isSent ? "text-white/60" : "text-[#00AFF0]"
+            }`}
+          >
+            <Megaphone className="h-3 w-3" />
+            <span>Broadcast</span>
+          </div>
+        )}
+
         {message.mediaUrl && (
           <div className="mb-2 overflow-hidden rounded-lg">
             {/* eslint-disable-next-line @next/next/no-img-element */}

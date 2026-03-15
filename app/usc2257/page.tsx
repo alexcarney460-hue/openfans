@@ -105,7 +105,39 @@ export default function Usc2257Page() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">5. Records Custodian</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">5. Record Retention</h2>
+              <p>
+                In accordance with 18 U.S.C. &sect; 2257 and 28 C.F.R. Part 75, OpenFans
+                maintains records for every Creator who publishes content on the Platform.
+                These records include:
+              </p>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5">
+                <li>
+                  The legal name and date of birth of the Creator, as verified against a
+                  government-issued photo identification document.
+                </li>
+                <li>
+                  A copy of the identification document submitted during the verification
+                  process.
+                </li>
+                <li>
+                  A selfie or live image captured at the time of verification to confirm
+                  the identity of the Creator matches their identification document.
+                </li>
+                <li>
+                  The date of verification and the identity of the reviewing compliance
+                  officer.
+                </li>
+              </ul>
+              <p className="mt-3">
+                All records are created automatically upon successful identity verification
+                and are retained for the duration required by law. Records are stored securely
+                and are accessible only to authorized compliance personnel.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">6. Records Custodian</h2>
               <p>
                 The custodian of records required to be maintained pursuant to 18 U.S.C. &sect;
                 2257 and 28 C.F.R. Part 75 is:
@@ -128,7 +160,7 @@ export default function Usc2257Page() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">6. Creator Obligations</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Creator Obligations</h2>
               <p>
                 By using OpenFans to publish content, all Creators acknowledge and agree to the
                 following obligations:
@@ -157,7 +189,7 @@ export default function Usc2257Page() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Contact</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">8. Contact</h2>
               <p>
                 For questions regarding this 2257 compliance statement or records inspection
                 requests, please contact the records custodian at{" "}

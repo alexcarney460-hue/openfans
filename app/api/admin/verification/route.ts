@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/utils/db/db";
-import { creatorProfilesTable, usersTable } from "@/utils/db/schema";
+import { creatorProfilesTable, complianceRecordsTable, usersTable } from "@/utils/db/schema";
 import { eq } from "drizzle-orm";
 import { getAuthenticatedAdmin } from "@/utils/api/auth";
 
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { error: authError } = await getAuthenticatedAdmin();
+    const { user: adminUser, error: authError } = await getAuthenticatedAdmin();
     if (authError) return authError;
 
     const body = await request.json().catch(() => null);
@@ -107,9 +107,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the creator profile exists and is pending
+    // Fetch the full creator profile (need all fields for compliance record)
     const profile = await db
-      .select({ verification_status: creatorProfilesTable.verification_status })
+      .select({
+        verification_status: creatorProfilesTable.verification_status,
+        legal_name: creatorProfilesTable.legal_name,
+        date_of_birth: creatorProfilesTable.date_of_birth,
+        verification_document_url: creatorProfilesTable.verification_document_url,
+        verification_selfie_url: creatorProfilesTable.verification_selfie_url,
+      })
       .from(creatorProfilesTable)
       .where(eq(creatorProfilesTable.user_id, creator_id))
       .limit(1);
@@ -129,6 +135,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "approve") {
+      const now = new Date();
+
       await db
         .update(creatorProfilesTable)
         .set({
@@ -136,6 +144,22 @@ export async function POST(request: NextRequest) {
           verification_notes: null,
         })
         .where(eq(creatorProfilesTable.user_id, creator_id));
+
+      // Create 2257 compliance record from verification data
+      const p = profile[0];
+      if (p.legal_name && p.date_of_birth && p.verification_document_url && p.verification_selfie_url) {
+        await db.insert(complianceRecordsTable).values({
+          creator_id,
+          legal_name: p.legal_name,
+          date_of_birth: p.date_of_birth,
+          document_type: "other",
+          document_url: p.verification_document_url,
+          selfie_url: p.verification_selfie_url,
+          verified_at: now,
+          verified_by: adminUser.id,
+          is_active: true,
+        });
+      }
     } else {
       await db
         .update(creatorProfilesTable)

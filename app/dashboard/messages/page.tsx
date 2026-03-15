@@ -8,6 +8,7 @@ import MessageInput from "@/components/messages/MessageInput";
 import UserSearchPanel from "@/components/messages/UserSearchPanel";
 import EmptyState from "@/components/messages/EmptyState";
 import DateSeparator from "@/components/messages/DateSeparator";
+import BroadcastModal from "@/components/messages/BroadcastModal";
 import type {
   Conversation,
   Message,
@@ -60,6 +61,8 @@ export default function MessagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -70,6 +73,7 @@ export default function MessagesPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (json?.data?.id) setCurrentUserId(json.data.id);
+        if (json?.data?.role === "creator") setIsCreator(true);
       })
       .catch(() => {});
   }, []);
@@ -113,6 +117,7 @@ export default function MessagesPage() {
             lastMessageTime: formatTimestamp(c.created_at),
             unreadCount: c.unread_count ?? (c.is_read ? 0 : 1),
             messages: existing?.messages ?? [],
+            lastMessageIsBroadcast: c.is_broadcast ?? false,
           };
         });
         return mapped;
@@ -186,6 +191,7 @@ export default function MessagesPage() {
           isRead: m.is_read,
           isFailed: false,
           isOptimistic: false,
+          isBroadcast: m.is_broadcast ?? false,
         }));
 
         setConversations((prev) =>
@@ -414,6 +420,8 @@ export default function MessagesPage() {
             activeConversationId={activeConversationId}
             onSelectConversation={handleSelectConversation}
             onNewMessage={() => setShowNewMessage(true)}
+            onBroadcast={() => setShowBroadcast(true)}
+            isCreator={isCreator}
           />
         )}
       </div>
@@ -512,6 +520,13 @@ export default function MessagesPage() {
           <EmptyState />
         )}
       </div>
+      <BroadcastModal
+        isOpen={showBroadcast}
+        onClose={() => {
+          setShowBroadcast(false);
+          fetchConversations();
+        }}
+      />
     </main>
   );
 }

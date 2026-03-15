@@ -9,13 +9,14 @@ import {
   Check,
   CheckCircle2,
   Clock,
-  TrendingUp,
   Share2,
   Gift,
+  Star,
+  Heart,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ---- Types ----------------------------------------------------------------
 
 interface AffiliateData {
   readonly referral_code: string;
@@ -25,19 +26,22 @@ interface AffiliateData {
   readonly total_earnings_usdc: number;
   readonly pending_earnings_usdc: number;
   readonly is_active: boolean;
+  readonly creator_referrals: number;
+  readonly fan_referrals: number;
 }
 
 interface Referral {
   readonly id: number;
   readonly username: string;
   readonly display_name: string;
+  readonly role: "creator" | "subscriber" | "admin";
   readonly status: "pending" | "active" | "expired";
   readonly created_at: string;
   readonly converted_at: string | null;
   readonly total_commission_usdc: number;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ---- Helpers ---------------------------------------------------------------
 
 function formatUsdc(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -51,6 +55,11 @@ function formatDate(iso: string): string {
   });
 }
 
+function getRoleLabel(role: string): string {
+  if (role === "creator") return "Creator";
+  return "Fan";
+}
+
 function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -59,9 +68,15 @@ function LoadingSpinner() {
   );
 }
 
-// ─── Copy Button ────────────────────────────────────────────────────────────
+// ---- Copy Button -----------------------------------------------------------
 
-function CopyButton({ text, label }: { readonly text: string; readonly label?: string }) {
+function CopyButton({
+  text,
+  label,
+}: {
+  readonly text: string;
+  readonly label?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -70,7 +85,6 @@ function CopyButton({ text, label }: { readonly text: string; readonly label?: s
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const textarea = document.createElement("textarea");
       textarea.value = text;
       document.body.appendChild(textarea);
@@ -102,7 +116,7 @@ function CopyButton({ text, label }: { readonly text: string; readonly label?: s
   );
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ---- Page ------------------------------------------------------------------
 
 export default function ReferralsPage() {
   const [loading, setLoading] = useState(true);
@@ -151,17 +165,18 @@ export default function ReferralsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Creator Referral Program
+          Referral Program
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Refer other creators and earn {commissionRate}% of their revenue.
+          Share your link with creators and fans. Earn {commissionRate}%
+          commission on referred creators' revenue.
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {/* Referral Code & Link */}
+      <div className="grid gap-4 sm:grid-cols-2">
         {/* Referral Code */}
-        <Card className="border-gray-200 bg-white sm:col-span-1">
+        <Card className="border-gray-200 bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#00AFF0]/10">
@@ -186,7 +201,7 @@ export default function ReferralsPage() {
         </Card>
 
         {/* Referral Link */}
-        <Card className="border-gray-200 bg-white sm:col-span-2 lg:col-span-2">
+        <Card className="border-gray-200 bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#00AFF0]/10">
@@ -210,7 +225,7 @@ export default function ReferralsPage() {
                 onClick={() =>
                   window.open(
                     `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join OpenFans and keep 95% of your earnings! ${affiliate?.referral_link ?? ""}`)}`,
-                    "_blank"
+                    "_blank",
                   )
                 }
                 className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
@@ -221,7 +236,10 @@ export default function ReferralsPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Referrals */}
         <Card className="border-gray-200 bg-white">
           <CardContent className="p-5">
@@ -241,7 +259,46 @@ export default function ReferralsPage() {
           </CardContent>
         </Card>
 
-        {/* Earnings Summary - split into two sub-stats */}
+        {/* Creator Referrals */}
+        <Card className="border-gray-200 bg-white">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+                <Star className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">
+                  Creator Referrals
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {affiliate?.creator_referrals ?? 0}
+                </p>
+                <p className="text-xs text-gray-400">Earning commission</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Fan Referrals */}
+        <Card className="border-gray-200 bg-white">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500/10">
+                <Heart className="h-5 w-5 text-pink-500" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">
+                  Fan Referrals
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {affiliate?.fan_referrals ?? 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Earnings */}
         <Card className="border-gray-200 bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
@@ -281,7 +338,7 @@ export default function ReferralsPage() {
                   Share your referral link
                 </p>
                 <p className="text-xs text-gray-500">
-                  Share your referral link with other creators you know
+                  Share with creators and fans alike
                 </p>
               </div>
             </div>
@@ -291,11 +348,10 @@ export default function ReferralsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  They sign up and earn revenue
+                  They sign up with your code
                 </p>
                 <p className="text-xs text-gray-500">
-                  When they sign up and earn revenue, you get {commissionRate}%
-                  commission
+                  Fans are directed to your profile. Creators join the platform.
                 </p>
               </div>
             </div>
@@ -305,10 +361,10 @@ export default function ReferralsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  Commissions added automatically
+                  Earn {commissionRate}% on creator revenue
                 </p>
                 <p className="text-xs text-gray-500">
-                  Commissions are added to your wallet balance automatically
+                  When referred creators earn, you get commission automatically
                 </p>
               </div>
             </div>
@@ -326,10 +382,11 @@ export default function ReferralsPage() {
         <CardContent className="p-0">
           {/* Table header */}
           <div className="hidden border-b border-gray-200 px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-400 md:grid md:grid-cols-12 md:gap-4">
-            <div className="col-span-4">Creator</div>
+            <div className="col-span-3">User</div>
+            <div className="col-span-2">Role</div>
             <div className="col-span-3">Date Joined</div>
             <div className="col-span-2">Status</div>
-            <div className="col-span-3 text-right">Commission Earned</div>
+            <div className="col-span-2 text-right">Commission</div>
           </div>
 
           {/* Table rows */}
@@ -348,10 +405,12 @@ export default function ReferralsPage() {
                   key={ref.id}
                   className="flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-gray-50 md:grid md:grid-cols-12 md:items-center md:gap-4"
                 >
-                  {/* Creator */}
-                  <div className="col-span-4 flex items-center gap-3">
+                  {/* User */}
+                  <div className="col-span-3 flex items-center gap-3">
                     <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#00AFF0] to-[#0077B6] text-xs font-bold text-white">
-                      {(ref.display_name ?? ref.username).charAt(0).toUpperCase()}
+                      {(ref.display_name ?? ref.username)
+                        .charAt(0)
+                        .toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-gray-900">
@@ -359,6 +418,24 @@ export default function ReferralsPage() {
                       </p>
                       <p className="text-xs text-gray-400">@{ref.username}</p>
                     </div>
+                  </div>
+
+                  {/* Role */}
+                  <div className="col-span-2">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        ref.role === "creator"
+                          ? "bg-amber-500/10 text-amber-600"
+                          : "bg-pink-500/10 text-pink-600"
+                      }`}
+                    >
+                      {ref.role === "creator" ? (
+                        <Star className="h-3 w-3" />
+                      ) : (
+                        <Heart className="h-3 w-3" />
+                      )}
+                      {getRoleLabel(ref.role)}
+                    </span>
                   </div>
 
                   {/* Date Joined */}
@@ -387,13 +464,19 @@ export default function ReferralsPage() {
                   </div>
 
                   {/* Commission Earned */}
-                  <div className="col-span-3 text-right">
-                    <span className="text-sm font-semibold text-green-600">
-                      {ref.total_commission_usdc > 0
-                        ? `+${formatUsdc(ref.total_commission_usdc)}`
-                        : formatUsdc(0)}
-                    </span>
-                    <span className="ml-1 text-xs text-gray-400">USDC</span>
+                  <div className="col-span-2 text-right">
+                    {ref.role === "creator" ? (
+                      <>
+                        <span className="text-sm font-semibold text-green-600">
+                          {ref.total_commission_usdc > 0
+                            ? `+${formatUsdc(ref.total_commission_usdc)}`
+                            : formatUsdc(0)}
+                        </span>
+                        <span className="ml-1 text-xs text-gray-400">USDC</span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-400">--</span>
+                    )}
                   </div>
                 </div>
               ))

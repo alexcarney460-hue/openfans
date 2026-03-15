@@ -65,8 +65,13 @@ export default function SettingsPage() {
   const [messageAlerts, setMessageAlerts] = useState(true);
 
   const [subscriptionPrice, setSubscriptionPrice] = useState("");
+  const [premiumEnabled, setPremiumEnabled] = useState(false);
+  const [premiumPrice, setPremiumPrice] = useState("");
+  const [vipEnabled, setVipEnabled] = useState(false);
+  const [vipPrice, setVipPrice] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [priceSaving, setPriceSaving] = useState(false);
+  const [priceSaveError, setPriceSaveError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
   const [showActivity, setShowActivity] = useState(true);
@@ -158,8 +163,22 @@ export default function SettingsPage() {
               if (cpRes.status === "fulfilled" && cpRes.value.ok) {
                 const cpJson = await cpRes.value.json();
                 if (cpJson.data) {
-                  setSubscriptionPrice(cpJson.data.subscription_price?.toString() ?? "");
+                  // subscription_price_usdc is in cents, convert to dollars for display
+                  const basicCents = cpJson.data.subscription_price_usdc;
+                  setSubscriptionPrice(basicCents ? (basicCents / 100).toString() : "");
                   setCategories(cpJson.data.categories ?? []);
+
+                  // Load tier pricing
+                  const premCents = cpJson.data.premium_price_usdc;
+                  if (premCents != null) {
+                    setPremiumEnabled(true);
+                    setPremiumPrice((premCents / 100).toString());
+                  }
+                  const vipCents = cpJson.data.vip_price_usdc;
+                  if (vipCents != null) {
+                    setVipEnabled(true);
+                    setVipPrice((vipCents / 100).toString());
+                  }
                 }
               }
               if (vRes.status === "fulfilled" && vRes.value.ok) {
@@ -329,25 +348,49 @@ export default function SettingsPage() {
   const handleSaveSubscriptionPrice = async () => {
     setPriceSaving(true);
     setSaveMessage(null);
+    setPriceSaveError(null);
+
+    // Client-side tier price validation
+    const basicVal = Number(subscriptionPrice);
+    const premiumVal = premiumEnabled ? Number(premiumPrice) : null;
+    const vipVal = vipEnabled ? Number(vipPrice) : null;
+
+    if (premiumVal !== null && premiumVal <= basicVal) {
+      setPriceSaveError("Premium price must be greater than Basic price.");
+      setPriceSaving(false);
+      return;
+    }
+    if (vipVal !== null && premiumVal !== null && vipVal <= premiumVal) {
+      setPriceSaveError("VIP price must be greater than Premium price.");
+      setPriceSaving(false);
+      return;
+    }
+    if (vipVal !== null && premiumVal === null && vipVal <= basicVal) {
+      setPriceSaveError("VIP price must be greater than Basic price.");
+      setPriceSaving(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/creator-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subscription_price: Number(subscriptionPrice),
+          subscription_price: basicVal,
+          premium_price: premiumVal,
+          vip_price: vipVal,
           categories,
         }),
       });
 
       if (res.ok) {
-        setSaveMessage("Subscription price saved successfully.");
+        setSaveMessage("Subscription pricing saved successfully.");
       } else {
         const json = await res.json().catch(() => ({ error: "Unknown error" }));
-        setSaveMessage(json.error ?? "Failed to save subscription price.");
+        setSaveMessage(json.error ?? "Failed to save subscription pricing.");
       }
     } catch {
-      setSaveMessage("Failed to save subscription price.");
+      setSaveMessage("Failed to save subscription pricing.");
     } finally {
       setPriceSaving(false);
     }
@@ -750,39 +793,120 @@ export default function SettingsPage() {
       {isCreator && (
         <Card className="border-gray-200 bg-white">
           <CardContent className="p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Subscription Pricing</h2>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="subscriptionPrice" className="text-sm text-muted-foreground">
-                  Monthly Subscription Price (USDC)
-                </Label>
-                <div className="relative mt-1.5">
+            <h2 className="text-lg font-semibold text-foreground mb-1">Subscription Pricing</h2>
+            <p className="text-xs text-muted-foreground mb-5">
+              Set pricing for each subscription tier. Premium and VIP are optional.
+            </p>
+
+            {priceSaveError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {priceSaveError}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              {/* Basic Tier */}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Basic</p>
+                    <p className="text-xs text-muted-foreground">Access to basic content</p>
+                  </div>
+                  <span className="rounded-full bg-[#00AFF0]/10 px-2.5 py-0.5 text-xs font-medium text-[#00AFF0]">
+                    Required
+                  </span>
+                </div>
+                <div className="relative">
                   <Input
                     id="subscriptionPrice"
                     type="number"
                     step="0.01"
-                    min="0"
+                    min="0.01"
                     placeholder="9.99"
                     value={subscriptionPrice}
                     onChange={(e) => setSubscriptionPrice(e.target.value)}
-                    className="border-gray-200 bg-gray-50 pr-16 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
+                    className="border-gray-200 bg-white pr-16 focus:border-[#00AFF0]/50 focus:ring-[#00AFF0]/30"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
                     USDC/mo
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  This is the price fans pay to subscribe to your content each month.
-                </p>
               </div>
+
+              {/* Premium Tier */}
+              <div className={`rounded-lg border p-4 transition-colors ${premiumEnabled ? "border-purple-200 bg-purple-50/50" : "border-gray-200 bg-gray-50"}`}>
+                <ToggleSwitch
+                  id="premiumTier"
+                  enabled={premiumEnabled}
+                  onToggle={() => {
+                    setPremiumEnabled((prev) => !prev);
+                    if (premiumEnabled) {
+                      setPremiumPrice("");
+                    }
+                  }}
+                  label="Premium"
+                  description="Access to basic + premium content"
+                />
+                {premiumEnabled && (
+                  <div className="relative mt-3">
+                    <Input
+                      id="premiumPrice"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder="19.99"
+                      value={premiumPrice}
+                      onChange={(e) => setPremiumPrice(e.target.value)}
+                      className="border-gray-200 bg-white pr-16 focus:border-purple-400/50 focus:ring-purple-400/30"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
+                      USDC/mo
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* VIP Tier */}
+              <div className={`rounded-lg border p-4 transition-colors ${vipEnabled ? "border-amber-200 bg-amber-50/50" : "border-gray-200 bg-gray-50"}`}>
+                <ToggleSwitch
+                  id="vipTier"
+                  enabled={vipEnabled}
+                  onToggle={() => {
+                    setVipEnabled((prev) => !prev);
+                    if (vipEnabled) {
+                      setVipPrice("");
+                    }
+                  }}
+                  label="VIP"
+                  description="Access to all content (basic + premium + VIP)"
+                />
+                {vipEnabled && (
+                  <div className="relative mt-3">
+                    <Input
+                      id="vipPrice"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder="49.99"
+                      value={vipPrice}
+                      onChange={(e) => setVipPrice(e.target.value)}
+                      className="border-gray-200 bg-white pr-16 focus:border-amber-400/50 focus:ring-amber-400/30"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
+                      USDC/mo
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end">
                 <Button
                   size="sm"
                   className="bg-[#00AFF0] hover:bg-[#009dd8]"
                   onClick={handleSaveSubscriptionPrice}
-                  disabled={priceSaving || !subscriptionPrice}
+                  disabled={priceSaving || !subscriptionPrice || (premiumEnabled && !premiumPrice) || (vipEnabled && !vipPrice)}
                 >
-                  {priceSaving ? "Saving..." : "Update Price"}
+                  {priceSaving ? "Saving..." : "Update Pricing"}
                 </Button>
               </div>
             </div>

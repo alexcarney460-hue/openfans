@@ -9,6 +9,8 @@ interface CreatorSubscribeSectionProps {
   readonly creatorName: string;
   readonly creatorUsername: string;
   readonly subscriptionPrice: number;
+  readonly premiumPrice?: number | null;
+  readonly vipPrice?: number | null;
 }
 
 export function CreatorSubscribeSection({
@@ -16,6 +18,8 @@ export function CreatorSubscribeSection({
   creatorName,
   creatorUsername,
   subscriptionPrice,
+  premiumPrice,
+  vipPrice,
 }: CreatorSubscribeSectionProps) {
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
 
@@ -33,6 +37,8 @@ export function CreatorSubscribeSection({
         creatorName={creatorName}
         creatorUsername={creatorUsername}
         price={subscriptionPrice}
+        premiumPrice={premiumPrice}
+        vipPrice={vipPrice}
       />
     </>
   );

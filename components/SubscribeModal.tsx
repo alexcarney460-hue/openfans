@@ -31,6 +31,15 @@ type TxState =
   | { status: "success"; signature: string }
   | { status: "error"; message: string };
 
+type SubscriptionTier = "basic" | "premium" | "vip";
+
+interface TierOption {
+  readonly tier: SubscriptionTier;
+  readonly label: string;
+  readonly price: number;
+  readonly description: string;
+}
+
 interface SubscribeModalProps {
   readonly isOpen: boolean;
   readonly onClose: () => void;
@@ -38,6 +47,8 @@ interface SubscribeModalProps {
   readonly creatorUsername: string;
   readonly creatorId?: string;
   readonly price: number;
+  readonly premiumPrice?: number | null;
+  readonly vipPrice?: number | null;
 }
 
 function truncateAddress(address: string): string {
@@ -63,20 +74,64 @@ export function SubscribeModal({
   creatorUsername,
   creatorId,
   price,
+  premiumPrice,
+  vipPrice,
 }: SubscribeModalProps) {
   const { publicKey, sendTransaction, connected, connecting, wallet, wallets, select, connect } = useWallet();
   const { connection } = useConnection();
   const track = useTrack();
   const [txState, setTxState] = useState<TxState>({ status: "idle" });
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("basic");
   const userClickedConnect = useRef(false);
+
+  // Promo code state
+  const [promoExpanded, setPromoExpanded] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{
+    id: number;
+    code: string;
+    type: "discount" | "free_trial";
+    discount_percent: number | null;
+    trial_days: number | null;
+  } | null>(null);
+
+  // Build available tiers based on what the creator offers
+  const availableTiers: TierOption[] = [
+    { tier: "basic", label: "Basic", price, description: "Access to basic content" },
+  ];
+  if (premiumPrice != null && premiumPrice > 0) {
+    availableTiers.push({ tier: "premium", label: "Premium", price: premiumPrice, description: "Access to basic + premium content" });
+  }
+  if (vipPrice != null && vipPrice > 0) {
+    availableTiers.push({ tier: "vip", label: "VIP", price: vipPrice, description: "Access to all content" });
+  }
+
+  const hasMultipleTiers = availableTiers.length > 1;
+  const currentTier = availableTiers.find((t) => t.tier === selectedTier) ?? availableTiers[0];
+  const currentPrice = currentTier.price;
+
+  // Compute effective price after promo discount
+  const isFreeTrial = appliedPromo?.type === "free_trial";
+  const effectivePrice = appliedPromo?.type === "discount" && appliedPromo.discount_percent
+    ? Math.round((currentPrice * (100 - appliedPromo.discount_percent)) * 100) / 100
+    : isFreeTrial
+    ? 0
+    : currentPrice;
+
+  const handleClose = useCallback(() => {
+    if (txState.status === "confirming") return; // Don't close during transaction
+    onClose();
+  }, [txState.status, onClose]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        handleClose();
       }
     },
-    [onClose],
+    [handleClose],
   );
 
   useEffect(() => {
@@ -90,12 +145,54 @@ export function SubscribeModal({
     };
   }, [isOpen, handleKeyDown]);
 
-  // Reset transaction state when modal opens/closes
+  // Reset transaction state, tier selection, and promo when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
       setTxState({ status: "idle" });
+      setSelectedTier("basic");
+      setPromoExpanded(false);
+      setPromoCode("");
+      setPromoError(null);
+      setAppliedPromo(null);
+      setPromoValidating(false);
     }
   }, [isOpen]);
+
+  const handleApplyPromo = useCallback(async () => {
+    if (!promoCode.trim() || !creatorId) return;
+
+    setPromoValidating(true);
+    setPromoError(null);
+
+    try {
+      const res = await fetch("/api/promotions/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode.trim(), creator_id: creatorId }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setPromoError(json.error ?? "Invalid promo code");
+        setAppliedPromo(null);
+      } else {
+        setAppliedPromo(json.data);
+        setPromoError(null);
+      }
+    } catch {
+      setPromoError("Failed to validate promo code");
+      setAppliedPromo(null);
+    } finally {
+      setPromoValidating(false);
+    }
+  }, [promoCode, creatorId]);
+
+  const handleRemovePromo = useCallback(() => {
+    setAppliedPromo(null);
+    setPromoCode("");
+    setPromoError(null);
+  }, []);
 
   // Only connect after user explicitly clicked "Connect Wallet"
   useEffect(() => {
@@ -151,82 +248,103 @@ export function SubscribeModal({
   }, [wallets, select]);
 
   const handleSubscribe = useCallback(async () => {
+    // Free trials skip on-chain payment but still need wallet connected for identity
     if (!publicKey || !sendTransaction) {
       setTxState({ status: "error", message: "Wallet not connected" });
       return;
     }
 
-    track("subscribe_click", creatorUsername, { price });
+    track("subscribe_click", creatorUsername, {
+      price: effectivePrice,
+      tier: selectedTier,
+      promo: appliedPromo?.code ?? null,
+    });
 
     try {
       setTxState({ status: "confirming" });
 
-      const usdcAmount = dollarsToUsdcUnits(price);
+      let signature: string;
 
-      const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
-      const platformWallet = new PublicKey(PLATFORM_WALLET_ADDRESS);
+      if (isFreeTrial) {
+        // Free trial: no on-chain payment, generate a placeholder tx ID
+        signature = `free_trial_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      } else {
+        const usdcAmount = dollarsToUsdcUnits(effectivePrice);
 
-      // Get or derive the associated token accounts
-      const senderAta = await getAssociatedTokenAddress(usdcMint, publicKey);
-      const recipientAta = await getAssociatedTokenAddress(
-        usdcMint,
-        platformWallet,
-      );
+        const usdcMint = new PublicKey(USDC_MINT_ADDRESS);
+        const platformWallet = new PublicKey(PLATFORM_WALLET_ADDRESS);
 
-      const transaction = new Transaction();
+        const senderAta = await getAssociatedTokenAddress(usdcMint, publicKey);
+        const recipientAta = await getAssociatedTokenAddress(
+          usdcMint,
+          platformWallet,
+        );
 
-      // Check if recipient ATA exists, create if needed
-      try {
-        await getAccount(connection, recipientAta);
-      } catch {
+        const transaction = new Transaction();
+
+        try {
+          await getAccount(connection, recipientAta);
+        } catch {
+          transaction.add(
+            createAssociatedTokenAccountInstruction(
+              publicKey,
+              recipientAta,
+              platformWallet,
+              usdcMint,
+            ),
+          );
+        }
+
         transaction.add(
-          createAssociatedTokenAccountInstruction(
-            publicKey,
+          createTransferInstruction(
+            senderAta,
             recipientAta,
-            platformWallet,
-            usdcMint,
+            publicKey,
+            usdcAmount,
           ),
+        );
+
+        signature = await sendTransaction(transaction, connection);
+
+        const latestBlockhash = await connection.getLatestBlockhash();
+        await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          },
+          "confirmed",
         );
       }
 
-      // Add the USDC transfer instruction
-      transaction.add(
-        createTransferInstruction(
-          senderAta,
-          recipientAta,
-          publicKey,
-          usdcAmount,
-        ),
-      );
-
-      const signature = await sendTransaction(transaction, connection);
-
-      // Wait for confirmation
-      const latestBlockhash = await connection.getLatestBlockhash();
-      await connection.confirmTransaction(
-        {
-          signature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        },
-        "confirmed",
-      );
-
-      // Record subscription in database
+      // Record subscription in database (with optional promo code)
       if (creatorId) {
         try {
-          await fetch("/api/subscriptions", {
+          const subscriptionPayload: Record<string, unknown> = {
+            creator_id: creatorId,
+            tier: selectedTier,
+            payment_tx: signature,
+          };
+          if (appliedPromo) {
+            subscriptionPayload.promo_code = appliedPromo.code;
+          }
+
+          const res = await fetch("/api/subscriptions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              creator_id: creatorId,
-              tier: "basic",
-              payment_tx: signature,
-            }),
+            body: JSON.stringify(subscriptionPayload),
           });
-        } catch {
-          // Subscription was paid on-chain even if DB recording fails
-          console.error("Failed to record subscription in database");
+
+          if (!res.ok) {
+            throw new Error(`API responded with ${res.status}`);
+          }
+        } catch (err) {
+          console.error("Failed to record subscription:", err);
+          setTxState({
+            status: "error",
+            message: "Payment was sent but we couldn't activate your subscription. Please contact support with your transaction ID: " + signature,
+          });
+          return;
         }
       }
 
@@ -236,7 +354,7 @@ export function SubscribeModal({
         err instanceof Error ? err.message : "Transaction failed";
       setTxState({ status: "error", message });
     }
-  }, [publicKey, sendTransaction, connection, price]);
+  }, [publicKey, sendTransaction, connection, effectivePrice, isFreeTrial, selectedTier, creatorId, creatorUsername, track, appliedPromo]);
 
   if (!isOpen) return null;
 
@@ -252,7 +370,7 @@ export function SubscribeModal({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={onClose}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
@@ -303,17 +421,19 @@ export function SubscribeModal({
             <p className="mt-1 text-sm text-gray-500">
               You are now subscribed to @{creatorUsername}
             </p>
-            <div className="mt-4 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-              <p className="text-xs text-gray-400">Transaction</p>
-              <a
-                href={`https://explorer.solana.com/tx/${txState.signature}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-0.5 inline-block font-mono text-xs text-[#00AFF0] hover:underline"
-              >
-                {truncateSignature(txState.signature)}
-              </a>
-            </div>
+            {txState.signature && !txState.signature.startsWith("free_trial_") && (
+              <div className="mt-4 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <p className="text-xs text-gray-400">Transaction</p>
+                <a
+                  href={`https://explorer.solana.com/tx/${txState.signature}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 inline-block font-mono text-xs text-[#00AFF0] hover:underline"
+                >
+                  {truncateSignature(txState.signature)}
+                </a>
+              </div>
+            )}
             <button
               onClick={onClose}
               className="mt-5 w-full rounded-lg bg-[#00AFF0] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#009ad6]"
@@ -337,15 +457,69 @@ export function SubscribeModal({
               <p className="text-sm text-gray-400">@{creatorUsername}</p>
             </div>
 
-            {/* Subscription Tier */}
-            <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-center">
-              <p className="text-sm text-gray-500">Monthly subscription</p>
-              <p className="mt-0.5 text-xl font-bold text-gray-900">
-                ${price.toFixed(2)}
-                <span className="text-sm font-normal text-gray-400">/mo</span>
-              </p>
-              <p className="mt-0.5 text-xs text-gray-400">Paid in USDC on Solana</p>
-            </div>
+            {/* Tier Selection */}
+            {hasMultipleTiers ? (
+              <div className="mb-5 space-y-2">
+                <p className="text-xs font-medium text-gray-500 mb-2">Choose your tier</p>
+                {availableTiers.map((tierOpt) => {
+                  const isSelected = selectedTier === tierOpt.tier;
+                  const tierColors: Record<SubscriptionTier, { border: string; bg: string; badge: string }> = {
+                    basic: { border: "border-[#00AFF0]/40", bg: "bg-[#00AFF0]/5", badge: "bg-[#00AFF0]/10 text-[#00AFF0]" },
+                    premium: { border: "border-purple-400/40", bg: "bg-purple-50", badge: "bg-purple-100 text-purple-600" },
+                    vip: { border: "border-amber-400/40", bg: "bg-amber-50", badge: "bg-amber-100 text-amber-600" },
+                  };
+                  const colors = tierColors[tierOpt.tier];
+                  return (
+                    <button
+                      key={tierOpt.tier}
+                      type="button"
+                      onClick={() => setSelectedTier(tierOpt.tier)}
+                      className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                        isSelected
+                          ? `${colors.border} ${colors.bg} ring-1 ring-current/10`
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                            isSelected ? colors.border.replace("/40", "") : "border-gray-300"
+                          }`}>
+                            {isSelected && (
+                              <div className={`h-2 w-2 rounded-full ${
+                                tierOpt.tier === "basic" ? "bg-[#00AFF0]" :
+                                tierOpt.tier === "premium" ? "bg-purple-500" : "bg-amber-500"
+                              }`} />
+                            )}
+                          </div>
+                          <div>
+                            <span className={`text-sm font-semibold ${isSelected ? "text-gray-900" : "text-gray-700"}`}>
+                              {tierOpt.label}
+                            </span>
+                            <p className="text-xs text-gray-400">{tierOpt.description}</p>
+                          </div>
+                        </div>
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          isSelected ? colors.badge : "bg-gray-100 text-gray-500"
+                        }`}>
+                          ${tierOpt.price.toFixed(2)}/mo
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+                <p className="text-center text-xs text-gray-400 mt-1">Paid in USDC on Solana</p>
+              </div>
+            ) : (
+              <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-center">
+                <p className="text-sm text-gray-500">Monthly subscription</p>
+                <p className="mt-0.5 text-xl font-bold text-gray-900">
+                  ${currentPrice.toFixed(2)}
+                  <span className="text-sm font-normal text-gray-400">/mo</span>
+                </p>
+                <p className="mt-0.5 text-xs text-gray-400">Paid in USDC on Solana</p>
+              </div>
+            )}
 
             {/* Payment Options */}
             <div className="mb-5 space-y-3">
@@ -412,6 +586,81 @@ export function SubscribeModal({
               </div>
             </div>
 
+            {/* Promo Code */}
+            <div className="mb-5">
+              {!appliedPromo ? (
+                <>
+                  <button
+                    onClick={() => setPromoExpanded(!promoExpanded)}
+                    className="text-xs font-medium text-[#00AFF0] transition-colors hover:text-[#009ad6]"
+                  >
+                    {promoExpanded ? "Hide promo code" : "Have a promo code?"}
+                  </button>
+                  {promoExpanded && (
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => {
+                          setPromoCode(e.target.value.toUpperCase());
+                          setPromoError(null);
+                        }}
+                        placeholder="Enter code"
+                        maxLength={20}
+                        className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm text-gray-900 focus:border-[#00AFF0] focus:outline-none focus:ring-1 focus:ring-[#00AFF0]"
+                      />
+                      <button
+                        onClick={handleApplyPromo}
+                        disabled={promoValidating || !promoCode.trim()}
+                        className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {promoValidating ? "..." : "Apply"}
+                      </button>
+                    </div>
+                  )}
+                  {promoError && (
+                    <p className="mt-1.5 text-xs text-red-500">{promoError}</p>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-lg border border-green-500/30 bg-green-500/5 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-green-600">
+                        {appliedPromo.type === "discount"
+                          ? `${appliedPromo.discount_percent}% off applied`
+                          : `${appliedPromo.trial_days} day free trial applied`}
+                      </p>
+                      <p className="text-xs text-green-600/70">
+                        Code: {appliedPromo.code}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleRemovePromo}
+                      className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {appliedPromo.type === "discount" && (
+                    <div className="mt-2 flex items-center gap-2 text-sm">
+                      <span className="text-gray-400 line-through">
+                        ${currentPrice.toFixed(2)}
+                      </span>
+                      <span className="font-bold text-green-600">
+                        ${effectivePrice.toFixed(2)}/mo
+                      </span>
+                    </div>
+                  )}
+                  {appliedPromo.type === "free_trial" && (
+                    <p className="mt-1 text-xs text-green-600/70">
+                      {appliedPromo.trial_days} days free, then ${currentPrice.toFixed(2)}/mo
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Wallet Status & Action */}
             {connected ? (
               <div className="space-y-3">
@@ -454,7 +703,11 @@ export function SubscribeModal({
                   ) : txState.status === "error" ? (
                     <span>Retry Payment</span>
                   ) : (
-                    <span>Subscribe for ${price.toFixed(2)} USDC</span>
+                    <span>
+                      {isFreeTrial
+                        ? `Start Free Trial${hasMultipleTiers ? ` (${currentTier.label})` : ""}`
+                        : `Subscribe for $${effectivePrice.toFixed(2)} USDC${hasMultipleTiers ? ` (${currentTier.label})` : ""}`}
+                    </span>
                   )}
                 </button>
               </div>

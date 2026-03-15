@@ -86,6 +86,7 @@ export type TranslationKey =
   | "dash.earnings"
   | "dash.analytics"
   | "dash.wallet"
+  | "dash.promotions"
   | "dash.affiliates"
   | "dash.referrals"
   | "dash.notifications"
@@ -191,6 +192,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Earnings",
     "dash.analytics": "Analytics",
     "dash.wallet": "Wallet",
+    "dash.promotions": "Promotions",
     "dash.affiliates": "Affiliates",
     "dash.referrals": "Referrals",
     "dash.notifications": "Notifications",
@@ -257,6 +259,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Ganancias",
     "dash.analytics": "Analiticas",
     "dash.wallet": "Billetera",
+    "dash.promotions": "Promociones",
     "dash.affiliates": "Afiliados",
     "dash.referrals": "Referidos",
     "dash.notifications": "Notificaciones",
@@ -320,6 +323,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Revenus",
     "dash.analytics": "Analytique",
     "dash.wallet": "Portefeuille",
+    "dash.promotions": "Promotions",
     "dash.affiliates": "Affilies",
     "dash.referrals": "Parrainages",
     "dash.notifications": "Notifications",
@@ -383,6 +387,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Ganhos",
     "dash.analytics": "Analises",
     "dash.wallet": "Carteira",
+    "dash.promotions": "Promocoes",
     "dash.affiliates": "Afiliados",
     "dash.referrals": "Indicacoes",
     "dash.notifications": "Notificacoes",
@@ -446,6 +451,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Einnahmen",
     "dash.analytics": "Analysen",
     "dash.wallet": "Wallet",
+    "dash.promotions": "Aktionen",
     "dash.affiliates": "Affiliates",
     "dash.referrals": "Empfehlungen",
     "dash.notifications": "Benachrichtigungen",
@@ -509,6 +515,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u53CE\u76CA",
     "dash.analytics": "\u30A2\u30CA\u30EA\u30C6\u30A3\u30AF\u30B9",
     "dash.wallet": "\u30A6\u30A9\u30EC\u30C3\u30C8",
+    "dash.promotions": "\u30D7\u30ED\u30E2\u30FC\u30B7\u30E7\u30F3",
     "dash.affiliates": "\u30A2\u30D5\u30A3\u30EA\u30A8\u30A4\u30C8",
     "dash.referrals": "\u7D39\u4ECB",
     "dash.notifications": "\u901A\u77E5",
@@ -571,6 +578,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u6536\u5165",
     "dash.analytics": "\u6570\u636E\u5206\u6790",
     "dash.wallet": "\u94B1\u5305",
+    "dash.promotions": "\u4FC3\u9500",
     "dash.affiliates": "\u8054\u76DF",
     "dash.referrals": "\u63A8\u8350",
     "dash.notifications": "\u901A\u77E5",
@@ -634,6 +642,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\uC218\uC775",
     "dash.analytics": "\uBD84\uC11D",
     "dash.wallet": "\uC9C0\uAC11",
+    "dash.promotions": "\uD504\uB85C\uBAA8\uC158",
     "dash.affiliates": "\uC81C\uD734",
     "dash.referrals": "\uCD94\uCC9C",
     "dash.notifications": "\uC54C\uB9BC",
@@ -697,6 +706,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u0627\u0644\u0623\u0631\u0628\u0627\u062D",
     "dash.analytics": "\u0627\u0644\u062A\u062D\u0644\u064A\u0644\u0627\u062A",
     "dash.wallet": "\u0627\u0644\u0645\u062D\u0641\u0638\u0629",
+    "dash.promotions": "\u0627\u0644\u0639\u0631\u0648\u0636",
     "dash.affiliates": "\u0627\u0644\u062A\u0633\u0648\u064A\u0642 \u0628\u0627\u0644\u0639\u0645\u0648\u0644\u0629",
     "dash.referrals": "\u0627\u0644\u0625\u062D\u0627\u0644\u0627\u062A",
     "dash.notifications": "\u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A",
@@ -760,6 +770,7 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u0414\u043E\u0445\u043E\u0434",
     "dash.analytics": "\u0410\u043D\u0430\u043B\u0438\u0442\u0438\u043A\u0430",
     "dash.wallet": "\u041A\u043E\u0448\u0435\u043B\u0435\u043A",
+    "dash.promotions": "\u0410\u043A\u0446\u0438\u0438",
     "dash.affiliates": "\u041F\u0430\u0440\u0442\u043D\u0435\u0440\u044B",
     "dash.referrals": "\u0420\u0435\u0444\u0435\u0440\u0430\u043B\u044B",
     "dash.notifications": "\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F",

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
@@ -11,7 +12,14 @@ export default function DmcaPage() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
             DMCA Policy
           </h1>
-          <p className="text-sm text-gray-400 mb-10">Last updated: March 13, 2026</p>
+          <p className="text-sm text-gray-400 mb-6">Last updated: March 13, 2026</p>
+
+          <Link
+            href="/dmca/submit"
+            className="mb-10 inline-flex items-center justify-center rounded-lg bg-[#00AFF0] px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0090c0] focus:outline-none focus:ring-2 focus:ring-[#00AFF0]/50 focus:ring-offset-2"
+          >
+            Submit DMCA Takedown Request
+          </Link>
 
           <div className="space-y-8 text-sm leading-relaxed text-gray-600">
             <section>

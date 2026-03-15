@@ -66,7 +66,7 @@ export async function GET() {
 
     const currentAffiliate = affiliateRows[0];
 
-    // Get referrals with per-referral commission totals
+    // Get referrals with per-referral commission totals and user role
     const referrals = await db
       .select({
         id: referralsTable.id,
@@ -76,6 +76,7 @@ export async function GET() {
         converted_at: referralsTable.converted_at,
         username: usersTable.username,
         display_name: usersTable.display_name,
+        role: usersTable.role,
       })
       .from(referralsTable)
       .innerJoin(usersTable, eq(referralsTable.referred_user_id, usersTable.id))
@@ -102,6 +103,10 @@ export async function GET() {
       total_commission_usdc: commissionMap.get(ref.id) ?? 0,
     }));
 
+    // Compute stats: creator vs fan referral counts
+    const creatorReferrals = referrals.filter((r) => r.role === "creator").length;
+    const fanReferrals = referrals.filter((r) => r.role === "subscriber").length;
+
     // Get recent commissions
     const commissions = await db
       .select()
@@ -120,6 +125,8 @@ export async function GET() {
           total_earnings_usdc: currentAffiliate.total_earnings_usdc,
           pending_earnings_usdc: currentAffiliate.pending_earnings_usdc,
           is_active: currentAffiliate.is_active,
+          creator_referrals: creatorReferrals,
+          fan_referrals: fanReferrals,
         },
         referrals: referralsWithCommission,
         commissions,

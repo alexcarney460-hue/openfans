@@ -17,6 +17,7 @@ import { createNotification } from "@/utils/notifications";
 import { sendNewTipEmail } from "@/utils/email";
 import { isValidAmount } from "@/utils/validation";
 import { checkRateLimit, getRateLimitKey } from "@/utils/rate-limit";
+import { processReferralCommission } from "@/utils/referral-commission";
 
 const PLATFORM_FEE_PERCENT = 5;
 
@@ -241,6 +242,15 @@ export async function POST(request: NextRequest) {
         total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
       })
       .where(eq(creatorProfilesTable.user_id, creator_id));
+
+    // Process referral commission if the creator was referred by someone
+    processReferralCommission(
+      creator_id,
+      "tip",
+      creatorAmount,
+      payment_tx.trim(),
+      user.id,
+    );
 
     // Notify the creator about the tip
     const tipperInfo = await db
