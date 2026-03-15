@@ -112,21 +112,33 @@ export async function getCreatorFeeConfig(creatorId: string): Promise<FeeConfig>
   const cached = getCachedConfig(creatorId);
   if (cached) return cached;
 
-  // Use raw SQL to include is_founder (not in Drizzle schema)
+  // Use raw SQL to include is_founder + fee_override (not in Drizzle schema)
   const rows = await db.execute(
-    sql`SELECT categories, COALESCE(is_founder, false) AS is_founder
+    sql`SELECT categories, COALESCE(is_founder, false) AS is_founder, fee_override
         FROM creator_profiles
         WHERE user_id = ${creatorId}
         LIMIT 1`,
   );
 
   if (rows.length === 0) {
-    // Default to standard fees if profile not found (shouldn't happen in normal flow)
     return getFeeConfigForType(false);
   }
 
-  const row = rows[0] as { categories: string[] | null; is_founder: boolean };
+  const row = rows[0] as { categories: string[] | null; is_founder: boolean; fee_override: number | null };
   const isFounder = row.is_founder === true;
+
+  // Custom fee_override takes priority (e.g., 0% for special partners)
+  if (row.fee_override !== null && row.fee_override !== undefined) {
+    const overrideRate = row.fee_override / 100;
+    const config: FeeConfig = {
+      feeRate: overrideRate,
+      shareRate: 1 - overrideRate,
+      feePercent: row.fee_override,
+      isAdult: isAdultCreator(row.categories ?? []),
+    };
+    setCachedConfig(creatorId, config);
+    return config;
+  }
 
   // Founders always get the standard 5% fee, even for adult content
   if (isFounder) {

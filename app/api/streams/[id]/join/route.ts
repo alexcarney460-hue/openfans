@@ -116,8 +116,10 @@ export async function POST(
     }
 
     // Look up creator's fee rate BEFORE transaction (read-only, safe outside tx)
+    // Live streams have a minimum 5% fee for infrastructure costs, even for 0% fee creators
     const feeConfig = await getCreatorFeeConfig(stream.creator_id);
-    const { platformFee, creatorAmount } = calculateFeeSplit(ticketPrice, feeConfig.feePercent);
+    const effectiveFeePercent = Math.max(feeConfig.feePercent, 5); // min 5% on live streams
+    const { platformFee, creatorAmount } = calculateFeeSplit(ticketPrice, effectiveFeePercent);
     const purchaseTx = crypto.randomUUID();
 
     // Wrap entire financial flow in a single transaction
