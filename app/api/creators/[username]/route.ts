@@ -100,6 +100,8 @@ export async function GET(
         and(
           eq(postsTable.creator_id, creator.id),
           eq(postsTable.is_free, true),
+          eq(postsTable.is_published, true),
+          eq(postsTable.is_hidden, false),
         ),
       )
       .orderBy(desc(postsTable.created_at))

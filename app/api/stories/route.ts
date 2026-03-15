@@ -142,6 +142,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate URL is from our storage (prevent javascript: URIs, external domains)
+    if (!media_url.startsWith("https://") && !media_url.startsWith("blob:")) {
+      return NextResponse.json(
+        { error: "media_url must be a valid HTTPS URL", code: "INVALID_MEDIA_URL" },
+        { status: 400 },
+      );
+    }
+
     if (!media_type || !["image", "video"].includes(media_type)) {
       return NextResponse.json(
         { error: "media_type must be 'image' or 'video'", code: "INVALID_MEDIA_TYPE" },

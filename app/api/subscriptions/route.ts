@@ -312,22 +312,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const newSub = await db
-      .insert(subscriptionsTable)
-      .values({
-        subscriber_id: user.id,
-        creator_id,
-        tier: tier as SubscriptionTier,
-        price_usdc: priceUsdc,
-        payment_tx: payment_tx.trim(),
-        status: "active",
-        expires_at: expiresAt,
-      })
-      .returning();
+    // Look up creator's fee rate BEFORE transaction (read-only, safe outside tx)
+    const feeConfig = await getCreatorFeeConfig(creator_id);
+    const { platformFee, creatorAmount } = priceUsdc > 0
+      ? calculateFeeSplit(priceUsdc, feeConfig.feePercent)
+      : { platformFee: 0, creatorAmount: 0 };
 
-    // Increment promo usage counter atomically with row-level lock
-    if (validatedPromo) {
-      await db.transaction(async (tx) => {
+    // Wrap subscription insert + promo counter + wallet credit in a single transaction
+    const newSub = await db.transaction(async (tx) => {
+      // 1. Insert subscription record
+      const [sub] = await tx
+        .insert(subscriptionsTable)
+        .values({
+          subscriber_id: user.id,
+          creator_id,
+          tier: tier as SubscriptionTier,
+          price_usdc: priceUsdc,
+          payment_tx: payment_tx.trim(),
+          status: "active",
+          expires_at: expiresAt,
+        })
+        .returning();
+
+      // 2. Increment promo usage counter atomically
+      if (validatedPromo) {
         const lockedRows = await tx.execute(sql`
           SELECT current_uses, max_uses FROM promotions WHERE id = ${validatedPromo.id} FOR UPDATE
         `);
@@ -336,20 +344,10 @@ export async function POST(request: NextRequest) {
           throw new Error("PROMO_MAXED");
         }
         await tx.update(promotionsTable).set({ current_uses: sql`current_uses + 1` }).where(eq(promotionsTable.id, validatedPromo.id));
-      });
-    }
+      }
 
-    // Look up creator's fee rate (adult = 10%, non-adult = 5%)
-    const feeConfig = await getCreatorFeeConfig(creator_id);
-
-    // Calculate platform fee and creator share (skip for free trials)
-    const { platformFee, creatorAmount } = priceUsdc > 0
-      ? calculateFeeSplit(priceUsdc, feeConfig.feePercent)
-      : { platformFee: 0, creatorAmount: 0 };
-
-    // Credit creator wallet only if there was an actual payment
-    if (creatorAmount > 0) {
-      await db.transaction(async (tx) => {
+      // 3. Credit creator wallet (if paid subscription)
+      if (creatorAmount > 0) {
         // Get or create creator wallet, then credit with creatorAmount
         const existingCreatorWallet = await tx
           .select()
@@ -413,8 +411,10 @@ export async function POST(request: NextRequest) {
             total_earnings_usdc: sql`${creatorProfilesTable.total_earnings_usdc} + ${creatorAmount}`,
           })
           .where(eq(creatorProfilesTable.user_id, creator_id));
-      });
-    }
+      }
+
+      return sub;
+    });
 
     // Process referral commission if the creator was referred by someone
     if (creatorAmount > 0) {
@@ -441,7 +441,7 @@ export async function POST(request: NextRequest) {
       "new_subscriber",
       "New subscriber!",
       `${subscriberName} just subscribed to your content.`,
-      String(newSub[0].id),
+      String(newSub.id),
     );
 
     // Send email notification to the creator (fire-and-forget)
@@ -454,7 +454,7 @@ export async function POST(request: NextRequest) {
       sendNewSubscriberEmail(creatorInfo[0].email, subscriberUsername);
     }
 
-    return NextResponse.json({ data: newSub[0] }, { status: 201 });
+    return NextResponse.json({ data: newSub }, { status: 201 });
   } catch (error) {
     console.error("POST /api/subscriptions error:", error);
     return NextResponse.json(
