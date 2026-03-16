@@ -82,6 +82,8 @@ export type TranslationKey =
   | "dash.posts"
   | "dash.stories"
   | "dash.live"
+  | "dash.aiStudio"
+  | "dash.aiChat"
   | "dash.newPost"
   | "dash.messages"
   | "dash.subscribers"
@@ -196,6 +198,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.posts": "My Posts",
     "dash.stories": "Stories",
     "dash.live": "Live",
+    "dash.aiStudio": "AI Studio",
+    "dash.aiChat": "AI Chat",
     "dash.newPost": "New Post",
     "dash.messages": "Messages",
     "dash.subscribers": "Subscribers",
@@ -275,6 +279,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Ganancias",
     "dash.stories": "Historias",
     "dash.live": "En vivo",
+    "dash.aiStudio": "Estudio IA",
+    "dash.aiChat": "Chat IA",
     "dash.analytics": "Analiticas",
     "dash.wallet": "Billetera",
     "dash.promotions": "Promociones",
@@ -347,6 +353,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Revenus",
     "dash.stories": "Stories",
     "dash.live": "En direct",
+    "dash.aiStudio": "Studio IA",
+    "dash.aiChat": "Chat IA",
     "dash.analytics": "Analytique",
     "dash.wallet": "Portefeuille",
     "dash.promotions": "Promotions",
@@ -415,6 +423,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Ganhos",
     "dash.stories": "Stories",
     "dash.live": "Ao vivo",
+    "dash.aiStudio": "Estudio IA",
+    "dash.aiChat": "Chat IA",
     "dash.analytics": "Analises",
     "dash.wallet": "Carteira",
     "dash.promotions": "Promocoes",
@@ -481,6 +491,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "Einnahmen",
     "dash.stories": "Stories",
     "dash.live": "Live",
+    "dash.aiStudio": "KI-Studio",
+    "dash.aiChat": "KI-Chat",
     "dash.analytics": "Analysen",
     "dash.wallet": "Wallet",
     "dash.promotions": "Aktionen",
@@ -547,6 +559,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u53CE\u76CA",
     "dash.stories": "\u30B9\u30C8\u30FC\u30EA\u30FC",
     "dash.live": "\u30E9\u30A4\u30D6",
+    "dash.aiStudio": "AI\u30B9\u30BF\u30B8\u30AA",
+    "dash.aiChat": "AI\u30C1\u30E3\u30C3\u30C8",
     "dash.analytics": "\u30A2\u30CA\u30EA\u30C6\u30A3\u30AF\u30B9",
     "dash.wallet": "\u30A6\u30A9\u30EC\u30C3\u30C8",
     "dash.promotions": "\u30D7\u30ED\u30E2\u30FC\u30B7\u30E7\u30F3",
@@ -612,6 +626,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u6536\u5165",
     "dash.stories": "\u52A8\u6001",
     "dash.live": "\u76F4\u64AD",
+    "dash.aiStudio": "AI\u5DE5\u4F5C\u5BA4",
+    "dash.aiChat": "AI\u804A\u5929",
     "dash.analytics": "\u6570\u636E\u5206\u6790",
     "dash.wallet": "\u94B1\u5305",
     "dash.promotions": "\u4FC3\u9500",
@@ -678,6 +694,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\uC218\uC775",
     "dash.stories": "\uC2A4\uD1A0\uB9AC",
     "dash.live": "\uB77C\uC774\uBE0C",
+    "dash.aiStudio": "AI \uC2A4\uD29C\uB514\uC624",
+    "dash.aiChat": "AI \uCC44\uD305",
     "dash.analytics": "\uBD84\uC11D",
     "dash.wallet": "\uC9C0\uAC11",
     "dash.promotions": "\uD504\uB85C\uBAA8\uC158",
@@ -744,6 +762,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u0627\u0644\u0623\u0631\u0628\u0627\u062D",
     "dash.stories": "\u0627\u0644\u0642\u0635\u0635",
     "dash.live": "\u0645\u0628\u0627\u0634\u0631",
+    "dash.aiStudio": "\u0627\u0633\u062A\u0648\u062F\u064A\u0648 \u0627\u0644\u0630\u0643\u0627\u0621",
+    "dash.aiChat": "\u062F\u0631\u062F\u0634\u0629 \u0627\u0644\u0630\u0643\u0627\u0621",
     "dash.analytics": "\u0627\u0644\u062A\u062D\u0644\u064A\u0644\u0627\u062A",
     "dash.wallet": "\u0627\u0644\u0645\u062D\u0641\u0638\u0629",
     "dash.promotions": "\u0627\u0644\u0639\u0631\u0648\u0636",
@@ -810,6 +830,8 @@ const translations: Record<LanguageCode, TranslationMapComplete | TranslationMap
     "dash.earnings": "\u0414\u043E\u0445\u043E\u0434",
     "dash.stories": "\u0418\u0441\u0442\u043E\u0440\u0438\u0438",
     "dash.live": "\u041F\u0440\u044F\u043C\u043E\u0439 \u044D\u0444\u0438\u0440",
+    "dash.aiStudio": "AI \u0421\u0442\u0443\u0434\u0438\u044F",
+    "dash.aiChat": "AI \u0427\u0430\u0442",
     "dash.analytics": "\u0410\u043D\u0430\u043B\u0438\u0442\u0438\u043A\u0430",
     "dash.wallet": "\u041A\u043E\u0448\u0435\u043B\u0435\u043A",
     "dash.promotions": "\u0410\u043A\u0446\u0438\u0438",

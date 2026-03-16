@@ -11,6 +11,7 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ interface PostFormState {
 }
 
 type Tier = "free" | "basic" | "premium" | "vip";
-type MediaTab = "image" | "video";
+type MediaTab = "image" | "video" | "ai";
 
 const TIERS: readonly {
   readonly value: Tier;
@@ -232,9 +233,25 @@ export default function NewPostPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiStyle, setAiStyle] = useState("photorealistic");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiResult, setAiResult] = useState<{ url: string; prompt: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Check for AI-generated image passed via query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const aiImage = params.get("ai_image");
+    const aiPromptParam = params.get("ai_prompt");
+    if (aiImage) {
+      setMediaTab("ai");
+      setAiResult({ url: aiImage, prompt: aiPromptParam ?? "" });
+      setAiPrompt(aiPromptParam ?? "");
+    }
+  }, []);
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -507,6 +524,44 @@ export default function NewPostPage() {
     setVideoState(INITIAL_VIDEO_STATE);
   }, [videoState.preview]);
 
+  // -- AI generation handler --
+
+  const handleAiGenerate = useCallback(async () => {
+    if (!aiPrompt.trim()) {
+      setError("Please describe the image you want to generate.");
+      return;
+    }
+
+    setAiGenerating(true);
+    setError(null);
+    setAiResult(null);
+
+    try {
+      const res = await fetch("/api/ai-generate/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: aiPrompt.trim(),
+          style: aiStyle,
+          aspect_ratio: "4:5",
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error ?? "Generation failed. Please try again.");
+        return;
+      }
+
+      setAiResult({ url: json.data.url, prompt: json.data.prompt });
+    } catch {
+      setError("Failed to generate image. Please try again.");
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [aiPrompt, aiStyle]);
+
   // -- Tab switching --
 
   const handleTabSwitch = useCallback(
@@ -528,14 +583,23 @@ export default function NewPostPage() {
 
       // Clear the other tab's data
       if (tab === "video") {
-        // Clear images
+        // Clear images + AI
         for (const m of mediaFiles) {
           if (m.preview) URL.revokeObjectURL(m.preview);
         }
         setMediaFiles([]);
-      } else {
-        // Clear video
+        setAiResult(null);
+      } else if (tab === "ai") {
+        // Clear images + video
+        for (const m of mediaFiles) {
+          if (m.preview) URL.revokeObjectURL(m.preview);
+        }
+        setMediaFiles([]);
         removeVideo();
+      } else {
+        // Clear video + AI
+        removeVideo();
+        setAiResult(null);
       }
 
       setError(null);
@@ -581,7 +645,10 @@ export default function NewPostPage() {
       let mediaUrls: string[] = [];
       let videoAssetId: string | undefined;
 
-      if (mediaTab === "image" && mediaFiles.length > 0) {
+      if (mediaTab === "ai" && aiResult) {
+        mediaUrls = [aiResult.url];
+        mediaType = "image";
+      } else if (mediaTab === "image" && mediaFiles.length > 0) {
         mediaUrls = mediaFiles
           .map((m) => m.uploadedUrl)
           .filter((url): url is string => url !== null);
@@ -763,6 +830,19 @@ export default function NewPostPage() {
               >
                 <Film className="h-4 w-4" />
                 Video
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabSwitch("ai")}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                  mediaTab === "ai"
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Generate
               </button>
             </div>
 
@@ -1036,6 +1116,91 @@ export default function NewPostPage() {
                   </label>
                 )}
               </>
+            )}
+
+            {/* AI Generate tab content */}
+            {mediaTab === "ai" && (
+              <div className="space-y-3">
+                {/* AI result preview */}
+                {aiResult && (
+                  <div className="relative overflow-hidden rounded-lg border border-gray-200">
+                    <img
+                      src={aiResult.url}
+                      alt={aiResult.prompt}
+                      className="w-full object-cover"
+                      style={{ maxHeight: 300 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setAiResult(null)}
+                      className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white/80 transition-colors hover:text-white"
+                      aria-label="Remove generated image"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2">
+                      <p className="truncate text-xs text-white/80">{aiResult.prompt}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Prompt input */}
+                <textarea
+                  rows={3}
+                  placeholder="Describe the image you want to generate..."
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  maxLength={2000}
+                  className="w-full resize-none rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00AFF0]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                />
+
+                {/* Style selector */}
+                <div className="flex flex-wrap gap-2">
+                  {["photorealistic", "anime", "digital_art", "fashion", "portrait"].map(
+                    (style) => (
+                      <button
+                        key={style}
+                        type="button"
+                        onClick={() => setAiStyle(style)}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                          aiStyle === style
+                            ? "border-[#00AFF0] bg-[#00AFF0]/10 text-[#00AFF0]"
+                            : "border-gray-200 text-muted-foreground hover:border-gray-300",
+                        )}
+                      >
+                        {style.replace("_", " ")}
+                      </button>
+                    ),
+                  )}
+                </div>
+
+                {/* Generate button */}
+                <button
+                  type="button"
+                  onClick={handleAiGenerate}
+                  disabled={aiGenerating || !aiPrompt.trim()}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-4 text-sm font-medium transition-all",
+                    aiGenerating
+                      ? "border-[#00AFF0] bg-[#00AFF0]/10 text-[#00AFF0]"
+                      : "border-gray-200 bg-gray-50 text-muted-foreground hover:border-[#00AFF0] hover:bg-[#00AFF0]/5 hover:text-[#00AFF0]",
+                    (!aiPrompt.trim() && !aiGenerating) && "opacity-50 cursor-not-allowed",
+                  )}
+                >
+                  {aiGenerating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      {aiResult ? "Regenerate" : "Generate Image"}
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
 

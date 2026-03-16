@@ -522,13 +522,13 @@ export default function LandingPageClient() {
                   </p>
                 </div>
               </div>
-              <Link href="/signup" className="shrink-0">
+              <Link href="/ai-creators" className="shrink-0">
                 <Button
                   size="sm"
                   variant="outline"
                   className="border-violet-300 text-violet-600 transition-all hover:border-violet-400 hover:bg-violet-50"
                 >
-                  Learn More
+                  Browse AI Creators
                 </Button>
               </Link>
             </div>

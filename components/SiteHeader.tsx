@@ -2,15 +2,23 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sparkles } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useLanguage } from "@/utils/i18n/context";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import type { TranslationKey } from "@/utils/i18n/translations";
 
-const NAV_LINKS: readonly { href: string; labelKey: TranslationKey }[] = [
+type NavLink = {
+  readonly href: string;
+  readonly labelKey: TranslationKey;
+  readonly customLabel?: string;
+  readonly highlight?: boolean;
+};
+
+const NAV_LINKS: readonly NavLink[] = [
   { href: "/", labelKey: "nav.home" },
   { href: "/explore", labelKey: "nav.explore" },
+  { href: "/ai-creators", labelKey: "nav.home", customLabel: "AI Creators", highlight: true },
   { href: "/pricing", labelKey: "nav.pricing" },
 ] as const;
 
@@ -45,11 +53,21 @@ export function SiteHeader() {
           <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
             {NAV_LINKS.map((link) => (
               <Link
-                key={link.labelKey}
+                key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
+                className={
+                  link.highlight
+                    ? "inline-flex items-center gap-1.5 text-sm font-semibold text-violet-600 transition-colors hover:text-violet-700"
+                    : "text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
+                }
               >
-                {t(link.labelKey)}
+                {link.highlight && <Sparkles className="h-3.5 w-3.5" />}
+                {link.customLabel ?? t(link.labelKey)}
+                {link.highlight && (
+                  <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-violet-600">
+                    New
+                  </span>
+                )}
               </Link>
             ))}
           </nav>
@@ -109,12 +127,22 @@ export function SiteHeader() {
             <nav className="flex flex-col gap-1 px-4 py-3" aria-label="Mobile navigation">
               {NAV_LINKS.map((link) => (
                 <Link
-                  key={link.labelKey}
+                  key={link.href}
                   href={link.href}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  className={
+                    link.highlight
+                      ? "inline-flex items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-violet-600 transition-colors hover:bg-violet-50"
+                      : "rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  }
                   onClick={() => setMobileOpen(false)}
                 >
-                  {t(link.labelKey)}
+                  {link.highlight && <Sparkles className="h-3.5 w-3.5" />}
+                  {link.customLabel ?? t(link.labelKey)}
+                  {link.highlight && (
+                    <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-violet-600">
+                      New
+                    </span>
+                  )}
                 </Link>
               ))}
 

@@ -32,6 +32,8 @@ import {
   Video,
   Receipt,
   HelpCircle,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/auth/actions";
@@ -78,6 +80,8 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/dashboard/posts/new", labelKey: "dash.newPost", icon: PenSquare, creatorOnly: true },
       { href: "/dashboard/stories", labelKey: "dash.stories", icon: Camera, creatorOnly: true },
       { href: "/dashboard/live", labelKey: "dash.live", icon: Video, creatorOnly: true },
+      { href: "/dashboard/ai-studio", labelKey: "dash.aiStudio", icon: Sparkles, creatorOnly: true },
+      { href: "/dashboard/ai-chat", labelKey: "dash.aiChat", icon: Bot, creatorOnly: true },
     ],
   },
   {
