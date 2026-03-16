@@ -24,6 +24,18 @@ const nextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "picsum.photos",
+      },
+      {
+        protocol: "https",
+        hostname: "fastly.picsum.photos",
+      },
+      {
+        protocol: "https",
+        hostname: "replicate.delivery",
+      },
     ],
   },
   async redirects() {
@@ -48,7 +60,7 @@ const nextConfig = {
       "default-src 'self'",
       `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://api.dicebear.com https://images.unsplash.com blob:",
+      "img-src 'self' data: https://*.supabase.co https://lh3.googleusercontent.com https://api.dicebear.com https://images.unsplash.com https://picsum.photos https://fastly.picsum.photos blob:",
       "connect-src 'self' https://*.ingest.sentry.io https://*.supabase.co wss://*.supabase.co https://api.mainnet-beta.solana.com https://api.devnet.solana.com https://*.helius-rpc.com wss://*.helius-rpc.com https://*.phantom.app wss://*.phantom.app https://*.solflare.com wss://*.solflare.com https://*.walletconnect.com wss://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.org https://*.livekit.cloud wss://*.livekit.cloud",
       "frame-src 'none'",
       "frame-ancestors 'none'",
