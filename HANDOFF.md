@@ -351,6 +351,73 @@ video_assets, video_variants, stories, story_views, story_highlights, story_high
 
 ---
 
+## AI Creator Ecosystem
+
+### What's Built
+- **AI Chat** — Pay-per-message conversations with AI personas powered by Claude Haiku. Fans pay $0.10-$2.00/message. Creator sets personality, system prompt, pricing.
+- **AI Studio** — Built-in image generation (Replicate Flux / Together AI / demo mode). Styles: photorealistic, anime, digital art, fashion, portrait.
+- **AI Creator Directory** — Browse page with 20 seeded AI profiles, category filters, request system.
+- **House AI Creators** — 5 platform-owned personas (Luna Frost, Nyx Digital, Aria Chrome, Velvet Circuit, Ember Synth) with posts + chat personas.
+- **AI Landing Page** — `/ai` — Dark premium theme, Fanvue comparison table, interactive revenue calculator.
+- **Fee Tier** — AI Influencer: 15% platform fee (vs Adult 10%, Standard 5%).
+
+### Key URLs
+| URL | Purpose |
+|-----|---------|
+| `/ai` | AI creator marketing/landing page |
+| `/ai-creators` | Browse AI creator directory |
+| `/ai-chat/[personaId]` | Fan chat with AI persona |
+| `/dashboard/ai-chat` | Creator persona management |
+| `/dashboard/ai-studio` | AI image generation tool |
+
+### Env Vars Needed
+- `ANTHROPIC_API_KEY` — For Claude Haiku AI chat responses
+- `REPLICATE_API_TOKEN` — For Flux image generation (optional, falls back to demo mode)
+- `TOGETHER_API_KEY` — Alternative image gen backend (optional)
+
+### AI Persona Marketing Strategy
+The 5 house AI creators can be used as a marketing team:
+1. Create Instagram/TikTok accounts for each persona
+2. Generate content via AI Studio → post to their socials
+3. Bio links back to their OpenFans profile
+4. Fans subscribe + pay for AI chat → real revenue
+5. Revenue numbers go into marketing materials
+
+### Future: AI Video Generation (NOT YET BUILT)
+For lifelike AI persona videos (talking head, movement):
+| Tool | What It Does | Cost | Adult? |
+|------|-------------|------|--------|
+| HeyGen API | Photo → talking head video (lip sync) | $24/mo | No |
+| Kling AI | Image → cinematic video | Free tier | No |
+| Runway Gen-3 | Text/image → video | $12/mo | No |
+| D-ID | Photo → animated portrait | Free tier | No |
+
+Pipeline to build when ready:
+1. Claude writes script in persona's voice
+2. HeyGen/Kling generates video from character image + script
+3. Auto-post to Instagram/TikTok via Playwright
+4. Content calendar generates + posts daily for each persona
+Env var needed: `HEYGEN_API_KEY`
+
+### Future: NSFW AI Image Generation (NOT YET BUILT)
+Mainstream AI APIs (Claude, OpenAI, Replicate Flux) refuse adult content. Options:
+| Tool | How | Cost |
+|------|-----|------|
+| Stable Diffusion (self-hosted) | RunPod GPU instance | ~$0.40/hr |
+| CivitAI models | Community NSFW models | API access |
+| Fooocus (self-hosted) | Open-source local | GPU cost |
+
+To integrate: add a self-hosted SD backend option in AI Studio API alongside Replicate/Together.
+
+### Future: Scraping Existing AI Personas (NOT YET BUILT)
+AI personas from Fanvue and other platforms can be listed on OpenFans:
+- **Legal status**: AI personas have no personhood/publicity rights — lower risk than scraping real humans
+- **Caution**: Brand names/unique persona names may have trademark claims
+- **Safer approach**: Create similar personas with different names rather than exact copies
+- **Best approach**: Scrape the directory → list as "unclaimed" → owners can claim their page via the existing Request a Creator system
+
+---
+
 ### Future Enhancements
 | Task | Effort |
 |------|--------|
