@@ -219,7 +219,7 @@ const FAQ_ITEMS: readonly FaqItem[] = [
   {
     question: "What are the fees?",
     answer:
-      "OpenFans charges a flat 5% platform fee on subscriptions and tips. That means you keep 95% of everything you earn. There are no hidden fees, no payout fees, and no currency conversion charges.",
+      "OpenFans charges a 5% platform fee on subscriptions and tips for standard creators (95% payout). Adult creators pay 10%, and AI Influencer creators pay 15%. There are no hidden fees, no payout fees, and no currency conversion charges.",
   },
   {
     question: "Do I need crypto experience?",
@@ -504,6 +504,36 @@ export default function LandingPageClient() {
             </div>
           </section>
         )}
+
+        {/* ==================== AI CREATORS CALLOUT ==================== */}
+        <section className="border-b border-gray-200">
+          <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-violet-200/60 bg-gradient-to-r from-violet-50 to-purple-50 px-5 py-4 sm:px-6 sm:py-5">
+              <div className="flex items-center gap-3">
+                <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 sm:flex">
+                  <Zap className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 sm:text-base">
+                    AI Creators Welcome
+                  </p>
+                  <p className="text-xs text-gray-500 sm:text-sm">
+                    Build your AI persona on OpenFans. 15% platform fee for AI-generated content.
+                  </p>
+                </div>
+              </div>
+              <Link href="/signup" className="shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-violet-300 text-violet-600 transition-all hover:border-violet-400 hover:bg-violet-50"
+                >
+                  Learn More
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
 
         {/* ==================== VALUE PROPS ==================== */}
         <section className="py-14 sm:py-20 lg:py-28">

@@ -8,6 +8,7 @@ export type CreatorCategory =
   | "Podcasts"
   | "Music"
   | "Art"
+  | "AI"
   | "Adult";
 
 export const CATEGORIES: readonly CreatorCategory[] = [
@@ -18,6 +19,7 @@ export const CATEGORIES: readonly CreatorCategory[] = [
   "Podcasts",
   "Music",
   "Art",
+  "AI",
   "Adult",
 ] as const;
 
@@ -376,6 +378,53 @@ export const EXPLORE_CREATORS: readonly ExploreCreator[] = [
     primaryCategory: "Adult",
     subscriptionPrice: 14.99,
     stats: { posts: 1_890, subscribers: 56_100, likes: 745_000 },
+    posts: [],
+    isFeatured: false,
+  },
+
+  // AI Influencer creators
+  {
+    id: "ai-001",
+    username: "aixluna",
+    displayName: "AIxLuna",
+    avatarUrl: "https://api.dicebear.com/9.x/notionists/svg?seed=aixluna",
+    bannerUrl: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&q=80",
+    bio: "AI fashion model and lifestyle creator. Virtual photoshoots, AI-styled lookbooks, and daily lifestyle content from the digital frontier.",
+    isVerified: true,
+    categories: ["AI", "Entertainment"],
+    primaryCategory: "AI",
+    subscriptionPrice: 12.99,
+    stats: { posts: 1_240, subscribers: 38_500, likes: 512_000 },
+    posts: [],
+    isFeatured: false,
+  },
+  {
+    id: "ai-002",
+    username: "neuralnova",
+    displayName: "NeuralNova",
+    avatarUrl: "https://api.dicebear.com/9.x/notionists/svg?seed=neuralnova",
+    bannerUrl: "https://images.unsplash.com/photo-1634017839464-5c339ebe3579?w=800&q=80",
+    bio: "AI art and digital creations. Generative masterpieces, behind-the-prompt breakdowns, and exclusive AI art collections for subscribers.",
+    isVerified: true,
+    categories: ["AI", "Art"],
+    primaryCategory: "AI",
+    subscriptionPrice: 9.99,
+    stats: { posts: 870, subscribers: 22_300, likes: 298_000 },
+    posts: [],
+    isFeatured: false,
+  },
+  {
+    id: "ai-003",
+    username: "virtualvixen",
+    displayName: "VirtualVixen",
+    avatarUrl: "https://api.dicebear.com/9.x/notionists/svg?seed=virtualvixen",
+    bannerUrl: "https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?w=800&q=80",
+    bio: "AI persona and entertainment creator. Interactive storylines, virtual meet-and-greets, and exclusive AI-generated entertainment content.",
+    isVerified: false,
+    categories: ["AI", "Entertainment"],
+    primaryCategory: "AI",
+    subscriptionPrice: 14.99,
+    stats: { posts: 645, subscribers: 15_800, likes: 189_000 },
     posts: [],
     isFeatured: false,
   },

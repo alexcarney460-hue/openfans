@@ -1,8 +1,11 @@
 /**
  * Differentiated platform fee structure.
  *
+ * AI Influencer creators pay a 15% platform fee (85% creator share).
  * Adult creators pay a 10% platform fee (90% creator share).
- * Non-adult creators pay a 5% platform fee (95% creator share).
+ * Standard creators pay a 5% platform fee (95% creator share).
+ *
+ * Priority: fee_override > founder (5%) > AI (15%) > adult (10%) > standard (5%).
  *
  * This module provides helpers to look up a creator's fee rate
  * from the database and compute platform fee / creator share splits.
@@ -15,25 +18,30 @@ import { sql } from "drizzle-orm";
 
 // ── Fee rate constants ──────────────────────────────────────────────────────
 
+export const AI_FEE_RATE = 0.15;
+export const AI_SHARE_RATE = 0.85;
 export const ADULT_FEE_RATE = 0.10;
 export const ADULT_SHARE_RATE = 0.90;
 export const STANDARD_FEE_RATE = 0.05;
 export const STANDARD_SHARE_RATE = 0.95;
 
+export const AI_FEE_PERCENT = 15;
 export const ADULT_FEE_PERCENT = 10;
 export const STANDARD_FEE_PERCENT = 5;
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface FeeConfig {
-  /** Platform fee as a decimal (0.05 or 0.10). */
+  /** Platform fee as a decimal (0.05, 0.10, or 0.15). */
   feeRate: number;
-  /** Creator share as a decimal (0.95 or 0.90). */
+  /** Creator share as a decimal (0.95, 0.90, or 0.85). */
   shareRate: number;
-  /** Platform fee as an integer percent (5 or 10). */
+  /** Platform fee as an integer percent (5, 10, or 15). */
   feePercent: number;
   /** Whether the creator is classified as adult content. */
   isAdult: boolean;
+  /** Whether the creator is classified as an AI influencer. */
+  isAi: boolean;
 }
 
 // ── Simple per-request memoization cache ────────────────────────────────────
@@ -77,16 +85,37 @@ export function isAdultCreator(categories: string[]): boolean {
 }
 
 /**
- * Return the fee configuration for a boolean adult flag.
+ * Determine whether a categories array marks a creator as "AI".
+ * Checks for "ai" or "ai_influencer" (case-insensitive).
+ */
+export function isAiCreator(categories: string[]): boolean {
+  return categories.some(
+    (cat) => cat.toLowerCase() === "ai" || cat.toLowerCase() === "ai_influencer",
+  );
+}
+
+/**
+ * Return the fee configuration based on content type flags.
+ * AI takes priority over adult (15% > 10%).
  * Pure function, no DB access.
  */
-export function getFeeConfigForType(isAdult: boolean): FeeConfig {
+export function getFeeConfigForType(isAdult: boolean, isAi: boolean = false): FeeConfig {
+  if (isAi) {
+    return {
+      feeRate: AI_FEE_RATE,
+      shareRate: AI_SHARE_RATE,
+      feePercent: AI_FEE_PERCENT,
+      isAdult,
+      isAi: true,
+    };
+  }
   if (isAdult) {
     return {
       feeRate: ADULT_FEE_RATE,
       shareRate: ADULT_SHARE_RATE,
       feePercent: ADULT_FEE_PERCENT,
       isAdult: true,
+      isAi: false,
     };
   }
   return {
@@ -94,6 +123,7 @@ export function getFeeConfigForType(isAdult: boolean): FeeConfig {
     shareRate: STANDARD_SHARE_RATE,
     feePercent: STANDARD_FEE_PERCENT,
     isAdult: false,
+    isAi: false,
   };
 }
 
@@ -127,6 +157,10 @@ export async function getCreatorFeeConfig(creatorId: string): Promise<FeeConfig>
   const row = rows[0] as { categories: string[] | null; is_founder: boolean; fee_override: number | null };
   const isFounder = row.is_founder === true;
 
+  const categories = row.categories ?? [];
+  const adult = isAdultCreator(categories);
+  const ai = isAiCreator(categories);
+
   // Custom fee_override takes priority (e.g., 0% for special partners)
   if (row.fee_override !== null && row.fee_override !== undefined) {
     const overrideRate = row.fee_override / 100;
@@ -134,27 +168,28 @@ export async function getCreatorFeeConfig(creatorId: string): Promise<FeeConfig>
       feeRate: overrideRate,
       shareRate: 1 - overrideRate,
       feePercent: row.fee_override,
-      isAdult: isAdultCreator(row.categories ?? []),
+      isAdult: adult,
+      isAi: ai,
     };
     setCachedConfig(creatorId, config);
     return config;
   }
 
-  // Founders always get the standard 5% fee, even for adult content
+  // Founders always get the standard 5% fee, even for adult or AI content
   if (isFounder) {
     const config: FeeConfig = {
       feeRate: STANDARD_FEE_RATE,
       shareRate: STANDARD_SHARE_RATE,
       feePercent: STANDARD_FEE_PERCENT,
-      isAdult: isAdultCreator(row.categories ?? []),
+      isAdult: adult,
+      isAi: ai,
     };
     setCachedConfig(creatorId, config);
     return config;
   }
 
-  const categories = row.categories ?? [];
-  const adult = isAdultCreator(categories);
-  const config = getFeeConfigForType(adult);
+  // AI (15%) takes priority over adult (10%) over standard (5%)
+  const config = getFeeConfigForType(adult, ai);
 
   setCachedConfig(creatorId, config);
   return config;

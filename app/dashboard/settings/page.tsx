@@ -71,7 +71,7 @@ export default function SettingsPage() {
   const [vipEnabled, setVipEnabled] = useState(false);
   const [vipPrice, setVipPrice] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
-  const [contentType, setContentType] = useState<"general" | "adult">("general");
+  const [contentType, setContentType] = useState<"general" | "adult" | "ai_influencer">("general");
   const [priceSaving, setPriceSaving] = useState(false);
   const [priceSaveError, setPriceSaveError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -185,9 +185,11 @@ export default function SettingsPage() {
                   const loadedCategories = cpJson.data.categories ?? [];
                   setCategories(loadedCategories);
                   setContentType(
-                    loadedCategories.some((c: string) => c.toLowerCase() === "adult")
-                      ? "adult"
-                      : "general",
+                    loadedCategories.some((c: string) => c.toLowerCase() === "ai_influencer" || c.toLowerCase() === "ai")
+                      ? "ai_influencer"
+                      : loadedCategories.some((c: string) => c.toLowerCase() === "adult")
+                        ? "adult"
+                        : "general",
                   );
 
                   // Load tier pricing
@@ -420,15 +422,17 @@ export default function SettingsPage() {
     }
 
     try {
-      // Build the categories array: merge existing non-adult categories
-      // with the content type selection
+      // Build the categories array: merge existing categories
+      // with the content type selection (strip old type markers first)
       const baseCategories = categories.filter(
-        (c) => c.toLowerCase() !== "adult",
+        (c) => c.toLowerCase() !== "adult" && c.toLowerCase() !== "ai_influencer" && c.toLowerCase() !== "ai",
       );
       const finalCategories =
         contentType === "adult"
           ? [...baseCategories, "adult"]
-          : baseCategories;
+          : contentType === "ai_influencer"
+            ? [...baseCategories, "ai_influencer"]
+            : baseCategories;
 
       const res = await fetch("/api/creator-profile", {
         method: "POST",
@@ -1234,11 +1238,11 @@ export default function SettingsPage() {
                     This determines your platform fee rate.
                   </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <button
                     type="button"
                     onClick={() => setContentType("general")}
-                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-left transition-all ${
+                    className={`rounded-lg border-2 px-4 py-3 text-left transition-all ${
                       contentType === "general"
                         ? "border-[#00AFF0] bg-[#00AFF0]/5"
                         : "border-gray-200 bg-white hover:border-gray-300"
@@ -1251,7 +1255,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => setContentType("adult")}
-                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-left transition-all ${
+                    className={`rounded-lg border-2 px-4 py-3 text-left transition-all ${
                       contentType === "adult"
                         ? "border-rose-400 bg-rose-50"
                         : "border-gray-200 bg-white hover:border-gray-300"
@@ -1261,11 +1265,26 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">Age-restricted content</p>
                     <p className="mt-2 text-xs font-semibold text-rose-600">Platform fee: 10%</p>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setContentType("ai_influencer")}
+                    className={`rounded-lg border-2 px-4 py-3 text-left transition-all ${
+                      contentType === "ai_influencer"
+                        ? "border-violet-400 bg-violet-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="text-sm font-medium text-foreground">AI Influencer</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">AI-generated content, virtual personas, AI art</p>
+                    <p className="mt-2 text-xs font-semibold text-violet-600">Platform fee: 15%</p>
+                  </button>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  {contentType === "adult"
-                    ? "You keep 90% of all revenue. The 10% fee covers enhanced compliance and age verification infrastructure."
-                    : "You keep 95% of all revenue."}
+                  {contentType === "ai_influencer"
+                    ? "You keep 85% of all revenue. The 15% fee covers AI content moderation and persona verification."
+                    : contentType === "adult"
+                      ? "You keep 90% of all revenue. The 10% fee covers enhanced compliance and age verification infrastructure."
+                      : "You keep 95% of all revenue."}
                 </p>
               </div>
 
